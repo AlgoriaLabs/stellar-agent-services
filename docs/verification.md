@@ -8,7 +8,8 @@
 
 ## Checks
 <!-- C1 manifest, C2 identity, C3 challenge, C4 paid call, C5 recovery, C6 hygiene. Each failure cites the rule ids
-     from provider-standard.md. `verifier check` runs the no-payment checks against any URL, including localhost. -->
+     from provider-standard.md. `verifier check` runs the no-payment checks against any URL; with `--dev` it also accepts a local
+     http:// server (spec [M6]). -->
 
 ## Verification receipt
 <!-- Format, canonical JSON, hash, level reached, where it is published. -->

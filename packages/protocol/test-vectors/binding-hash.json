@@ -1,0 +1,64 @@
+{
+  "description": "The job binding hash of provider-standard.md §5.3: bindingHash = lowercase hex SHA-256 of the RFC 8785 canonical JSON of {\"service\": service, \"input\": input}. `canonical` shows the bytes that are hashed.",
+  "cases": [
+    {
+      "name": "the text-stats example",
+      "service": "text-stats",
+      "input": { "text": "Hello world." },
+      "canonical": "{\"input\":{\"text\":\"Hello world.\"},\"service\":\"text-stats\"}",
+      "bindingHash": "3d3b3dbdf90621535bd77d1f1d2a1ed0334bf875c7dc7c023caa48cad949ce87"
+    },
+    {
+      "name": "key order does not matter (1 of 2)",
+      "service": "translate",
+      "input": { "text": "Good morning", "target": "tr", "source": "en" },
+      "canonical": "{\"input\":{\"source\":\"en\",\"target\":\"tr\",\"text\":\"Good morning\"},\"service\":\"translate\"}",
+      "bindingHash": "1727298e87acb5642a49ceed3cfca3012e3d90c8ddae8642aec5b21c5d40531d"
+    },
+    {
+      "name": "key order does not matter (2 of 2)",
+      "service": "translate",
+      "input": { "source": "en", "target": "tr", "text": "Good morning" },
+      "canonical": "{\"input\":{\"source\":\"en\",\"target\":\"tr\",\"text\":\"Good morning\"},\"service\":\"translate\"}",
+      "bindingHash": "1727298e87acb5642a49ceed3cfca3012e3d90c8ddae8642aec5b21c5d40531d"
+    },
+    {
+      "name": "the service name is part of the binding",
+      "service": "summarize",
+      "input": { "text": "Hello world." },
+      "canonical": "{\"input\":{\"text\":\"Hello world.\"},\"service\":\"summarize\"}",
+      "bindingHash": "6b84191b4fce4a19ae8e51b637df8dd5c0d349a57e00d416c729a2ee2a942882"
+    },
+    {
+      "name": "numbers use RFC 8785 formatting",
+      "service": "image-generate",
+      "input": { "prompt": "a lighthouse at dusk", "width": 1024, "guidance": 7.5, "ratio": 0.5625, "seed": 0 },
+      "canonical": "{\"input\":{\"guidance\":7.5,\"prompt\":\"a lighthouse at dusk\",\"ratio\":0.5625,\"seed\":0,\"width\":1024},\"service\":\"image-generate\"}",
+      "bindingHash": "197fad97c66e72f70045bcaf8433a6e11185fc76ddc4789c86d82032856e5d5a"
+    },
+    {
+      "name": "nested objects are sorted, arrays keep their order",
+      "service": "batch-classify",
+      "input": {
+        "items": [{ "text": "Second", "id": "b" }, { "text": "First", "id": "a" }],
+        "labels": ["spam", "ham"]
+      },
+      "canonical": "{\"input\":{\"items\":[{\"id\":\"b\",\"text\":\"Second\"},{\"id\":\"a\",\"text\":\"First\"}],\"labels\":[\"spam\",\"ham\"]},\"service\":\"batch-classify\"}",
+      "bindingHash": "8695964e2a63c73facb3cc46fb9ed3df5c4e8716ba3e1b909d8b15b3b4473e1b"
+    },
+    {
+      "name": "non-ASCII text, quotes and newlines",
+      "service": "text-stats",
+      "input": { "text": "Merhaba dünya 🌍\n\"quoted\"" },
+      "canonical": "{\"input\":{\"text\":\"Merhaba dünya 🌍\\n\\\"quoted\\\"\"},\"service\":\"text-stats\"}",
+      "bindingHash": "2ed5ae38386e9a30c98a4d38d497278d6059360ce066fb30f96fa351ebc25b51"
+    },
+    {
+      "name": "an empty input object",
+      "service": "ping",
+      "input": {},
+      "canonical": "{\"input\":{},\"service\":\"ping\"}",
+      "bindingHash": "76658c27819d7e93b8ed15f1a81519b33ae76c1c765185daaf380fa252176000"
+    }
+  ]
+}

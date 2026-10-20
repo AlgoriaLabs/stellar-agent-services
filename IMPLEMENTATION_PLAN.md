@@ -181,7 +181,8 @@ one payment.
 - Conformance levels: Described (C1, C6), Payable (+ C3, C4), Recoverable (+ C5), plus Registered (C2).
 
 **Ways to implement:** gateway mode (any existing HTTP API), the TypeScript library, or natively from the spec,
-checked with `verifier check`.
+checked with `verifier check`. The manifest JSON Schema and language-neutral test vectors are in
+`packages/protocol` (`schemas/`, `test-vectors/`).
 
 ### 5.2 Job Recovery protocol (`docs/job-recovery.md`)
 
@@ -263,7 +264,8 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 
 **Conformance levels** (each maps to one badge): Described = C1 + C6, Payable = + C3 + C4,
 Recoverable = + C5, and Registered = C2 plus a Validation Registry record. `verifier check` runs the no-payment
-checks against any URL, including `localhost`, so providers can test themselves before going live.
+checks against any URL. With `--dev` it also accepts a local `http://` server (spec [M6]), so providers can test
+themselves before going live.
 
 **Verification receipt:**
 - Canonical JSON containing: standard version, provider `agentId`, manifest sha256, network, a status and
@@ -365,7 +367,9 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
     (the spec's `maxTimeoutSeconds` range of 30–300 depends on it).
 - [ ] Day 1–2: **Payment client design decision** (§5.6).
 - [x] `docs/provider-standard.md` v1 draft.
-- [ ] `packages/protocol` types, manifest JSON Schema and test vectors; freeze v1 at the end of the week.
+- [x] Manifest JSON Schema, test vectors and reference checks in `packages/protocol` (canonical JSON, binding
+  hash, manifest rules, challenge check).
+- [ ] Remaining protocol types (job view, errors, receipts); freeze v1 at the end of the week.
 - [ ] Verification receipt format defined (spec only).
 - [ ] Thin provider slice: manifest, create-job with an on-success service, x402 resource server, memory store.
 - [ ] Payment client, first working version: approval screen, caps, signing, journal.
@@ -493,5 +497,5 @@ everywhere.
 | 3 | Testnet discovery approach (§5.7) | Berkin | W2 |
 | 4 | Testnet-only evidence accepted, or a final mainnet run | Berkin + Ambassador Chapter Lead | W2 |
 | 5 | npm scope for publishing (placeholder `@stellar-agent-services/*`) | Berkin | W2 (first publish) |
-| 6 | Provider Standard v1 freeze: `Job-Token` header, manifest path, `maxTimeoutSeconds` range, the URL used for problem `type` values | Berkin | W1 |
+| 6 | Provider Standard v1 freeze: `Job-Token` header, manifest path, `maxTimeoutSeconds` range, the URL for the schema `$id` and problem `type` values (provisionally `berkingurcan.github.io/stellar-agent-services`) | Berkin | W1 |
 | 7 | Shared ERC-8126/8196 conventions: score direction, tags, hashing, policy extensions (docs/erc-compatibility.md) | Berkin + ERC-8126/8196 Stellar team | W1 for hashing, W3 for validation records |

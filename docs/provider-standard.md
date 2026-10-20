@@ -67,7 +67,7 @@ Only three things are specific to this standard:
 | --- | --- | --- |
 | **Gateway** | any existing HTTP API, in any language | A config file. The gateway handles the manifest, payment and jobs, then forwards the input to the upstream API. |
 | **TypeScript library** | new services on Node, Workers, Deno or Bun | `defineService(...)` plus a handler function |
-| **Native** | any language | This document. The manifest JSON Schema, test vectors and `verifier check` confirm conformance. |
+| **Native** | any language | This document. The [manifest JSON Schema](../packages/protocol/schemas/manifest.schema.json), the [test vectors](../packages/protocol/test-vectors) and `verifier check` confirm conformance. |
 
 ## 2. Manifest
 
@@ -76,7 +76,8 @@ Only three things are specific to this standard:
 - **[M1]** The manifest MUST be served over HTTPS with status `200` and `Content-Type: application/json`.
 - **[M2]** It MAY be at any URL. The default is `/.well-known/stellar-agent-services.json` on the provider's
   origin. The Stellar 8004 registration points to the actual URL (§7).
-- **[M3]** Clients MUST NOT follow redirects when fetching the manifest. The manifest MUST be at most 256 KiB.
+- **[M3]** Clients MUST NOT follow redirects when fetching the manifest. The manifest MUST be at most 256 KiB and
+  MUST be I-JSON (RFC 7493): UTF-8, no duplicate keys and no lone surrogates.
 - **[M4]** Providers SHOULD send `Cache-Control: max-age` of 300 seconds or less.
 
 ### 2.2 Example
@@ -101,7 +102,7 @@ Only three things are specific to this standard:
         "scheme": "exact",
         "network": "stellar:testnet",
         "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
-        "payTo": "<payTo G… address>",
+        "payTo": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
         "maxTimeoutSeconds": 60,
         "extra": { "areFeesSponsored": true }
       }
@@ -143,7 +144,8 @@ Only three things are specific to this standard:
 ```
 
 The `asset` above is the testnet USDC Stellar Asset Contract. Implementations take it from `@x402/stellar`
-(`USDC_TESTNET_ADDRESS`, `USDC_PUBNET_ADDRESS`) rather than retyping it. The `payTo` is a placeholder.
+(`USDC_TESTNET_ADDRESS`, `USDC_PUBNET_ADDRESS`) rather than retyping it. The example addresses are made from
+hashes, so nobody holds their secret keys.
 
 ### 2.3 Fields
 
@@ -152,8 +154,8 @@ Required fields are in **bold**.
 | Field | Type | Rules |
 | --- | --- | --- |
 | **`standard`** | string | `stellar-agent-services/provider@1` |
-| **`provider.name`** | string | 1–120 characters |
-| `provider.description` | string | ≤ 500 characters |
+| **`provider.name`** | string | 1–120 characters, no control characters |
+| `provider.description` | string | ≤ 500 characters; tabs and newlines allowed, no other control characters |
 | `provider.homepage` | URL | HTTPS |
 | `provider.agentId` | integer | Stellar 8004 agent id (u32). Needed for the identity check (§7). |
 | `provider.termsUrl` | URL | HTTPS |
@@ -167,12 +169,30 @@ Required fields are in **bold**.
 | **`services`** | array | 1–25 services (§3) |
 | `extensions` | object | See §9 |
 
-- **[M5]** `baseUrl` MUST be HTTPS, MUST have the same origin as the manifest URL, MUST NOT have a query or
-  fragment, and MUST NOT end with `/`.
-- **[M6]** Every URL in the manifest MUST be HTTPS and at most 300 characters.
+- **[M5]** `baseUrl` MUST be HTTPS and MUST have the same origin as the manifest URL. It MUST NOT have user
+  info, a query, a fragment or an empty path segment, and MUST NOT end with `/`.
+- **[M6]** Every URL in the manifest MUST be HTTPS, at most 300 characters and without user info. A development
+  server on a loopback address MAY use `http://`; only clients and verifiers explicitly put in a development mode
+  accept it.
 - **[M7]** Service `name` values MUST be unique within the manifest.
 - **[M8]** Clients MUST ignore fields they don't recognize. Clients MUST reject a manifest whose `standard` has a
   different major version.
+- **[M9]** The manifest MUST be valid against the
+  [manifest JSON Schema](../packages/protocol/schemas/manifest.schema.json). It encodes the field tables in §2.3,
+  §3.1 and §4.1, and rules M5, M6, M8, P1, S4 and S5.
+
+### 2.4 Validating a manifest
+
+A client, verifier or kit validates a manifest in three steps:
+
+1. **Fetch** ([M1], [M3]): HTTPS, status `200`, no redirects, at most 256 KiB.
+2. **JSON Schema** ([M9]): any JSON Schema 2020-12 validator. Format assertion is not needed.
+3. **Rules JSON Schema can't express:** the manifest URL is HTTPS [M1], no lone surrogates [M3], `baseUrl` has
+   the manifest's origin [M5], unique service names [M7], schema sizes [S6], examples that match their schemas
+   [S9] and the `payTo` checksum [P11]. `checkManifestRules()` in `packages/protocol` implements them.
+
+The [test vectors](../packages/protocol/test-vectors) cover every step. They also cover canonical JSON, binding
+hashes, header formats and challenge checks.
 
 ## 3. Services
 
@@ -181,14 +201,14 @@ Required fields are in **bold**.
 | Field | Type | Rules |
 | --- | --- | --- |
 | **`name`** | string | Matches `^[a-z0-9][a-z0-9_-]{0,63}$`. Also used in URLs, MCP tool names and LLM function names. |
-| `title` | string | ≤ 120 characters |
-| **`description`** | string | 1–1000 characters (§3.4) |
-| **`price.amount`** | string | Integer in the asset's base units. USDC has 7 decimals, so `"100000"` is 0.01 USDC. |
+| `title` | string | 1–120 characters, no control characters |
+| **`description`** | string | 1–1000 characters (§3.4); tabs and newlines allowed, no other control characters |
+| **`price.amount`** | string | A positive integer in the asset's base units, at most 38 digits. USDC has 7 decimals, so `"100000"` is 0.01 USDC. |
 | `charge` | string | `on-success` or `upfront` (§3.2). Default `upfront`. |
-| `expectedDurationSeconds` | integer | Typical time to finish. Required when `charge` is `on-success`. |
+| `expectedDurationSeconds` | integer | Typical time to finish, at least 1. Required when `charge` is `on-success`. |
 | **`inputSchema`** | object | JSON Schema 2020-12 (§3.3) |
 | **`outputSchema`** | object | JSON Schema 2020-12 (§3.3) |
-| `examples` | array | Up to 5 `{ input, output }` pairs. Each `input` MUST validate against `inputSchema` and each `output` against `outputSchema`. |
+| `examples` | array | Up to 5 `{ input, output }` pairs. **[S9]** Each `input` MUST validate against `inputSchema` and each `output` against `outputSchema`. |
 | `maxInputBytes` | integer | Request body limit. Default 1 MiB (1,048,576), maximum 10 MiB. |
 | `tags` | array | Up to 10 strings matching `^[a-z0-9-]{1,32}$` |
 | `extensions` | object | See §9 |
@@ -212,10 +232,12 @@ hint.
 
 ### 3.3 Schemas
 
-- **[S4]** The root of `inputSchema` MUST be `"type": "object"`. MCP tools and LLM function calling require it.
-- **[S5]** Schemas MUST NOT reference anything outside themselves. `$ref` is allowed only within the same schema
-  (`#/...`), and clients MUST NOT fetch remote schemas.
-- **[S6]** Each schema MUST be at most 32 KiB as JSON.
+- **[S4]** The roots of `inputSchema` and `outputSchema` MUST be `"type": "object"`. MCP tools require it for
+  both, and LLM function calling for the input.
+- **[S5]** Schemas MUST NOT reference anything outside themselves: `$ref` and `$dynamicRef` values start with `#`,
+  and `$schema`, if present, is `https://json-schema.org/draft/2020-12/schema`. Clients MUST NOT fetch remote
+  schemas. The check is deliberately simple and also applies inside `const`, `default`, `enum` and `examples`.
+- **[S6]** Each schema MUST be at most 32 KiB, measured as UTF-8 canonical JSON (RFC 8785).
 - **[S7]** Providers SHOULD use the portable subset of JSON Schema, which most agent frameworks support:
   - `type`, `properties`, `required`, `additionalProperties`, `items`, `enum`, `const`
   - `minimum`, `maximum`, `minLength`, `maxLength`, `minItems`, `maxItems`, `pattern`, `format`
@@ -251,12 +273,14 @@ from each service's `price`.
 | `scheme` | `exact` |
 | `network` | `stellar:testnet` or `stellar:pubnet` (CAIP-2) |
 | `asset` | The USDC Stellar Asset Contract (`C…`) for that network |
-| `payTo` | Stellar address (`G…` or `C…`) that receives the payment |
+| `payTo` | Stellar account (`G…`) or contract (`C…`) address that receives the payment. Muxed (`M…`) addresses are not allowed. |
 | `maxTimeoutSeconds` | 30–300 |
 | `extra.areFeesSponsored` | `true`. The facilitator pays network fees, so the payer needs only USDC. |
 
-- **[P1]** In v1, `accepts` MUST have exactly one entry, so one manifest uses one network and one asset.
+- **[P1]** In v1, `accepts` MUST have exactly one entry, so one manifest uses one network and one asset. The entry
+  MUST NOT include `amount`.
 - **[P2]** A `G…` `payTo` MUST have a USDC trustline.
+- **[P11]** `payTo` MUST be a valid strkey, with the right version byte and checksum.
 
 ### 4.2 The challenge
 
@@ -305,8 +329,8 @@ response.
 
 - **[J1]** Clients SHOULD send `Idempotency-Key` and `Job-Token`. They MUST send both or neither. A client that
   sends them and saves them before paying can always recover the job.
-- **[J2]** If both are missing, the provider creates the job id and token itself and returns them once, in the
-  create-job response (`jobId`, `jobToken`). This lets any x402 client pay. Such a client can still lose the job
+- **[J2]** If both are missing, the provider creates the job id (a lowercase UUID) and token itself and returns
+  them once, in the create-job response (`jobId`, `jobToken`). This lets any x402 client pay. Such a client can still lose the job
   if the response is lost.
 - **[J3]** The provider stores only `sha256(Job-Token)` and compares it in constant time.
 
@@ -359,8 +383,8 @@ create-job, check-status and get-result all return a **job view**:
     "network": "stellar:testnet",
     "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
     "amount": "100000",
-    "payTo": "<payTo G… address>",
-    "payer": "<payer G… address>",
+    "payTo": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
+    "payer": "GBH3JLK366N4L5XCLJRCYLE6K6K3PUWBBEOLNBJMLORSKUNR5WY2IRKZ",
     "transaction": "3b1f…e9a0",
     "settledAt": "2026-10-20T10:00:02Z"
   }
@@ -489,7 +513,8 @@ Verification results are published to the Stellar 8004 Validation Registry. See
 | – | Registered | C2 identity, plus a Validation Registry record | 8004 validated |
 
 - Each level includes the one below. Registered is independent of the levels.
-- `verifier check <manifest-url>` runs C1, C3 and C6 with no payment, including against `localhost`.
+- `verifier check <manifest-url>` runs C1, C3 and C6 with no payment. In development mode it also accepts a local
+  `http://` server ([M6]).
 - `verifier verify <manifest-url> --pay` runs every check with a funded testnet payer.
 
 The checks are listed in [verification.md](verification.md).
@@ -577,9 +602,11 @@ A client can offer each service to an LLM as a tool without converting anything:
 | `inputSchema` | `inputSchema` |
 | `outputSchema` | `outputSchema` |
 
-The price, network and `charge` stay outside the tool definition. The client shows them to the user for approval.
+Both schemas have an object root ([S4]), as MCP requires. The price, network and `charge` stay outside the tool
+definition. The client shows them to the user for approval.
 
 ---
 
-Test vectors (canonical JSON, binding hashes, sample challenges) and the manifest JSON Schema will be published in
-`packages/protocol` with the v1 freeze.
+The manifest JSON Schema is [`packages/protocol/schemas/manifest.schema.json`](../packages/protocol/schemas/manifest.schema.json).
+Test vectors for canonical JSON, binding hashes, header formats, manifests and challenges are in
+[`packages/protocol/test-vectors`](../packages/protocol/test-vectors).

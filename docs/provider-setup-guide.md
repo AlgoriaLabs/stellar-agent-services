@@ -9,7 +9,7 @@
    - **TypeScript library:** install the Provider Kit, define a service with `defineService`, and mount
      `createProvider(...).fetch` on your server.
    - **Native:** implement [provider-standard.md](provider-standard.md) directly.
-3. Run locally and check it with `verifier check http://localhost:…`.
+3. Run locally and check it with `verifier check --dev http://localhost:…`.
 4. Make a paid testnet request.
 5. Deploy to a public HTTPS origin.
 6. Register on Stellar 8004, with the agent wallet set to your `payTo`.

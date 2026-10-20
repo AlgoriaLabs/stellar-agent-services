@@ -1,0 +1,245 @@
+{
+  "description": "Checking a decoded x402 PAYMENT-REQUIRED challenge against the approved manifest (provider-standard.md [P3], [P4], [P5]). Apply each case's `patch` (RFC 6902 add, replace and remove) to `challenge`, check it for `service` against `manifest`, and expect exactly `violations` (in any order). A client signs only when there are none [P7].",
+  "manifest": {
+    "standard": "stellar-agent-services/provider@1",
+    "provider": {
+      "name": "Example Text Tools",
+      "description": "Small, deterministic text utilities for agents.",
+      "homepage": "https://example.com",
+      "agentId": 42,
+      "termsUrl": "https://example.com/terms",
+      "dataUse": { "storesInputs": false, "trainsOnInputs": false }
+    },
+    "baseUrl": "https://api.example.com/agent",
+    "payment": {
+      "protocol": "x402",
+      "x402Version": 2,
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "stellar:testnet",
+          "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+          "payTo": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
+          "maxTimeoutSeconds": 60,
+          "extra": { "areFeesSponsored": true }
+        }
+      ]
+    },
+    "jobs": { "retentionSeconds": 604800 },
+    "services": [
+      {
+        "name": "text-stats",
+        "title": "Text statistics",
+        "description": "Counts words, sentences and characters in English text. Use it to check length limits before publishing. Accepts up to 20,000 characters.",
+        "price": { "amount": "100000" },
+        "charge": "on-success",
+        "expectedDurationSeconds": 2,
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": { "text": { "type": "string", "maxLength": 20000 } },
+          "required": ["text"],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "words": { "type": "integer" },
+            "sentences": { "type": "integer" },
+            "characters": { "type": "integer" }
+          },
+          "required": ["words", "sentences", "characters"]
+        },
+        "examples": [{ "input": { "text": "Hello world." }, "output": { "words": 2, "sentences": 1, "characters": 12 } }],
+        "tags": ["text", "analysis"]
+      }
+    ]
+  },
+  "service": "text-stats",
+  "challenge": {
+    "x402Version": 2,
+    "resource": {
+      "url": "https://api.example.com/agent/services/text-stats/jobs",
+      "description": "Text statistics",
+      "mimeType": "application/json"
+    },
+    "accepts": [
+      {
+        "scheme": "exact",
+        "network": "stellar:testnet",
+        "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+        "amount": "100000",
+        "payTo": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
+        "maxTimeoutSeconds": 60,
+        "extra": { "areFeesSponsored": true }
+      }
+    ]
+  },
+  "cases": [
+    { "name": "equals the manifest option plus the price", "patch": [], "valid": true, "violations": [] },
+    {
+      "name": "unknown fields are ignored",
+      "patch": [
+        { "op": "add", "path": "/accepts/0/extra/version", "value": "1" },
+        { "op": "add", "path": "/extensions", "value": { "com.example.trace": "abc" } },
+        { "op": "add", "path": "/resource/serviceName", "value": "Example Text Tools" }
+      ],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "an error message is allowed",
+      "patch": [{ "op": "add", "path": "/error", "value": "Payment required" }],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "amount differs from the price",
+      "patch": [{ "op": "replace", "path": "/accepts/0/amount", "value": "200000" }],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/amount" }]
+    },
+    {
+      "name": "amount is a number, not a string",
+      "patch": [{ "op": "replace", "path": "/accepts/0/amount", "value": 100000 }],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/amount" }]
+    },
+    {
+      "name": "payTo differs",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/accepts/0/payTo",
+          "value": "GCMM7PUD2GTN7EJ4EAUQB2BF7B3LWL2UYSULRQE3WEYJ4EF6Y5665GP5"
+        }
+      ],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/payTo" }]
+    },
+    {
+      "name": "asset differs",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/accepts/0/asset",
+          "value": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75"
+        }
+      ],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/asset" }]
+    },
+    {
+      "name": "network differs",
+      "patch": [{ "op": "replace", "path": "/accepts/0/network", "value": "stellar:pubnet" }],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/network" }]
+    },
+    {
+      "name": "scheme differs",
+      "patch": [{ "op": "replace", "path": "/accepts/0/scheme", "value": "upto" }],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/scheme" }]
+    },
+    {
+      "name": "maxTimeoutSeconds differs",
+      "patch": [{ "op": "replace", "path": "/accepts/0/maxTimeoutSeconds", "value": 120 }],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/maxTimeoutSeconds" }]
+    },
+    {
+      "name": "fees are not sponsored",
+      "patch": [{ "op": "replace", "path": "/accepts/0/extra/areFeesSponsored", "value": false }],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/extra/areFeesSponsored" }]
+    },
+    {
+      "name": "extra is missing",
+      "patch": [{ "op": "remove", "path": "/accepts/0/extra" }],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/extra/areFeesSponsored" }]
+    },
+    {
+      "name": "two payment options",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/accepts/-",
+          "value": {
+            "scheme": "exact",
+            "network": "stellar:testnet",
+            "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+            "amount": "100000",
+            "payTo": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
+            "maxTimeoutSeconds": 60,
+            "extra": { "areFeesSponsored": true }
+          }
+        }
+      ],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts" }]
+    },
+    {
+      "name": "no payment option",
+      "patch": [{ "op": "replace", "path": "/accepts", "value": [] }],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts" }]
+    },
+    {
+      "name": "accepts is missing",
+      "patch": [{ "op": "remove", "path": "/accepts" }],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts" }]
+    },
+    {
+      "name": "x402 version 1",
+      "patch": [{ "op": "replace", "path": "/x402Version", "value": 1 }],
+      "valid": false,
+      "violations": [{ "rule": "P3", "pointer": "/x402Version" }]
+    },
+    {
+      "name": "resource.url uses http",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/resource/url",
+          "value": "http://api.example.com/agent/services/text-stats/jobs"
+        }
+      ],
+      "valid": false,
+      "violations": [{ "rule": "P5", "pointer": "/resource/url" }]
+    },
+    {
+      "name": "resource.url is another service's URL",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/resource/url",
+          "value": "https://api.example.com/agent/services/summarize/jobs"
+        }
+      ],
+      "valid": false,
+      "violations": [{ "rule": "P5", "pointer": "/resource/url" }]
+    },
+    {
+      "name": "resource is missing",
+      "patch": [{ "op": "remove", "path": "/resource" }],
+      "valid": false,
+      "violations": [{ "rule": "P5", "pointer": "/resource/url" }]
+    },
+    {
+      "name": "several differences are all reported",
+      "patch": [
+        { "op": "replace", "path": "/accepts/0/amount", "value": "1" },
+        {
+          "op": "replace",
+          "path": "/accepts/0/payTo",
+          "value": "GCMM7PUD2GTN7EJ4EAUQB2BF7B3LWL2UYSULRQE3WEYJ4EF6Y5665GP5"
+        }
+      ],
+      "valid": false,
+      "violations": [{ "rule": "P4", "pointer": "/accepts/0/amount" }, { "rule": "P4", "pointer": "/accepts/0/payTo" }]
+    }
+  ]
+}

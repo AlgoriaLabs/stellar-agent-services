@@ -1,0 +1,94 @@
+{
+  "description": "RFC 8785 (JCS) canonical JSON. For each case, parse `json`, canonicalize it, and compare the result with `canonical` character for character; `sha256` is the lowercase hex SHA-256 of its UTF-8 bytes. For each number, the IEEE 754 double with bits `ieee754` canonicalizes to `canonical`. Every `invalid` entry must be rejected.",
+  "source": "RFC 8785 §3.2.2, §3.2.3 and Appendix B, plus cases for Provider Standard v1. Cross-checked with the canonicalize package by an RFC 8785 author.",
+  "cases": [
+    {
+      "name": "RFC 8785 §3.2.2 example",
+      "json": "{\n  \"numbers\": [333333333.33333329, 1E30, 4.50,\n              2e-3, 0.000000000000000000000000001],\n  \"string\": \"\\u20ac$\\u000F\\u000aA'\\u0042\\u0022\\u005c\\\\\\\"\\/\",\n  \"literals\": [null, true, false]\n}",
+      "canonical": "{\"literals\":[null,true,false],\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27],\"string\":\"€$\\u000f\\nA'B\\\"\\\\\\\\\\\"/\"}",
+      "sha256": "2d5e01a318d0f0879ab568c4be289c8b1f64ef8921a53c6277d5e069978baacb"
+    },
+    {
+      "name": "RFC 8785 §3.2.3 sorting example: keys are compared as UTF-16 code units",
+      "json": "{\n  \"\\u20ac\": \"Euro Sign\",\n  \"\\r\": \"Carriage Return\",\n  \"\\ufb33\": \"Hebrew Letter Dalet With Dagesh\",\n  \"1\": \"One\",\n  \"\\ud83d\\ude00\": \"Emoji: Grinning Face\",\n  \"\\u0080\": \"Control\",\n  \"\\u00f6\": \"Latin Small Letter O With Diaeresis\"\n}",
+      "canonical": "{\"\\r\":\"Carriage Return\",\"1\":\"One\",\"\u0080\":\"Control\",\"ö\":\"Latin Small Letter O With Diaeresis\",\"€\":\"Euro Sign\",\"😀\":\"Emoji: Grinning Face\",\"דּ\":\"Hebrew Letter Dalet With Dagesh\"}",
+      "sha256": "5e321556d22018a9656991a9e94f77ec175fa193e52a2429d312f8419ec8b08c"
+    },
+    {
+      "name": "whitespace and key order do not matter",
+      "json": "{ \"b\" : 2 , \"a\" : [ 1 , 2 ] , \"c\" : { \"z\" : null , \"y\" : true } }",
+      "canonical": "{\"a\":[1,2],\"b\":2,\"c\":{\"y\":true,\"z\":null}}",
+      "sha256": "a64f58f8aa2f3aba0ede6531306d8094ec11b12b1051b2929285a0f803b42c53"
+    },
+    {
+      "name": "empty containers",
+      "json": "{\"object\":{},\"array\":[],\"string\":\"\"}",
+      "canonical": "{\"array\":[],\"object\":{},\"string\":\"\"}",
+      "sha256": "160df1cb7c08864a4d113733fe02cfbc06a3e39c4ce0e0273ca7f2bb42e0facc"
+    },
+    {
+      "name": "objects are sorted at every depth; arrays keep their order",
+      "json": "{\"z\":{\"b\":{\"d\":1,\"c\":2},\"a\":[{\"y\":1,\"x\":2},3]},\"a\":0}",
+      "canonical": "{\"a\":0,\"z\":{\"a\":[{\"x\":2,\"y\":1},3],\"b\":{\"c\":2,\"d\":1}}}",
+      "sha256": "c90dff4558815659aa438ae7de17fa587e7b155aae5a4edb0bd73993176e1792"
+    },
+    {
+      "name": "number formatting",
+      "json": "[0, -0, 1, -1, 1.5, 0.1, 100.000, 1E+2, 123e-2, 1e20, 1e21, 0.000001, 1e-7]",
+      "canonical": "[0,0,1,-1,1.5,0.1,100,100,1.23,100000000000000000000,1e+21,0.000001,1e-7]",
+      "sha256": "95dad194c18706dc426c66239fc41371eba794d7e66476dd443379a4840bc2a3"
+    },
+    {
+      "name": "integers up to 2^53 - 1 stay exact",
+      "json": "[9007199254740991, -9007199254740991]",
+      "canonical": "[9007199254740991,-9007199254740991]",
+      "sha256": "84bad60c1793654a7cdca854230af90af531ecc8f7656e2c7b2bd91890017b37"
+    },
+    {
+      "name": "string escaping: only quote, backslash and C0 controls are escaped",
+      "json": "\"\\u0000\\u0001\\b\\t\\n\\u000b\\f\\r\\u001f\\u007f\\u2028\\/\\\\\\\"\"",
+      "canonical": "\"\\u0000\\u0001\\b\\t\\n\\u000b\\f\\r\\u001f\u007f\u2028/\\\\\\\"\"",
+      "sha256": "a5392ec3bf42164c717677e307656ec0bbe1d66acd6c71e03332208bb3785563"
+    },
+    {
+      "name": "escaped non-ASCII text is written as UTF-8",
+      "json": "{\"text\":\"Merhaba d\\u00fcnya \\ud83c\\udf0d \\u4e2d\\u6587\"}",
+      "canonical": "{\"text\":\"Merhaba dünya 🌍 中文\"}",
+      "sha256": "5c6d767ebe9d1b2c2ff28ee7294a682270405ea0a6d8bd89522c6b3593c0ec64"
+    }
+  ],
+  "numbers": [
+    { "ieee754": "0000000000000000", "canonical": "0" },
+    { "ieee754": "8000000000000000", "canonical": "0" },
+    { "ieee754": "0000000000000001", "canonical": "5e-324" },
+    { "ieee754": "8000000000000001", "canonical": "-5e-324" },
+    { "ieee754": "7fefffffffffffff", "canonical": "1.7976931348623157e+308" },
+    { "ieee754": "ffefffffffffffff", "canonical": "-1.7976931348623157e+308" },
+    { "ieee754": "4340000000000000", "canonical": "9007199254740992" },
+    { "ieee754": "c340000000000000", "canonical": "-9007199254740992" },
+    { "ieee754": "4430000000000000", "canonical": "295147905179352830000" },
+    { "ieee754": "44b52d02c7e14af5", "canonical": "9.999999999999997e+22" },
+    { "ieee754": "44b52d02c7e14af6", "canonical": "1e+23" },
+    { "ieee754": "44b52d02c7e14af7", "canonical": "1.0000000000000001e+23" },
+    { "ieee754": "444b1ae4d6e2ef4e", "canonical": "999999999999999700000" },
+    { "ieee754": "444b1ae4d6e2ef4f", "canonical": "999999999999999900000" },
+    { "ieee754": "444b1ae4d6e2ef50", "canonical": "1e+21" },
+    { "ieee754": "3eb0c6f7a0b5ed8c", "canonical": "9.999999999999997e-7" },
+    { "ieee754": "3eb0c6f7a0b5ed8d", "canonical": "0.000001" },
+    { "ieee754": "41b3de4355555553", "canonical": "333333333.3333332" },
+    { "ieee754": "41b3de4355555554", "canonical": "333333333.33333325" },
+    { "ieee754": "41b3de4355555555", "canonical": "333333333.3333333" },
+    { "ieee754": "41b3de4355555556", "canonical": "333333333.3333334" },
+    { "ieee754": "41b3de4355555557", "canonical": "333333333.33333343" },
+    { "ieee754": "becbf647612f3696", "canonical": "-0.0000033333333333333333" },
+    { "ieee754": "43143ff3c1cb0959", "canonical": "1424953923781206.2" }
+  ],
+  "invalid": [
+    { "name": "NaN", "ieee754": "7fffffffffffffff" },
+    { "name": "Infinity", "ieee754": "7ff0000000000000" },
+    { "name": "-Infinity", "ieee754": "fff0000000000000" },
+    { "name": "lone high surrogate", "json": "\"\\ud800\"" },
+    { "name": "lone low surrogate in a key", "json": "{\"\\udc00\":1}" },
+    { "name": "high surrogate followed by a letter", "json": "[\"\\ud83dA\"]" }
+  ]
+}
