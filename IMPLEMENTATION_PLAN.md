@@ -59,6 +59,9 @@ The SOW gives different numbers in different sections. We plan against the readi
 7. **Independent codebase.** No code, schemas or names are taken from Algoria. The foundations are the public
    x402 v2 spec, the `@x402/*` packages, `@stellar/stellar-sdk`, `@trionlabs/stellar8004` and Stellar Agent
    Search's own Phase 1 reference (`examples/x402-demo.ts`).
+8. **Stay compatible with ERC-8126 and ERC-8196.** We don't implement them, because a parallel project does. Our
+   identity, Validation Registry, policy and journal formats must not block their Stellar versions. See
+   [docs/erc-compatibility.md](docs/erc-compatibility.md).
 
 ---
 
@@ -250,7 +253,7 @@ service and running the server produces a working paid testnet request, using on
 | # | Check | Pass condition |
 | --- | --- | --- |
 | C1 | Manifest | Fetched over HTTPS, schema-valid v1, size limits respected |
-| C2 | Identity | `agentId` exists in the 8004 Identity registry, and its registration points to this manifest |
+| C2 | Identity | `agentId` exists in the 8004 Identity registry, its registration points to this manifest, and the manifest `payTo` equals the on-chain `agent_wallet` |
 | C3 | Challenge | Unpaid create-job returns `402` with an x402 v2 challenge: one `accepts`, `exact`, matching network, asset, amount and payTo, bounded timeout, fees sponsored |
 | C4 | Paid call | Test payer pays → result matches the `output` schema; on-chain USDC `transfer` to `payTo` for the exact amount |
 | C5 | Recovery | Repeating create-job returns the same job with no second transfer; check-status and get-result work with the token and return `404` without it |
@@ -274,6 +277,10 @@ service and running the server produces a working paid testnet request, using on
 2. **Verifier** runs the checks and calls
    `validation_response(caller = verifier, request_hash, response = score 0–100, response_uri = receipt URL, response_hash = sha256(receipt), tag = "provider-standard-v1")`.
 3. Anyone can read the result with `get_validation_status(request_hash)` or `get_agent_validations_paginated`.
+
+`response` is higher-is-better (ERC-8004: 0 = failed, 100 = passed). Documents are hashed as
+`sha256(RFC 8785 JCS)`. Both rules are shared with the planned Stellar ERC-8126 records, so the two kinds of
+record never get mixed up in `get_summary` (docs/erc-compatibility.md, T2).
 
 Mainnet currently reports `totalValidations: 0`, so these will be among the first real Validation Registry
 records. Stellar Agent Search's deferred P3-10 (validation trust axis) can then read them.
@@ -318,6 +325,8 @@ The design will be decided before any code is written. These are the requirement
 - Who are the five pilot users: developers in Claude Code/Codex, or non-technical users?
 - Should the payer key live in a wallet extension or a local keystore?
 - Which surface will the D1 video and screenshots show?
+- How closely should the policy and journal follow ERC-8196? That covers its policy fields, its hash-chained audit
+  trail, and a later move to an ERC-8196 smart account as the payer. See docs/erc-compatibility.md, T4 and T5.
 
 > ⚠️ This is on the critical path. The SOW asks for a *working* Payment Client and one successful payment in
 > **Week 1**, so the decision is needed by **Week 1, day 2**.
@@ -471,3 +480,4 @@ everywhere.
 | 4 | Testnet-only evidence accepted, or a final mainnet run | Berkin + Ambassador Chapter Lead | W2 |
 | 5 | npm scope for publishing (placeholder `@stellar-agent-services/*`) | Berkin | W2 (first publish) |
 | 6 | Header names and manifest path finalized in Provider Standard v1 | Berkin | W1 |
+| 7 | Shared ERC-8126/8196 conventions: score direction, tags, hashing, policy extensions (docs/erc-compatibility.md) | Berkin + ERC-8126/8196 Stellar team | W1 for hashing, W3 for validation records |

@@ -21,6 +21,8 @@
 - Who are the five pilot users: developers in Claude Code/Codex, or non-technical users?
 - Should the payer key live in a wallet extension or a local keystore?
 - Which surface will the Deliverable 1 video and screenshots show?
+- How closely should the policy and journal follow ERC-8196? Should an ERC-8196 smart account be able to pay later?
+  See [erc-compatibility.md](erc-compatibility.md), T4 and T5.
 
 ## Decision
 <!-- To be recorded here. -->

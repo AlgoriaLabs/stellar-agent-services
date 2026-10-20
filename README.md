@@ -17,6 +17,9 @@ payment side:
 **Status:** project structure only, with no working code yet. The plan is in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 Development runs on Stellar **testnet**.
 
+We stay compatible with ERC-8126 (agent verification) and ERC-8196 (agent authenticated wallet). See
+[docs/erc-compatibility.md](docs/erc-compatibility.md). Copies of both specs are in [docs/references/](docs/references).
+
 ## Development
 
 ```bash
