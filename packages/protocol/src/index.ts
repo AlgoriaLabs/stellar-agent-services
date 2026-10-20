@@ -14,3 +14,4 @@ export * from "./receipts.js";
 export * from "./networks.js";
 export * from "./canonical-json.js";
 export * from "./errors.js";
+export * from "./strkey.js";

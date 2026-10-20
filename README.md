@@ -9,7 +9,7 @@ payment side:
 | Package | Purpose |
 | --- | --- |
 | [`packages/protocol`](packages/protocol) | Provider Standard v1 as code (manifest, jobs, receipts) |
-| [`packages/provider-kit`](packages/provider-kit) | Turn a function into a paid service: pricing, x402 USDC payments, Job Recovery |
+| [`packages/provider-kit`](packages/provider-kit) | Turn a function, or an existing API in any language (gateway mode), into a paid service: pricing, x402 USDC payments, Job Recovery |
 | [`packages/payment-client`](packages/payment-client) | Buyer side: approval, spending controls, payment, recovery (design open) |
 | [`packages/verifier`](packages/verifier) | Provider checks, verification receipts, badges, Stellar 8004 Validation Registry |
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
