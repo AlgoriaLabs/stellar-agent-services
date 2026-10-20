@@ -1,4 +1,5 @@
-// text-stats: a sync service for 0.01 USDC. Deterministic word, sentence and character counts.
-// It shows "after-work" settlement: if the handler fails, nothing is charged.
+// text-stats: 0.01 USDC, charge "on-success". Deterministic word, sentence and character counts.
+// It finishes in well under a second, so create-job answers 200 with the output, and a handler
+// failure is never charged.
 
 export {};

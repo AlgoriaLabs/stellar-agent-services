@@ -62,6 +62,9 @@ The SOW gives different numbers in different sections. We plan against the readi
 8. **Stay compatible with ERC-8126 and ERC-8196.** We don't implement them, because a parallel project does. Our
    identity, Validation Registry, policy and journal formats must not block their Stellar versions. See
    [docs/erc-compatibility.md](docs/erc-compatibility.md).
+9. **Universal standard.** Any service in any language can implement Provider Standard v1. The spec is
+   language-neutral and reuses existing standards (x402, JSON Schema, MCP tool fields, IETF Idempotency-Key,
+   RFC 9457). The TypeScript kit and its gateway mode make adoption easier but are never required.
 
 ---
 
@@ -81,7 +84,7 @@ The SOW gives different numbers in different sections. We plan against the readi
       └──────────────────────────┘                            ▼  │
                                                  ┌──────────────────────────┐
       ┌──────────────────────────┐   test calls  │ provider (provider-kit)  │
-      │ verifier  (verifier key) │ ────────────▶ │ manifest · x402 gateway ·│
+      │ verifier  (verifier key) │ ────────────▶ │ manifest · x402 server · │
       │ checks · receipt · badge │               │ job store · services     │
       └──────────────────────────┘               └────────────┬─────────────┘
                                                               │ verify / settle
@@ -97,7 +100,7 @@ The SOW gives different numbers in different sections. We plan against the readi
 | Actor | Holds | Must never hold |
 | --- | --- | --- |
 | `stellar-agent-search` (discovery) | nothing | any secret |
-| Provider server (`provider-kit` runtime) | `payTo` **public** address, facilitator URL | any secret key |
+| Provider server (`provider-kit` runtime, library or gateway mode) | `payTo` **public** address, facilitator URL; in gateway mode, the upstream API's own credential if it has one | any Stellar secret key |
 | Provider operator (`provider-kit` CLI) | owner key, in the Stellar CLI keychain, used for registration and `validation_request` | payer or verifier keys |
 | `payment-client` | the payer's key or wallet connection (design open, §5.6) | provider or verifier keys |
 | `verifier` | verifier key (`validation_response`), plus a dedicated testnet test-payer key for the paid-call check | provider owner keys |
@@ -108,12 +111,13 @@ The SOW gives different numbers in different sections. We plan against the readi
 packages/
   protocol/        Provider Standard v1 as code: types, schemas, header names, job states, receipts,
                    canonical JSON, network constants. Shared by every other package.
-  provider-kit/    Server toolkit: defineService, createProvider (Fetch-API handler), x402 gateway,
-                   job store + runner, manifest + 8004 registration, operator CLI.
+  provider-kit/    Server toolkit: defineService, createProvider (Fetch-API handler), gateway mode
+                   (any existing HTTP API), x402 resource server, job store + runner,
+                   manifest + 8004 registration, operator CLI.
   payment-client/  Buyer side. DESIGN OPEN (§5.6). Placeholder only.
   verifier/        Provider checks → verification receipt → badges → Validation Registry response.
 examples/
-  paid-service/    Sample provider built only with provider-kit (one sync + one async service).
+  paid-service/    Sample provider built only with provider-kit (one on-success + one upfront service).
 docs/              Provider Standard v1, setup guide, job recovery, verification, payment client, pilot.
 evidence/          Receipts, payment references, validation records, pilot report (filled during the sprint).
 ```
@@ -150,45 +154,34 @@ evidence/          Receipts, payment references, validation records, pilot repor
 
 ### 5.1 Provider Standard v1 (`docs/provider-standard.md`, `packages/protocol`)
 
-A provider publishes **one manifest** at `GET /.well-known/stellar-agent-services.json`.
+The draft spec is in [docs/provider-standard.md](docs/provider-standard.md). It is a thin layer over existing
+standards, so the SOW's "no new protocol" holds, and any language can implement it.
 
-**Required fields (from the SOW):** purpose, input, output, price, network, job status and result.
+| Concern | Standard reused |
+| --- | --- |
+| Payment | x402 v2 `exact` on Stellar; the manifest's payment option uses x402 `PaymentRequirements` field names |
+| Service description | JSON Schema 2020-12 with MCP tool field names (`name`, `title`, `description`, `inputSchema`, `outputSchema`) |
+| Discovery inside the 402 | x402 Bazaar extension |
+| Idempotency | IETF Idempotency-Key draft-07 (422 for a reused key, 409 while in progress) |
+| Long jobs | `202 Accepted` + `Location` + `Retry-After` |
+| Errors | RFC 9457 problem details with a stable `code` |
+| Identity | Stellar 8004 registration `services[]` entry pointing at the manifest |
 
-```jsonc
-{
-  "standard": "stellar-agent-services/provider@1",
-  "provider": { "name": "...", "description": "...", "homepage": "https://...", "agentId": 42 },
-  "network": "stellar:testnet",
-  "payment": {
-    "protocol": "x402", "x402Version": 2, "scheme": "exact",
-    "asset": "<USDC SAC>", "payTo": "G...", "feesSponsored": true
-  },
-  "jobs": {
-    "createUrl": "https://.../services/{serviceId}/jobs",
-    "statusUrl": "https://.../jobs/{jobId}",
-    "resultUrl": "https://.../jobs/{jobId}/result",
-    "retentionSeconds": 2592000
-  },
-  "services": [{
-    "id": "text-stats",
-    "title": "...",
-    "description": "purpose, in plain language",
-    "mode": "sync",                         // sync | async
-    "price": { "amount": "100000", "display": "0.01 USDC" },
-    "input":  { "$schema": "https://json-schema.org/draft/2020-12/schema", "...": "..." },
-    "output": { "$schema": "https://json-schema.org/draft/2020-12/schema", "...": "..." },
-    "example": { "input": {}, "output": {} },
-    "expectedDurationSeconds": 2
-  }]
-}
-```
+**What the spec adds:** the manifest, the `Job-Token` header, and the rules that bind one job to one request and
+one payment.
 
-**Rules the spec will define:**
-- Every URL is HTTPS and same-origin.
-- The `price.amount`, `asset`, `payTo` and `network` in the 402 challenge must exactly match the manifest.
-- Field size limits must match the discovery sanitizer: name 120, description 500, endpoint 300, 25 or fewer services.
-- 8004 registration metadata is generated **from** the manifest. Its `services[]` entries point at the manifest
-  URL, so discovery reaches the price and recovery information, which the 8004 metadata cannot carry today.
+**Main rules:**
+- The manifest is at `/.well-known/stellar-agent-services.json` by default, or any HTTPS URL the 8004
+  registration names. Job endpoints are fixed paths under one `baseUrl` on the same origin.
+- Small required core: `standard`, provider `name`, `baseUrl`, one payment option, and per service `name`,
+  `description`, `price.amount`, `inputSchema`, `outputSchema`. Clients ignore unknown fields.
+- No sync/async flag. Each service declares `charge: "on-success" | "upfront"` and `expectedDurationSeconds`.
+- The 402 challenge equals the manifest payment option plus the service price, field by field.
+- Input is validated and capacity checked *before* the 402.
+- Conformance levels: Described (C1, C6), Payable (+ C3, C4), Recoverable (+ C5), plus Registered (C2).
+
+**Ways to implement:** gateway mode (any existing HTTP API), the TypeScript library, or natively from the spec,
+checked with `verifier check`.
 
 ### 5.2 Job Recovery protocol (`docs/job-recovery.md`)
 
@@ -196,19 +189,24 @@ The SOW names three operations.
 
 | Operation | HTTP | Notes |
 | --- | --- | --- |
-| **create-job** | `POST /services/{serviceId}/jobs` | x402-protected. Headers: `Idempotency-Key: <uuid>` (becomes the job id) and `X-Job-Token: <32 random bytes, base64url>` |
-| **check-status** | `GET /jobs/{jobId}` | `X-Job-Token` required. Returns status, `charged`, payment reference and timestamps |
-| **get-result** | `GET /jobs/{jobId}/result` | `X-Job-Token` required. Returns the output and the payment receipt |
+| **create-job** | `POST {baseUrl}/services/{name}/jobs` | x402-protected. Headers: `Idempotency-Key: <uuid>` (becomes the job id) and `Job-Token: <32 random bytes, base64url>` |
+| **check-status** | `GET {baseUrl}/jobs/{jobId}` | `Job-Token` required. Returns the job view: status, `charged`, receipt and timestamps |
+| **get-result** | `GET {baseUrl}/jobs/{jobId}/result` | `Job-Token` required. Returns the job view with the output |
+
+All three return the same job view: `200` when the job has finished, otherwise `202` with `Retry-After`. A client
+that sends neither header (any plain x402 client) gets a provider-generated job id and token in the create-job
+response, without the guarantee for lost responses.
 
 **Job states:** `queued → running → succeeded | failed`, plus `payment_uncertain`.
 
 **How double-charging is prevented:**
 1. **The client fixes the identity before paying.** It generates `jobId` and the token, then persists both
-   together with the request hash *before* the first request. Because `statusUrl` can be derived from `jobId`,
-   a lost response never loses the handle.
-2. **The provider binds the job.** `jobId → (serviceId, sha256(canonical input))`.
+   together with the binding hash *before* the first request. Because the status URL is a fixed path under
+   `baseUrl`, a lost response never loses the handle.
+2. **The provider binds the job.** `jobId → (sha256(JCS({ service, input })), sha256(token))`.
    - Repeating create-job with the same binding returns the existing job, with no new 402 and no new charge.
-   - A different binding gets `409`.
+   - A different binding or token gets `422`; a request while the job is still being claimed or settled gets
+     `409` (IETF Idempotency-Key draft-07).
    - A wrong token gets `404`, so the response does not reveal whether the job exists.
 3. **The provider binds the payment.** A unique payment fingerprint (network, payer, signed auth entry)
    means one signed payment can buy at most one job.
@@ -217,10 +215,10 @@ The SOW names three operations.
    hash, or the USDC `transfer` event to `payTo`.
 5. **Recovery never re-sends `PAYMENT-SIGNATURE`.** It only calls check-status and get-result.
 
-**Settlement modes** are set per service:
-- `after-work`: verify → run → settle. This is the default for `sync`: work that fails is never charged.
-- `before-work`: verify → settle → enqueue. This is the default for `async`: expensive work starts only once it
-  is paid.
+**When the user is charged** is set per service with `charge`:
+- `on-success`: verify → run → settle. Work that fails is never charged. The signed payment expires about
+  `maxTimeoutSeconds` after signing, so this only suits work well inside that window.
+- `upfront` (default): verify → settle → run. Expensive or long work starts only once it is paid.
 
 The **response-loss drill** is test-only, needs an explicit flag, and is off by default. The provider settles and
 persists the result, then drops the response. This is how the SOW recovery demo is produced.
@@ -229,22 +227,26 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 
 | Module | Responsibility |
 | --- | --- |
-| `define-service.ts` | `defineService({ id, title, description, mode, price, input, output, example, handler })`, with schema validation of input and output |
+| `define-service.ts` | `defineService({ name, title, description, price, charge, expectedDurationSeconds, inputSchema, outputSchema, examples, handler })`, with schema validation of input (before the 402) and output (before settling) |
 | `provider.ts` | `createProvider(config)` → `{ fetch(request): Promise<Response> }`, which wires every part together |
-| `http/router.ts` | Manifest, create-job, check-status and get-result routes. Strict JSON, body size caps, no redirects. |
-| `payments/gateway.ts` | `@x402/core` resource server with `ExactStellarScheme` (server). Builds the challenge from the manifest. |
+| `http/router.ts` | Manifest, create-job, check-status and get-result routes, in the spec's processing order. RFC 9457 errors, body size caps, no redirects. |
+| `gateway/config.ts`, `gateway/upstream.ts` | Gateway mode: a config file describes services whose handler forwards the input to an existing HTTP API in any language |
+| `payments/x402-server.ts` | `@x402/core` resource server with `ExactStellarScheme` (server). Builds the challenge, with the Bazaar extension, from the manifest. |
 | `payments/payload-checks.ts` | Local checks run before calling the facilitator: one SAC `transfer(payer → payTo, amount)`, network, asset, timeout cap, fee sponsorship |
 | `payments/facilitator.ts` | Facilitator client: HTTPS-only, timeouts, `getSupported()` check at startup |
 | `payments/settlement.ts` | Classifies settlement as `settled`, `failed` (definitely not submitted, from an allowlist) or `uncertain` (everything else) |
 | `jobs/store.ts` | `JobStore` interface: atomic claim, compare-and-set transitions, fingerprint uniqueness |
 | `jobs/memory-store.ts`, `jobs/sqlite-store.ts` | Reference stores (`node:sqlite`). Providers may add Postgres. |
-| `jobs/runner.ts` | Sync and async execution, both settlement modes, retention |
+| `jobs/runner.ts` | Both charge policies, the 30-second hold before `202`, retention |
 | `manifest.ts` | Builds and validates the Provider Standard v1 manifest |
 | `registration.ts` | 8004 registration metadata from the manifest, plus `validation_request` input |
-| `cli/` | `init`, `check` (self-check), `register`, `request-validation`, `reconcile` |
+| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `register`, `request-validation`, `reconcile` |
 
-**Developer experience target (W2 exit criterion):** starting from a clean machine, `npm i`, defining one
-service and running the server produces a working paid testnet request, using only the setup guide.
+**Developer experience targets (W2 exit criteria):**
+- Library: starting from a clean machine, `npm i`, defining one service and running the server produces a
+  working paid testnet request, using only the setup guide.
+- Gateway: an existing non-TypeScript API (a small Python service) becomes a paid service with only a config
+  file and `provider-kit serve`, also from the Docker image.
 
 ### 5.4 Verification, receipts, badges and Validation Registry (`packages/verifier`)
 
@@ -252,12 +254,16 @@ service and running the server produces a working paid testnet request, using on
 
 | # | Check | Pass condition |
 | --- | --- | --- |
-| C1 | Manifest | Fetched over HTTPS, schema-valid v1, size limits respected |
+| C1 | Manifest | Fetched over HTTPS without redirects, schema-valid v1, size limits respected, no remote `$ref`, examples valid |
 | C2 | Identity | `agentId` exists in the 8004 Identity registry, its registration points to this manifest, and the manifest `payTo` equals the on-chain `agent_wallet` |
-| C3 | Challenge | Unpaid create-job returns `402` with an x402 v2 challenge: one `accepts`, `exact`, matching network, asset, amount and payTo, bounded timeout, fees sponsored |
+| C3 | Challenge | Invalid input returns `400` before any `402`. Valid unpaid create-job returns `402` whose single `accepts` entry equals the manifest payment option plus the price. `payTo` has a USDC trustline. |
 | C4 | Paid call | Test payer pays → result matches the `output` schema; on-chain USDC `transfer` to `payTo` for the exact amount |
-| C5 | Recovery | Repeating create-job returns the same job with no second transfer; check-status and get-result work with the token and return `404` without it |
+| C5 | Recovery | Repeating create-job returns the same job with no second transfer; the same key with other input returns `422`; check-status and get-result work with the token and return `404` without it |
 | C6 | Hygiene | No redirects, no secrets in responses, bounded bodies |
+
+**Conformance levels** (each maps to one badge): Described = C1 + C6, Payable = + C3 + C4,
+Recoverable = + C5, and Registered = C2 plus a Validation Registry record. `verifier check` runs the no-payment
+checks against any URL, including `localhost`, so providers can test themselves before going live.
 
 **Verification receipt:**
 - Canonical JSON containing: standard version, provider `agentId`, manifest sha256, network, a status and
@@ -265,7 +271,7 @@ service and running the server produces a working paid testnet request, using on
 - It is stored under `evidence/receipts/` and published through the evidence page (GitHub Pages).
 
 **Badges:** SVGs derived **only** from a receipt.
-- Badge set: `Standard v1`, `Payment verified`, `Recovery verified`, `8004 validated`.
+- Badge set, one per level: `Standard v1`, `Payment verified`, `Recovery verified`, `8004 validated`.
 - Each badge shows the network.
 
 **Validation Registry flow** (contract read from `stellar-8004/contracts/validation-registry`):
@@ -289,10 +295,10 @@ records. Stellar Agent Search's deferred P3-10 (validation trust axis) can then 
 
 The example is built only with the public `provider-kit` API, so it doubles as the template for pilot providers.
 
-| Service | Mode | Price | Behavior |
+| Service | Charge | Price | Behavior |
 | --- | --- | --- | --- |
-| `text-stats` | sync | 0.01 USDC | Deterministic. Shows the after-work settlement mode. |
-| `delayed-report` | async | 0.02 USDC | Configurable delay. Used for the Job Recovery demo. |
+| `text-stats` | on-success | 0.01 USDC | Deterministic. Answers `200` at once; failed work is never charged. |
+| `delayed-report` | upfront | 0.02 USDC | Configurable delay. Answers `202`. Used for the Job Recovery demo. |
 
 It runs on Hono with `@hono/node-server`. The `.env` holds only the `payTo` public address and the facilitator URL.
 
@@ -355,11 +361,13 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
 - [ ] Day 1:
   - Testnet accounts: provider `payTo`, test payer, verifier.
   - USDC trustlines and testnet USDC.
-  - Facilitator `getSupported()` probe.
+  - Facilitator `getSupported()` probe, and its limit on the payment authorization window
+    (the spec's `maxTimeoutSeconds` range of 30–300 depends on it).
 - [ ] Day 1–2: **Payment client design decision** (§5.6).
-- [ ] `docs/provider-standard.md` v1 draft and `packages/protocol` types and schemas.
+- [x] `docs/provider-standard.md` v1 draft.
+- [ ] `packages/protocol` types, manifest JSON Schema and test vectors; freeze v1 at the end of the week.
 - [ ] Verification receipt format defined (spec only).
-- [ ] Thin provider slice: manifest, create-job with a sync service, x402 gateway, memory store.
+- [ ] Thin provider slice: manifest, create-job with an on-success service, x402 resource server, memory store.
 - [ ] Payment client, first working version: approval screen, caps, signing, journal.
 - [ ] One successful testnet payment flow, recorded (tx link, screenshots, short video).
 - [ ] Start pilot outreach: shortlist 4–5 candidate providers and 6–7 users.
@@ -373,14 +381,16 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
   - strict payload checks
   - settlement classification
   - SQLite store
-  - async runner
-  - both settlement modes
+  - background runner
+  - both charge policies
+- [ ] Gateway mode: `provider-kit serve --config`, a Docker image, tested with a small Python API as upstream.
 - [ ] Manifest builder and 8004 registration (`provider-kit register`) on testnet.
 - [ ] `examples/paid-service` with both services.
 - [ ] Setup guide (`docs/provider-setup-guide.md`), tested on a clean machine.
 - [ ] Payment-safety test suite (§7).
 
-**Exit:** a developer installs the kit from scratch, starts the sample provider and completes a paid request.
+**Exit:** a developer installs the kit from scratch, starts the sample provider and completes a paid request. An
+existing Python API becomes a paid service through gateway mode.
 
 ### Week 3: Verification and Job Recovery (D2, part 2)
 
@@ -390,7 +400,7 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
   - `reconcile`
   - the response-loss drill
 - [ ] Payment client recovery: resume from the journal, never re-sign.
-- [ ] `verifier`: checks C1–C6, receipt, badges.
+- [ ] `verifier`: checks C1–C6, conformance levels, receipt, badges, and the no-payment `check` command.
 - [ ] Validation Registry publishing: `request-validation` (provider) and `validation_response` (verifier) on testnet.
 - [ ] Discovery integration, option (a) from §5.7, in `stellar-agent-search`.
 - [ ] Pilot providers start integrating: send them the guide and template.
@@ -414,17 +424,21 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
 
 **Unit:**
 - canonical JSON (key order and whitespace don't change the hash)
-- manifest schema
+- manifest schema and test vectors
 - challenge ↔ manifest matching
 - settlement classification
 - job state transitions
 
 **Payment safety:** these tests must exist before the pilot.
 - [ ] A repeated create-job with the same key and input → same job, no facilitator call, no second charge.
-- [ ] The same key with different input → `409`. A wrong token → `404`.
+- [ ] The same key with different input or token → `422`. A request while still claiming or settling → `409`.
+  A wrong token → `404`.
+- [ ] Invalid input → `400` before any `402`.
 - [ ] One signed payment presented for two jobs → rejected (fingerprint).
 - [ ] A facilitator timeout or 5xx → `payment_uncertain`, never `failed`, never re-charged.
-- [ ] A handler failure in `after-work` mode → no settlement.
+- [ ] An `on-success` handler failure or invalid output → no settlement.
+- [ ] `on-success` work that outlasts the payment authorization → job failed, nothing charged.
+- [ ] A client without `Idempotency-Key` and `Job-Token` → provider-generated id and token, one charge.
 - [ ] A challenge whose amount, payTo, asset or network differs from the manifest → the client refuses to sign.
 - [ ] A failed spending-limit check → the payment is blocked (fail closed).
 - [ ] A lost response → recovery returns the stored result, with one on-chain transfer.
@@ -479,5 +493,5 @@ everywhere.
 | 3 | Testnet discovery approach (§5.7) | Berkin | W2 |
 | 4 | Testnet-only evidence accepted, or a final mainnet run | Berkin + Ambassador Chapter Lead | W2 |
 | 5 | npm scope for publishing (placeholder `@stellar-agent-services/*`) | Berkin | W2 (first publish) |
-| 6 | Header names and manifest path finalized in Provider Standard v1 | Berkin | W1 |
+| 6 | Provider Standard v1 freeze: `Job-Token` header, manifest path, `maxTimeoutSeconds` range, the URL used for problem `type` values | Berkin | W1 |
 | 7 | Shared ERC-8126/8196 conventions: score direction, tags, hashing, policy extensions (docs/erc-compatibility.md) | Berkin + ERC-8126/8196 Stellar team | W1 for hashing, W3 for validation records |

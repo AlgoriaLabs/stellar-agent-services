@@ -5,3 +5,5 @@ package shares.
 
 - No runtime dependencies and no signing code, so the read-only discovery server can import it safely.
 - Specification: [docs/provider-standard.md](../../docs/provider-standard.md).
+- The manifest JSON Schema and test vectors published here let implementations in other languages check
+  themselves.

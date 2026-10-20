@@ -1,6 +1,6 @@
 // Canonical JSON and hashing.
 //
-// Used for the job binding hash (serviceId + input), manifest hashes and verification receipt
+// Used for the job binding hash (service + input), manifest hashes and verification receipt
 // hashes, so that key order or whitespace can never change a hash.
 //
 // TODO:

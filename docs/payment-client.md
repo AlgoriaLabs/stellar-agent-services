@@ -4,10 +4,11 @@
 
 ## Fixed requirements
 - Wallet separation: keys never touch discovery or provider code.
-- Explicit approval of the service, price, recipient, asset and network, approved once.
+- Explicit approval of the service, price, recipient, asset, network and when the user is charged (`charge`),
+  approved once.
 - Spending controls: a per-payment cap and a rolling budget. A failed limit check blocks the payment.
-- Challenge validation against the approved manifest.
-- Durable journal before sending; never re-sign the same job.
+- Challenge validation against the approved manifest (provider-standard.md [P4], [P7]).
+- Durable journal before sending: job id, Job-Token and binding hash. Never re-sign the same job.
 - Recovery through check-status and get-result only.
 - On-chain settlement proof before showing "paid".
 
