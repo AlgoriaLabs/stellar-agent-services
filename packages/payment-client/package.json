@@ -1,0 +1,21 @@
+{
+  "name": "@stellar-agent-services/payment-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Buyer-side payment client: approval, spending controls, payment and job recovery. Design open, see docs/payment-client.md.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@stellar-agent-services/protocol": "0.0.0"
+  }
+}

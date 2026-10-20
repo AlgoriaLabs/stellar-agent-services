@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Secrets and local state: keys, journals and job databases never get committed.
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite-journal
+*.journal.jsonl
+
+.DS_Store

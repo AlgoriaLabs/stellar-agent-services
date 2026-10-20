@@ -1,0 +1,17 @@
+{
+  "name": "@stellar-agent-services/example-paid-service",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Sample provider built only with @stellar-agent-services/provider-kit. Also the template for pilot providers.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node --env-file-if-exists=.env dist/server.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.5",
+    "@stellar-agent-services/provider-kit": "0.0.0",
+    "hono": "4.13.13"
+  }
+}

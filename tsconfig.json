@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/protocol" },
+    { "path": "packages/provider-kit" },
+    { "path": "packages/payment-client" },
+    { "path": "packages/verifier" },
+    { "path": "examples/paid-service" }
+  ]
+}

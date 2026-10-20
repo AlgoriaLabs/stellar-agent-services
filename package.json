@@ -1,0 +1,34 @@
+{
+  "name": "stellar-agent-services",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Provider Standard, Provider Kit, payment client and verifier for paid AI services on Stellar (Phase 2 of Stellar Agent Search).",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "workspaces": [
+    "packages/protocol",
+    "packages/provider-kit",
+    "packages/payment-client",
+    "packages/verifier",
+    "examples/paid-service"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "clean": "tsc -b --clean",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "@stellar/stellar-sdk": "16.3.1",
+    "axios": "1.20.0"
+  }
+}
