@@ -14,7 +14,7 @@ export const DEFAULT_MANIFEST_PATH = "/.well-known/stellar-agent-services.json";
  * (IMPLEMENTATION_PLAN.md, open decision 6).
  */
 export const MANIFEST_SCHEMA_ID =
-  "https://berkingurcan.github.io/stellar-agent-services/schemas/provider/1/manifest.schema.json";
+  "https://algorialabs.github.io/stellar-agent-services/schemas/provider/1/manifest.schema.json";
 
 /** Largest manifest a client reads [M3]. */
 export const MANIFEST_MAX_BYTES = 256 * 1024;
@@ -29,7 +29,7 @@ export const SERVICE_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
  * Base of the problem `type` URIs (§6): `${SPEC_URL}#error-<code>`. Provisional until the v1 freeze
  * picks the published URL (IMPLEMENTATION_PLAN.md, open decision 6).
  */
-export const SPEC_URL = "https://berkingurcan.github.io/stellar-agent-services/provider/1";
+export const SPEC_URL = "https://algorialabs.github.io/stellar-agent-services/provider/1";
 
 /** Longest a provider holds the create-job response open before it must answer 202 [J9]. */
 export const CREATE_JOB_HOLD_MAX_SECONDS = 30;

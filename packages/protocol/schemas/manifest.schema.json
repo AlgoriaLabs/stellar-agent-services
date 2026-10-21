@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://berkingurcan.github.io/stellar-agent-services/schemas/provider/1/manifest.schema.json",
+  "$id": "https://algorialabs.github.io/stellar-agent-services/schemas/provider/1/manifest.schema.json",
   "$comment": "The $id is provisional until the v1 freeze. Rule ids such as [M5] refer to docs/provider-standard.md.",
   "title": "Provider Standard v1 manifest",
   "description": "Describes a paid AI service on Stellar: its services, prices, payment option and job endpoints. Unknown fields are allowed and ignored [M8]. Some rules need code as well (§2.4): M1, M3, M5 (same origin), M7, S6, S9 and P11.",

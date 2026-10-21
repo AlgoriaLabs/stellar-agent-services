@@ -474,5 +474,5 @@ everywhere.
 | 3 | Testnet discovery approach (§5.7) | Berkin | W2 |
 | 4 | Testnet-only evidence accepted, or a final mainnet run | Berkin + Ambassador Chapter Lead | W2 |
 | 5 | npm scope for publishing (placeholder `@stellar-agent-services/*`) | Berkin | W2 (first publish) |
-| 6 | ~~Provider Standard v1 freeze~~ **Decided 2026-10-21, frozen as drafted:** `Job-Token` header, manifest path, `maxTimeoutSeconds` range, the URL for the schema `$id` and problem `type` values (`berkingurcan.github.io/stellar-agent-services`), plus CORS as SHOULD [J17] | Berkin | W1 |
+| 6 | ~~Provider Standard v1 freeze~~ **Decided 2026-10-21, frozen as drafted, except the URL:** `Job-Token` header, manifest path, `maxTimeoutSeconds` range, the URL for the schema `$id` and problem `type` values (`algorialabs.github.io/stellar-agent-services`), plus CORS as SHOULD [J17] | Berkin | W1 |
 | 7 | Shared ERC-8126/8196 conventions: score direction, tags, hashing, policy extensions (docs/erc-compatibility.md) | Berkin + ERC-8126/8196 Stellar team | W1 for hashing, W3 for validation records |
