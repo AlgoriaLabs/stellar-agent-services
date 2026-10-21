@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PaymentRefusedError, PaymentUncertainError, verifyChain } from "../src/index.js";
-import { manifestUrl, payTo, setup } from "./support/harness.js";
+import { fakeFacilitator, manifestUrl, payer, payTo, setup } from "./support/harness.js";
 
 describe("payment flow", () => {
   it("quotes, pays once after approval, and confirms", async () => {
@@ -22,6 +22,35 @@ describe("payment flow", () => {
     expect(journal.forJob(quote.jobId).map((entry) => entry.event)).toEqual(["intent", "approved", "sending", "settled", "result"]);
     expect(await verifyChain(journal.entries())).toBeUndefined();
     expect(journal.spentSince(new Date(0))).toBe(100000n);
+  });
+
+  it("confirms against the approved payment, not the provider's receipt", async () => {
+    const confirmPayment = vi.fn(async () => ({ confirmed: true }));
+    const { client } = await setup({ client: { confirmPayment } });
+    const quote = await client.quote(manifestUrl, "text-stats", { text: "hi" });
+    const { job } = await client.pay(quote, { approved: true });
+
+    expect(confirmPayment).toHaveBeenCalledWith(job.payment?.transaction, {
+      network: "stellar:testnet",
+      asset: quote.requirements.asset,
+      amount: "100000",
+      payTo,
+      payer,
+    });
+  });
+
+  it("does not confirm a job whose receipt reuses another job's transaction", async () => {
+    const facilitator = fakeFacilitator();
+    facilitator.settle.mockImplementation(async (_payload, requirements) => ({ success: true, transaction: "a".repeat(64), network: requirements.network, payer }));
+    const { client, journal } = await setup({ provider: { facilitator } });
+
+    expect((await client.pay(await client.quote(manifestUrl, "text-stats", { text: "one" }), { approved: true })).confirmed).toBe(true);
+    const second = await client.quote(manifestUrl, "text-stats", { text: "two" });
+    const result = await client.pay(second, { approved: true });
+
+    expect(result.confirmed).toBe(false);
+    expect(result.unconfirmedReason).toMatch(/already confirmed job/);
+    expect(journal.forJob(second.jobId).find((entry) => entry.event === "settled")?.details).toMatchObject({ confirmed: false });
   });
 
   it("pays nothing when the user declines", async () => {

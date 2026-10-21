@@ -1,7 +1,7 @@
 # Provider Standard v1
 
-> **Status: draft.** Freezes at the end of Week 1 (SOW Deliverable 1). After the freeze, v1 only gains optional
-> fields. Identifier: `stellar-agent-services/provider@1`.
+> **Status: frozen** (2026-10-21, SOW Deliverable 1). v1 now only gains optional fields and SHOULD rules.
+> Identifier: `stellar-agent-services/provider@1`.
 
 This standard describes how a paid AI service on Stellar publishes its purpose, input, output, price, network,
 job status and result. Any client can then find it, pay for it once and collect the result, even if the
@@ -319,6 +319,12 @@ All paths are relative to `baseUrl`.
 The paths are fixed. A client that knows `baseUrl` and a job id can always reach the job, even if it lost every
 response.
 
+- **[J17]** Providers SHOULD allow cross-origin requests to the manifest and all three endpoints, so browser
+  clients can call them directly. Responses carry `Access-Control-Allow-Origin: *` and
+  `Access-Control-Expose-Headers: PAYMENT-REQUIRED, PAYMENT-RESPONSE, Location, Retry-After`. An `OPTIONS`
+  preflight allows `GET` and `POST` and the headers `Content-Type`, `Idempotency-Key`, `Job-Token` and
+  `PAYMENT-SIGNATURE`. Without this, browser clients can reach the provider only through a server.
+
 ### 5.2 create-job request
 
 - The body is the input object itself, as `Content-Type: application/json`.
@@ -443,7 +449,10 @@ The `payment` object uses x402 `SettleResponse` names where they exist.
 | `transaction` | Stellar transaction hash |
 | `settledAt` | Time the provider saw the settlement |
 
-- **[J16]** A receipt is a claim. Clients MUST confirm the transaction on chain before showing "paid".
+- **[J16]** A receipt is a claim. Clients MUST confirm the transaction on chain before showing "paid": it
+  succeeded, and its `transfer` event moved the approved `asset`, from the payer to `payTo`, for the approved
+  `amount`. Clients compare with what they approved, not with the receipt, and accept one transaction as proof
+  for one job only.
 
 ## 6. Errors
 
@@ -531,6 +540,8 @@ The checks are listed in [verification.md](verification.md).
 - **Keys:** the provider runtime holds no Stellar secret key. It knows its `payTo` address and a facilitator
   URL. Owner actions such as registration run offline.
 - **Job tokens:** they are bearer secrets. Providers store only their hash, and `404` hides whether a job exists.
+- **Cross-origin access:** `Access-Control-Allow-Origin: *` ([J17]) is safe because no request uses cookies or
+  ambient credentials. Access to a job needs its `Job-Token` header, and paying needs a signed payment.
 - **Manifest changes:** a provider can change its manifest at any time. Clients approve a specific manifest and
   check the challenge against it ([P7]).
 - **Schemas:** no remote `$ref` ([S5]), and size limits on every field.

@@ -1,8 +1,8 @@
 # Payment Client: design
 
-> Status: **proposed** (2026-10-21), waiting for confirmation. A proof of concept of the core, the local-key
-> signer and a CLI is in [packages/payment-client](../packages/payment-client). Once confirmed,
-> IMPLEMENTATION_PLAN.md §5.6 and principle 3 are updated to match.
+> Status: **accepted** (2026-10-21). A proof of concept of the core, the local-key signer and a CLI is in
+> [packages/payment-client](../packages/payment-client). IMPLEMENTATION_PLAN.md §5.6 and principle 3 follow
+> this design.
 
 ## Who it is for
 
@@ -22,7 +22,8 @@ agents, with spending rules set by a human**. It is the demand side of the Provi
 - Challenge validation against the approved manifest (provider-standard.md [P4], [P7]).
 - Durable journal before sending: job id, Job-Token and binding hash. Never re-sign the same job.
 - Recovery through check-status and get-result only.
-- On-chain settlement proof before showing "paid".
+- On-chain settlement proof before showing "paid": the `transfer` event matches the approved payment
+  (provider-standard.md [J16]).
 - No custody: we never hold a user's key on a server (SOW out of scope, and a regulatory burden).
 
 ## Decision
@@ -133,10 +134,9 @@ cover the sprint whatever the spike shows.
 
 ## Risks and open points
 
-- **Browser calls need CORS.** The web app calls providers straight from the browser. Before the v1 freeze,
-  Provider Standard should say that providers SHOULD allow cross-origin requests and expose the
-  `PAYMENT-REQUIRED`, `PAYMENT-RESPONSE`, `Location` and `Retry-After` headers. Provider Kit turns this on by
-  default. Until then, a provider without CORS is reachable only through the MCP server or SDK.
+- **Browser calls need CORS.** The web app calls providers straight from the browser. Provider Standard v1
+  makes this a SHOULD ([J17]) and Provider Kit turns it on by default. A provider without CORS is reachable
+  only through the MCP server or SDK.
 - **Freighter:** that its `signAuthEntry` output fits what `@x402/stellar` expects is unverified (Week 1
   spike). Fallback for the D1 video: the local-key signer behind the same approval page.
 - **Smart account x402 payments** are unverified (erc-compatibility.md, T5). We use an existing audited
@@ -144,8 +144,8 @@ cover the sprint whatever the spike shows.
   an ERC-8196 contract stays with the parallel project.
 - **Moving money in and out** for non-technical users on mainnet: many exchanges can't send to a `C…` address.
   On testnet we pre-fund pilot wallets.
-- **Principle 3** (IMPLEMENTATION_PLAN.md) says the user approves each exact price. With the policy it becomes
-  "the user approves each exact payment, or the payment fits a budget the user explicitly granted."
+- **Principle 3** (IMPLEMENTATION_PLAN.md) now reads: the user approves each exact payment, or the payment
+  fits a budget the user explicitly granted.
 
 ## Options considered
 

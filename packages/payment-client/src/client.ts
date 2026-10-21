@@ -26,7 +26,7 @@ import type { ClientStellarSigner } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/client";
 import type { Journal, SecretStore } from "./journal.js";
 import { loadManifest } from "./manifest.js";
-import { rpcConfirmPayment, type ConfirmPayment } from "./onchain.js";
+import { rpcConfirmPayment, type Confirmation, type ConfirmPayment } from "./onchain.js";
 import { checkPolicy, PAY_ACTION, policyHash, type PolicyViolation, type SpendingPolicy } from "./policy.js";
 
 export interface PaymentClientOptions {
@@ -66,8 +66,10 @@ export interface Quote {
 
 export interface PaymentResult {
   job: JobView;
-  /** The transaction was confirmed on chain. Only then may a UI show "paid" [J16]. */
+  /** The approved transfer was confirmed on chain. Only then may a UI show "paid" [J16]. */
   confirmed: boolean;
+  /** Why a charged job is not confirmed. */
+  unconfirmedReason?: string;
 }
 
 /** The payment may or may not have gone through. Run recover(jobId); never pay again. */
@@ -207,7 +209,7 @@ export class PaymentClient {
     const signed = await this.createPayload(quote.requirements);
     const payload: PaymentPayload = { ...signed, x402Version: 2, resource: quote.challenge.resource, accepted: quote.requirements };
     // Written and flushed before the request goes out: from here on, this job is never signed again.
-    await journal.append("sending", quote.jobId, hash, { ...pick(quote.requirements) });
+    await journal.append("sending", quote.jobId, hash, { ...pick(quote.requirements), payer: this.address });
 
     const token = (await this.options.secrets.get(quote.jobId))!;
     let response: Response;
@@ -258,21 +260,45 @@ export class PaymentClient {
     const { journal } = this.options;
     const job = await this.follow(baseUrl, jobId, token, first);
 
-    let confirmed = false;
-    if (job.charged === true && job.payment !== undefined) {
-      confirmed = await this.confirmPayment(job.payment);
-      if (!journal.forJob(jobId).some((entry) => entry.event === "settled")) {
+    let confirmation: Confirmation = { confirmed: false };
+    if (job.charged === true) {
+      confirmation = job.payment === undefined ? { confirmed: false, reason: "the provider sent no payment receipt" } : await this.confirm(jobId, job.payment.transaction);
+      const settled = journal.forJob(jobId).filter((entry) => entry.event === "settled");
+      // Journaled once, and again only when a later check confirms what an earlier one could not.
+      if (settled.length === 0 || (confirmation.confirmed && !settled.some((entry) => entry.details["confirmed"] === true))) {
         await journal.append("settled", jobId, hash, {
-          transaction: job.payment.transaction,
-          network: job.payment.network,
-          amount: job.payment.amount,
-          confirmed,
+          transaction: job.payment?.transaction ?? "",
+          network: job.payment?.network ?? "",
+          amount: job.payment?.amount ?? "",
+          confirmed: confirmation.confirmed,
+          ...(confirmation.reason === undefined ? {} : { reason: confirmation.reason }),
         });
       }
     }
     if (job.status === "failed") await journal.append("failed", jobId, hash, { charged: job.charged, code: job.error?.code ?? "" });
     else if (job.status === "succeeded") await journal.append("result", jobId, hash, { status: job.status });
-    return { job, confirmed };
+    const result: PaymentResult = { job, confirmed: confirmation.confirmed };
+    if (job.charged === true && confirmation.reason !== undefined) result.unconfirmedReason = confirmation.reason;
+    return result;
+  }
+
+  /** Checks the transaction against what this job journaled in `sending`, never against the receipt. */
+  private async confirm(jobId: string, transaction: string): Promise<Confirmation> {
+    const { journal } = this.options;
+    const sending = journal.forJob(jobId).find((entry) => entry.event === "sending")!.details;
+    // One transaction proves one job: a provider must not reuse an earlier payment as a receipt.
+    const other = journal
+      .entries()
+      .find((entry) => entry.event === "settled" && entry.jobId !== jobId && entry.details["confirmed"] === true && entry.details["transaction"] === transaction);
+    if (other !== undefined) return { confirmed: false, reason: `transaction ${transaction} already confirmed job ${other.jobId}` };
+    return this.confirmPayment(transaction, {
+      network: String(sending["network"]) as StellarNetwork,
+      asset: String(sending["asset"]),
+      amount: String(sending["amount"]),
+      payTo: String(sending["payTo"]),
+      // Journals from before `payer` was recorded were signed by this client's key.
+      payer: typeof sending["payer"] === "string" ? sending["payer"] : this.address,
+    });
   }
 
   /** Polls get-result until the job finishes or followSeconds pass. */

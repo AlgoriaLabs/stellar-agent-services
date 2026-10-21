@@ -234,11 +234,13 @@ function showQuote(quote: Quote, client: PaymentClient): void {
   console.log(`└${"─".repeat(69)}`);
 }
 
-function showResult({ job, confirmed }: PaymentResult): void {
+function showResult({ job, confirmed, unconfirmedReason }: PaymentResult): void {
   console.log(`\nJob ${job.jobId}: ${job.status}`);
   if (job.payment !== undefined) {
-    console.log(`${confirmed ? "✓ Paid" : "⚠ Receipt not yet confirmed on chain:"} ${usdc(job.payment.amount)} · ${explorerUrl(job.payment.network, job.payment.transaction)}`);
-  } else if (job.charged === false) {
+    console.log(`${confirmed ? "✓ Paid" : "⚠ Receipt not confirmed on chain:"} ${usdc(job.payment.amount)} · ${explorerUrl(job.payment.network, job.payment.transaction)}`);
+  }
+  if (unconfirmedReason !== undefined) console.log(`  ${unconfirmedReason}`);
+  if (job.payment === undefined && job.charged === false) {
     console.log("Not charged.");
   }
   if (job.error !== undefined) console.log(`Error: ${job.error.code}${job.error.detail ? `: ${job.error.detail}` : ""}`);

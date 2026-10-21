@@ -50,7 +50,8 @@ The SOW gives different numbers in different sections. We plan against the readi
    facilitator verifies and settles, and the provider owner key is used only offline (registration, validation
    requests) through the Stellar CLI keychain.
 3. **Signing happens only in the payment client.** The approved payment is signed exactly once, and only after
-   the user approves the exact price, recipient, asset and network.
+   the user approves the exact price, recipient, asset and network, or when the payment fits a budget the user
+   explicitly granted.
 4. **Never pay twice for one job.** The job identity is fixed before payment. The provider binds it to one
    request and one payment, and recovery never re-sends a payment credential.
 5. **Fail closed.** A failed spending-limit check, an unknown settlement, a mismatched challenge or an
@@ -102,7 +103,7 @@ The SOW gives different numbers in different sections. We plan against the readi
 | `stellar-agent-search` (discovery) | nothing | any secret |
 | Provider server (`provider-kit` runtime, library or gateway mode) | `payTo` **public** address, facilitator URL; in gateway mode, the upstream API's own credential if it has one | any Stellar secret key |
 | Provider operator (`provider-kit` CLI) | owner key, in the Stellar CLI keychain, used for registration and `validation_request` | payer or verifier keys |
-| `payment-client` | the payer's key or wallet connection (design open, §5.6) | provider or verifier keys |
+| `payment-client` | the payer's key or wallet connection (§5.6) | provider or verifier keys |
 | `verifier` | verifier key (`validation_response`), plus a dedicated testnet test-payer key for the paid-call check | provider owner keys |
 
 ### 3.2 Repository layout
@@ -114,7 +115,7 @@ packages/
   provider-kit/    Server toolkit: defineService, createProvider (Fetch-API handler), gateway mode
                    (any existing HTTP API), x402 resource server, job store + runner,
                    manifest + 8004 registration, operator CLI.
-  payment-client/  Buyer side. DESIGN OPEN (§5.6). Placeholder only.
+  payment-client/  Buyer side: policy, journal, payment, recovery (§5.6).
   verifier/        Provider checks → verification receipt → badges → Validation Registry response.
 examples/
   paid-service/    Sample provider built only with provider-kit (one on-success + one upfront service).
@@ -304,40 +305,15 @@ The example is built only with the public `provider-kit` API, so it doubles as t
 
 It runs on Hono with `@hono/node-server`. The `.env` holds only the `payTo` public address and the facilitator URL.
 
-### 5.6 Payment Client: design open
+### 5.6 Payment Client: decided
 
-The design will be decided before any code is written. These are the requirements it has to meet.
+**Decided 2026-10-21.** The design is in [docs/payment-client.md](docs/payment-client.md): one core
+(`packages/payment-client`), swappable signers (local key, Freighter, then a passkey smart account) and two
+surfaces (a static web app for everyone and a keyed MCP server for agents). Policy and journal use ERC-8196
+field names. Out of the box, every payment needs approval.
 
-**Fixed requirements (SOW + principles):**
-- **Wallet separation:** keys never touch discovery or provider code.
-- **Explicit approval:** the user sees the service, price, recipient (`payTo`), asset, network and request
-  summary, then approves that exact payment once.
-- **Spending controls:** a per-payment cap and a rolling budget. A failed limit check blocks the payment; it
-  never passes silently.
-- **Challenge validation:** the 402 must match the manifest the user approved. That covers single `accepts`,
-  amount at or under the cap, `payTo`, asset, network and timeout bounds. This is learned from Phase 1
-  `x402-demo.ts`.
-- **Durable journal:** the job id, token, request hash and the "about to send" record are written *before*
-  sending.
-- **Recovery:** never re-sign for the same job, and resume with check-status and get-result.
-- **Settlement proof:** confirm the on-chain USDC `transfer` before showing "paid".
-
-**Options under consideration:**
-1. Node library + CLI with a local encrypted keystore.
-2. A *separate* keyed MCP server, using MCP elicitation for approval. It would live apart from the read-only
-   search server.
-3. A local or browser approval page with a wallet extension (e.g. Freighter), so the client never sees the secret.
-4. A hybrid: a design-independent core (policy, validation, journal, recovery) plus one approval surface.
-
-**Questions to answer:**
-- Who are the five pilot users: developers in Claude Code/Codex, or non-technical users?
-- Should the payer key live in a wallet extension or a local keystore?
-- Which surface will the D1 video and screenshots show?
-- How closely should the policy and journal follow ERC-8196? That covers its policy fields, its hash-chained audit
-  trail, and a later move to an ERC-8196 smart account as the payer. See docs/erc-compatibility.md, T4 and T5.
-
-> ⚠️ This is on the critical path. The SOW asks for a *working* Payment Client and one successful payment in
-> **Week 1**, so the decision is needed by **Week 1, day 2**.
+The core, the local-key signer and the `stellar-pay` CLI work end to end on testnet. Settlement proof checks the
+`transfer` event against the approved payment ([J16]).
 
 ### 5.7 Discovery integration (changes in `stellar-agent-search`, not this repo)
 
@@ -365,12 +341,12 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
   - USDC trustlines and testnet USDC.
   - Facilitator `getSupported()` probe, and its limit on the payment authorization window
     (the spec's `maxTimeoutSeconds` range of 30–300 depends on it).
-- [ ] Day 1–2: **Payment client design decision** (§5.6).
+- [x] Day 1–2: **Payment client design decision** (§5.6).
 - [x] `docs/provider-standard.md` v1 draft.
 - [x] Manifest JSON Schema, test vectors and reference checks in `packages/protocol` (canonical JSON, binding
   hash, manifest rules, challenge check).
 - [x] Remaining protocol types (job view, job states, errors, receipts), with test vectors.
-- [ ] Freeze v1 at the end of the week (needs open decision 6).
+- [x] Freeze v1 (2026-10-21, open decision 6).
 - [x] Verification receipt format defined (spec only).
 - [ ] Thin provider slice: manifest, create-job with an on-success service, x402 resource server, memory store.
 - [ ] Payment client, first working version: approval screen, caps, signing, journal.
@@ -493,10 +469,10 @@ everywhere.
 
 | # | Decision | Owner | Needed by |
 | --- | --- | --- | --- |
-| 1 | Payment client design (§5.6) | Berkin | W1 day 2 |
+| 1 | ~~Payment client design (§5.6)~~ **Decided 2026-10-21:** docs/payment-client.md | Berkin | W1 day 2 |
 | 2 | SOW provider/user counts reading (§1.1) | Berkin + Ambassador Chapter Lead | Before sprint start |
 | 3 | Testnet discovery approach (§5.7) | Berkin | W2 |
 | 4 | Testnet-only evidence accepted, or a final mainnet run | Berkin + Ambassador Chapter Lead | W2 |
 | 5 | npm scope for publishing (placeholder `@stellar-agent-services/*`) | Berkin | W2 (first publish) |
-| 6 | Provider Standard v1 freeze: `Job-Token` header, manifest path, `maxTimeoutSeconds` range, the URL for the schema `$id` and problem `type` values (provisionally `berkingurcan.github.io/stellar-agent-services`) | Berkin | W1 |
+| 6 | ~~Provider Standard v1 freeze~~ **Decided 2026-10-21, frozen as drafted:** `Job-Token` header, manifest path, `maxTimeoutSeconds` range, the URL for the schema `$id` and problem `type` values (`berkingurcan.github.io/stellar-agent-services`), plus CORS as SHOULD [J17] | Berkin | W1 |
 | 7 | Shared ERC-8126/8196 conventions: score direction, tags, hashing, policy extensions (docs/erc-compatibility.md) | Berkin + ERC-8126/8196 Stellar team | W1 for hashing, W3 for validation records |

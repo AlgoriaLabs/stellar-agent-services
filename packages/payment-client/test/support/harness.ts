@@ -93,7 +93,7 @@ export async function setup(
     allowLocalhost: true,
     pollMs: 20,
     followSeconds: 5,
-    confirmPayment: async () => true,
+    confirmPayment: async () => ({ confirmed: true }),
     createPayload: async () => ({ x402Version: 2, payload: { transaction: `signed-${++signed}` } }),
     ...options.client,
   });

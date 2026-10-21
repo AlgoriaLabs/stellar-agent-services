@@ -41,7 +41,6 @@ then run the `stellar-pay recover <job-id> --dev` command it prints. `stellar-pa
 
 ## Not done in the PoC
 
-- Confirmation only checks that the transaction succeeded, not its `transfer` event's payer, payee and amount.
 - `minVerificationScore` and `stellar.minProviderLevel` are stored but not enforced.
 - The wallet secret is a plain file (mode 600). Testnet only.
 - No browser storage, web app or MCP server yet.
