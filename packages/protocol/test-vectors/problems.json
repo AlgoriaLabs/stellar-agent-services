@@ -1,0 +1,15 @@
+{
+  "description": "Error codes from provider-standard.md §6. `problems` maps each HTTP error code to its status and whether the response carries Retry-After. `jobFailures` lists the codes a failed job's `error.code` may take.",
+  "problems": {
+    "invalid_request": { "status": 400, "retryAfter": false },
+    "invalid_input": { "status": 400, "retryAfter": false },
+    "service_not_found": { "status": 404, "retryAfter": false },
+    "job_not_found": { "status": 404, "retryAfter": false },
+    "request_in_progress": { "status": 409, "retryAfter": true },
+    "payload_too_large": { "status": 413, "retryAfter": false },
+    "idempotency_key_reused": { "status": 422, "retryAfter": false },
+    "rate_limited": { "status": 429, "retryAfter": true },
+    "unavailable": { "status": 503, "retryAfter": true }
+  },
+  "jobFailures": ["service_failed", "output_invalid", "timeout", "payment_failed"]
+}

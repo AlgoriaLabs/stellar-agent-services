@@ -1,0 +1,39 @@
+{
+  "description": "Job states from provider-standard.md §5.6. `transitions` lists, per charge policy, every state a job may move to from each state, \"(new)\" being a job that does not exist yet. Every pair not listed is forbidden. `charged` gives the job view's `charged` value for each status, charge and failure code.",
+  "transitions": {
+    "upfront": {
+      "(new)": ["queued", "running", "payment_uncertain", "failed"],
+      "queued": ["running"],
+      "running": ["succeeded", "failed"],
+      "payment_uncertain": ["queued", "succeeded", "failed"],
+      "succeeded": [],
+      "failed": []
+    },
+    "on-success": {
+      "(new)": ["queued", "running", "payment_uncertain", "failed"],
+      "queued": ["running"],
+      "running": ["succeeded", "failed", "payment_uncertain"],
+      "payment_uncertain": ["queued", "succeeded", "failed"],
+      "succeeded": [],
+      "failed": []
+    }
+  },
+  "charged": [
+    { "status": "queued", "charge": "upfront", "charged": true },
+    { "status": "queued", "charge": "on-success", "charged": false },
+    { "status": "running", "charge": "upfront", "charged": true },
+    { "status": "running", "charge": "on-success", "charged": false },
+    { "status": "succeeded", "charge": "upfront", "charged": true },
+    { "status": "succeeded", "charge": "on-success", "charged": true },
+    { "status": "payment_uncertain", "charge": "upfront", "charged": "unknown" },
+    { "status": "payment_uncertain", "charge": "on-success", "charged": "unknown" },
+    { "status": "failed", "charge": "upfront", "failureCode": "service_failed", "charged": true },
+    { "status": "failed", "charge": "upfront", "failureCode": "output_invalid", "charged": true },
+    { "status": "failed", "charge": "upfront", "failureCode": "timeout", "charged": true },
+    { "status": "failed", "charge": "upfront", "failureCode": "payment_failed", "charged": false },
+    { "status": "failed", "charge": "on-success", "failureCode": "service_failed", "charged": false },
+    { "status": "failed", "charge": "on-success", "failureCode": "output_invalid", "charged": false },
+    { "status": "failed", "charge": "on-success", "failureCode": "timeout", "charged": false },
+    { "status": "failed", "charge": "on-success", "failureCode": "payment_failed", "charged": false }
+  ]
+}

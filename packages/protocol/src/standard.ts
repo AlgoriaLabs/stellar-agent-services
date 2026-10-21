@@ -25,6 +25,14 @@ export const SERVICE_SCHEMA_MAX_BYTES = 32 * 1024;
 /** A service name is a URL path segment, an MCP tool name and an LLM function name (§3.1). */
 export const SERVICE_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
-// TODO:
-// - Timing: create-job holds the response at most 30 s [J9]; default retention 86400 s.
-// - SPEC_URL: base of the problem `type` URIs (set at the v1 freeze).
+/**
+ * Base of the problem `type` URIs (§6): `${SPEC_URL}#error-<code>`. Provisional until the v1 freeze
+ * picks the published URL (IMPLEMENTATION_PLAN.md, open decision 6).
+ */
+export const SPEC_URL = "https://berkingurcan.github.io/stellar-agent-services/provider/1";
+
+/** Longest a provider holds the create-job response open before it must answer 202 [J9]. */
+export const CREATE_JOB_HOLD_MAX_SECONDS = 30;
+
+/** How long finished jobs stay retrievable when the manifest sets no `jobs.retentionSeconds` [J15]. */
+export const DEFAULT_RETENTION_SECONDS = 86400;

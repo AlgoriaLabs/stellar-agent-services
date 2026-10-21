@@ -10,6 +10,8 @@ language can check itself against these files. `packages/protocol` runs all of t
 | `headers.json` | `Idempotency-Key` and `Job-Token` formats | §5.2 |
 | `manifests.json` | Manifest validation: the JSON Schema and the rules it can't express | §2.4 |
 | `challenges.json` | Checking an x402 challenge against the approved manifest | §4.2 |
+| `job-states.json` | Allowed job state transitions and the `charged` value of each state | §5.6 |
+| `problems.json` | Error codes, their HTTP status and Retry-After, and job failure codes | §6 |
 
 ## Conventions
 
@@ -34,6 +36,7 @@ The expected values were generated once and checked before they were written:
   RFC 8785 author;
 - the RFC 8785 examples (§3.2.2, §3.2.3, Appendix B) against the text of the RFC;
 - hashes against a second SHA-256 implementation;
-- every manifest and challenge case against Ajv with the JSON Schema, and against `packages/protocol`.
+- every manifest and challenge case against Ajv with the JSON Schema, and against `packages/protocol`;
+- job states and error codes by hand from the tables in §5.6 and §6.
 
 When you change a vector, run `npm test` and review the diff by hand.

@@ -369,8 +369,9 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
 - [x] `docs/provider-standard.md` v1 draft.
 - [x] Manifest JSON Schema, test vectors and reference checks in `packages/protocol` (canonical JSON, binding
   hash, manifest rules, challenge check).
-- [ ] Remaining protocol types (job view, errors, receipts); freeze v1 at the end of the week.
-- [ ] Verification receipt format defined (spec only).
+- [x] Remaining protocol types (job view, job states, errors, receipts), with test vectors.
+- [ ] Freeze v1 at the end of the week (needs open decision 6).
+- [x] Verification receipt format defined (spec only).
 - [ ] Thin provider slice: manifest, create-job with an on-success service, x402 resource server, memory store.
 - [ ] Payment client, first working version: approval screen, caps, signing, journal.
 - [ ] One successful testnet payment flow, recorded (tx link, screenshots, short video).

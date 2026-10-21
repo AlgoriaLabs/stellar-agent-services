@@ -1,7 +1,9 @@
 // Job model: create-job, check-status, get-result (docs/provider-standard.md §5).
 
-import { canonicalSha256 } from "./canonical-json.js";
+import { canonicalSha256, type JsonObject } from "./canonical-json.js";
+import type { JobFailureCode, Problem } from "./errors.js";
 import { IDEMPOTENCY_KEY_PATTERN } from "./headers.js";
+import type { PaymentReceipt } from "./receipts.js";
 import { SERVICE_NAME_PATTERN } from "./standard.js";
 
 /** When the user is charged (§3.2). The manifest default is "upfront". */
@@ -29,14 +31,73 @@ export function bindingHash(service: string, input: unknown): Promise<string> {
   return canonicalSha256({ service, input });
 }
 
-// TODO:
-// - JobStatus: "queued" | "running" | "succeeded" | "failed" | "payment_uncertain".
-// - Charged: true | false | "unknown" ("unknown" exactly when status is payment_uncertain).
-// - JobView: the one response shape for all three operations: jobId, service, status, charge,
-//   charged, createdAt, updatedAt, expiresAt, output? (create-job and get-result, when succeeded),
-//   error? (problem object, when failed), payment? (PaymentReceipt, when charged), jobToken? (only
-//   when the provider generated the token for a client that sent none).
-// - JOB_TRANSITIONS: (new) -> queued | running | payment_uncertain | failed; queued -> running;
-//   running -> succeeded | failed | payment_uncertain; payment_uncertain -> queued | succeeded | failed.
-//   succeeded and failed are final.
-// - JobFailureCode: "service_failed" | "output_invalid" | "timeout" | "payment_failed".
+export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "payment_uncertain";
+export const JOB_STATUSES: readonly JobStatus[] = ["queued", "running", "succeeded", "failed", "payment_uncertain"];
+
+/** `succeeded` and `failed` never change again [J12]. */
+export const FINAL_JOB_STATUSES: readonly JobStatus[] = ["succeeded", "failed"];
+
+/** Whether the user paid: "unknown" exactly while the job is payment_uncertain (§5.6). */
+export type Charged = boolean | "unknown";
+
+/** The one response body of create-job, check-status and get-result (§5.5). */
+export interface JobView {
+  jobId: string;
+  service: string;
+  status: JobStatus;
+  charge: Charge;
+  charged: Charged;
+  /** RFC 3339 timestamps. */
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+  /** create-job and get-result, when succeeded. Withheld while payment_uncertain [J14]. */
+  output?: JsonObject;
+  /** When failed. */
+  error?: Problem<JobFailureCode>;
+  /** When charged is true. */
+  payment?: PaymentReceipt;
+  /** Only in the create-job response, and only when the provider created the token [J2]. */
+  jobToken?: string;
+}
+
+/** The states a job may start in: (new) → queued | running | payment_uncertain | failed (§5.6). */
+export const INITIAL_JOB_STATUSES: readonly JobStatus[] = ["queued", "running", "payment_uncertain", "failed"];
+
+/** Allowed transitions between states (§5.6). Final states have none [J12]. */
+export const JOB_TRANSITIONS: Readonly<Record<JobStatus, readonly JobStatus[]>> = {
+  queued: ["running"],
+  running: ["succeeded", "failed", "payment_uncertain"],
+  payment_uncertain: ["queued", "succeeded", "failed"],
+  succeeded: [],
+  failed: [],
+};
+
+/**
+ * Whether a job may move from `from` (undefined for a new job) to `to`. running → payment_uncertain
+ * happens only with charge "on-success", where settlement follows the work (§5.6).
+ */
+export function canTransition(from: JobStatus | undefined, to: JobStatus, charge: Charge): boolean {
+  if (from === undefined) return INITIAL_JOB_STATUSES.includes(to);
+  if (from === "running" && to === "payment_uncertain" && charge !== "on-success") return false;
+  return JOB_TRANSITIONS[from].includes(to);
+}
+
+/** The `charged` value the §5.6 table requires for a job's status, charge and failure code. */
+export function chargedFor(status: JobStatus, charge: Charge, failureCode?: JobFailureCode): Charged {
+  switch (status) {
+    case "payment_uncertain":
+      return "unknown";
+    case "succeeded":
+      return true;
+    case "failed":
+      return charge === "upfront" && failureCode !== "payment_failed";
+    default:
+      return charge === "upfront";
+  }
+}
+
+/** 200 once the job has finished, otherwise 202 with Retry-After [J8]. */
+export function jobViewHttpStatus(status: JobStatus): 200 | 202 {
+  return FINAL_JOB_STATUSES.includes(status) ? 200 : 202;
+}

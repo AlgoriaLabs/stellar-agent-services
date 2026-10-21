@@ -12,7 +12,27 @@
      http:// server (spec [M6]). -->
 
 ## Verification receipt
-<!-- Format, canonical JSON, hash, level reached, where it is published. -->
+
+The verifier issues one receipt per run (`VerificationReceipt` in
+[packages/protocol](../packages/protocol/src/receipts.ts)). It is published as RFC 8785 canonical JSON, and
+`sha256(JCS(receipt))` is the `response_hash` posted on chain.
+
+| Field | Meaning |
+| --- | --- |
+| `standard` | `stellar-agent-services/provider@1` |
+| `agentId` | The provider's Stellar 8004 agent id. Required to publish to the Validation Registry. |
+| `network` | `stellar:testnet` or `stellar:pubnet` |
+| `validator` | The verifier's `G…` address, which signs `validation_response` |
+| `startedAt`, `checkedAt` | RFC 3339 |
+| `level` | The conformance level reached, 0–3 (0: not even Described) |
+| `score`, `scoreDirection` | 0, 33, 67 or 100 for levels 0–3; `higher-is-better`. `score` is also the on-chain `response`. |
+| `manifest` | `{ url, sha256 }`, where `sha256` is the JCS hash of the parsed manifest |
+| `results[]` | One per check, C1–C6: `check`, `status` (`passed`, `failed`, `skipped`), `failedRules` (rule ids such as `P4`), `warnings?`, `evidence?` |
+| `payment` | The C4 payment receipt, after the verifier confirmed it on chain |
+
+`standard`, `agentId`, `network`, `validator`, `checkedAt`, `score`, `scoreDirection` and `results` form the
+envelope shared with Stellar ERC-8126 records ([erc-compatibility.md](erc-compatibility.md), T2). Evidence never
+contains secrets, job tokens or payment payloads.
 
 ## Badges
 <!-- One per level reached; derived only from receipts; network shown on each badge. -->
