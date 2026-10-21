@@ -1,13 +1,67 @@
 // defineService(): one paid service.
 //
-// TODO:
-// - Input: { name, title?, description, price (USDC string such as "0.01", converted to base units
-//   with 7 decimals and no float math), charge?: "on-success" | "upfront" (default "upfront"),
-//   expectedDurationSeconds?, inputSchema, outputSchema, examples?, tags?, maxInputBytes?, handler }.
-//   Field names follow the manifest, which follows MCP tool names.
-// - Refuse "on-success" when expectedDurationSeconds is above half of maxTimeoutSeconds [S2].
-// - Check the examples against the schemas at startup.
-// - Validate the input before any 402 [P8] and the handler's output before settling or storing it [S1].
-// - The handler receives only the parsed input and an AbortSignal, never payment data.
+// PoC: price, schemas and handler. The input is validated before any 402 [P8] and the handler's
+// output before settling or storing it [S1]. An "on-success" service must declare
+// expectedDurationSeconds [S2]; createProvider() checks it against maxTimeoutSeconds.
+//
+// TODO: check the examples against the schemas at startup.
 
-export {};
+import type { Charge, JsonObject } from "@stellar-agent-services/protocol";
+import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
+
+export interface ServiceConfig<Input extends JsonObject = JsonObject, Output extends JsonObject = JsonObject> {
+  name: string;
+  title?: string;
+  description: string;
+  /** USDC as a decimal string, such as "0.01". */
+  price: string;
+  /** Default "upfront". */
+  charge?: Charge;
+  expectedDurationSeconds?: number;
+  inputSchema: JsonObject;
+  outputSchema: JsonObject;
+  examples?: { input: Input; output: Output }[];
+  tags?: string[];
+  maxInputBytes?: number;
+  /** Receives only the parsed input, never payment data. */
+  handler: (input: Input, context: { signal: AbortSignal }) => Promise<Output> | Output;
+}
+
+export interface Service extends Omit<ServiceConfig, "handler" | "charge"> {
+  charge: Charge;
+  /** The price in USDC base units (7 decimals). */
+  amount: string;
+  handler: (input: JsonObject, context: { signal: AbortSignal }) => Promise<JsonObject> | JsonObject;
+  validateInput: ValidateFunction;
+  validateOutput: ValidateFunction;
+}
+
+/** USDC has 7 decimals on Stellar. */
+const USDC_DECIMALS = 7;
+
+export function defineService<Input extends JsonObject, Output extends JsonObject>(
+  config: ServiceConfig<Input, Output>,
+): Service {
+  // Service schemas are written by the provider, so unknown keywords are ignored, as JSON Schema intends.
+  if (config.charge === "on-success" && config.expectedDurationSeconds === undefined) {
+    throw new TypeError(`service "${config.name}": an on-success service must set expectedDurationSeconds [S2]`);
+  }
+  const ajv = new Ajv2020({ strict: false, allErrors: true, validateFormats: false });
+  return {
+    ...config,
+    charge: config.charge ?? "upfront",
+    amount: toBaseUnits(config.price),
+    handler: config.handler as unknown as Service["handler"],
+    validateInput: ajv.compile(config.inputSchema),
+    validateOutput: ajv.compile(config.outputSchema),
+  };
+}
+
+/** "0.01" -> "100000", without float math. */
+export function toBaseUnits(decimal: string): string {
+  const match = /^(\d+)(?:\.(\d{1,7}))?$/.exec(decimal);
+  if (match === null) throw new TypeError(`price must be a decimal with at most ${USDC_DECIMALS} places: "${decimal}"`);
+  const units = BigInt(match[1]! + (match[2] ?? "").padEnd(USDC_DECIMALS, "0"));
+  if (units <= 0n) throw new TypeError("price must be above zero");
+  return units.toString();
+}

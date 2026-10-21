@@ -18,3 +18,4 @@ export * from "./gateway/upstream.js";
 export * from "./jobs/store.js";
 export * from "./jobs/memory-store.js";
 export * from "./jobs/sqlite-store.js";
+export * from "./payments/settlement.js";

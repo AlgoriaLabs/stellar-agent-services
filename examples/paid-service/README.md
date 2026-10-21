@@ -11,4 +11,7 @@ their template.
 Providers with an existing API in another language don't need this template. They can use the kit's gateway
 mode (`provider-kit serve --config <file>`) instead.
 
-Status: scaffold only. Setup steps will be in [docs/provider-setup-guide.md](../../docs/provider-setup-guide.md).
+Status: proof of concept. Run it with `PAY_TO=G... node dist/server.js` (see
+[packages/payment-client](../../packages/payment-client/README.md) for a full testnet walkthrough). The job store is
+in memory, so jobs are lost on restart. Setup steps will be in
+[docs/provider-setup-guide.md](../../docs/provider-setup-guide.md).
