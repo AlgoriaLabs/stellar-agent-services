@@ -6,10 +6,11 @@
 //
 // Job tokens are secrets, so they live in a SecretStore next to the journal, never in it.
 //
-// TODO: IndexedDB storage for the browser; anchoring a Merkle root on chain.
+// This module runs in Node and the browser. Storage plugs in: memory here, files in Node
+// (file-storage.ts, the "./node" entry point), IndexedDB in the browser (browser-storage.ts, "./browser").
+//
+// TODO: anchoring a Merkle root on chain.
 
-import { mkdir, open, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
 import { canonicalSha256, type JsonObject } from "@stellar-agent-services/protocol";
 
 export type JournalEvent =
@@ -86,18 +87,21 @@ export class Journal {
     return entry;
   }
 
-  /**
-   * What was sent for payment since `since`, in base units. Fail closed: every `sending` counts,
-   * unless the job later failed without a charge.
-   */
+  /** What was sent for payment since `since`, in base units (totalSpentSince). */
   spentSince(since: Date): bigint {
-    const notCharged = new Set(
-      this.log.filter((entry) => entry.event === "failed" && entry.details["charged"] === false).map((entry) => entry.jobId),
-    );
-    return this.log
-      .filter((entry) => entry.event === "sending" && Date.parse(entry.at) >= since.getTime() && !notCharged.has(entry.jobId))
-      .reduce((sum, entry) => sum + BigInt(String(entry.details["amount"] ?? "0")), 0n);
+    return totalSpentSince(this.log, since);
   }
+}
+
+/**
+ * What was sent for payment since `since`, in base units. Fail closed: every `sending` counts, unless
+ * the job later failed without a charge. A UI shows the same total the policy checks.
+ */
+export function totalSpentSince(entries: readonly JournalEntry[], since: Date): bigint {
+  const notCharged = new Set(entries.filter((entry) => entry.event === "failed" && entry.details["charged"] === false).map((entry) => entry.jobId));
+  return entries
+    .filter((entry) => entry.event === "sending" && Date.parse(entry.at) >= since.getTime() && !notCharged.has(entry.jobId))
+    .reduce((sum, entry) => sum + BigInt(String(entry.details["amount"] ?? "0")), 0n);
 }
 
 /** The seq of the first entry whose hash or link is wrong, or undefined if the chain is intact. */
@@ -109,29 +113,6 @@ export async function verifyChain(entries: readonly JournalEntry[]): Promise<num
     previousHash = hash;
   }
   return undefined;
-}
-
-export function fileJournalStorage(path: string): JournalStorage {
-  return {
-    async readLines() {
-      try {
-        return (await readFile(path, "utf8")).split("\n");
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-        throw error;
-      }
-    },
-    async appendLine(line) {
-      await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-      const handle = await open(path, "a", 0o600);
-      try {
-        await handle.appendFile(`${line}\n`);
-        await handle.sync();
-      } finally {
-        await handle.close();
-      }
-    },
-  };
 }
 
 export function memoryJournalStorage(lines: string[] = []): JournalStorage {
@@ -150,27 +131,6 @@ export interface SecretStore {
   get(jobId: string): Promise<string | undefined>;
   /** Must be durable when it resolves. */
   set(jobId: string, token: string): Promise<void>;
-}
-
-export function fileSecretStore(path: string): SecretStore {
-  const load = async (): Promise<Record<string, string>> => {
-    try {
-      return JSON.parse(await readFile(path, "utf8")) as Record<string, string>;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
-      throw error;
-    }
-  };
-  return {
-    async get(jobId) {
-      return (await load())[jobId];
-    },
-    async set(jobId, token) {
-      const tokens = { ...(await load()), [jobId]: token };
-      await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-      await writeFile(path, JSON.stringify(tokens, null, 2), { mode: 0o600, flush: true });
-    },
-  };
 }
 
 export function memorySecretStore(): SecretStore {

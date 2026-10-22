@@ -134,7 +134,7 @@ export class PaymentClient {
 
     // The job identity is fixed, and saved, before the first request [J1].
     const jobId = crypto.randomUUID();
-    const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
+    const token = base64url(crypto.getRandomValues(new Uint8Array(32)));
     const binding = await bindingHash(service.name, input);
     await secrets.set(jobId, token);
     const hash = await policyHash(policy);
@@ -203,6 +203,17 @@ export class PaymentClient {
     } finally {
       this.paying.delete(quote.jobId);
     }
+  }
+
+  /**
+   * The human said no on the approval screen. Journaled, and nothing is signed. Too late once the job is
+   * being paid or was sent; recover() it instead.
+   */
+  async decline(quote: Quote): Promise<void> {
+    const { journal, policy } = this.options;
+    if (this.paying.has(quote.jobId)) return;
+    if (journal.forJob(quote.jobId).some((entry) => entry.event === "refused" || entry.event === "sending")) return;
+    await journal.append("refused", quote.jobId, await policyHash(policy), { reasons: ["the user declined"] });
   }
 
   private async payOnce(quote: Quote, approved: boolean): Promise<PaymentResult> {
@@ -374,7 +385,8 @@ export class PaymentClient {
   private async follow(baseUrl: string, jobId: string, token: string, job: JobView): Promise<JobView> {
     const deadline = Date.now() + (this.options.followSeconds ?? 120) * 1000;
     while ((job.status !== "succeeded" && job.status !== "failed") || (job.status === "succeeded" && job.output === undefined)) {
-      if (Date.now() >= deadline) return job;
+      // Only the provider's reconcile can resolve it [J13]; polling won't, so hand it back now.
+      if (job.status === "payment_uncertain" || Date.now() >= deadline) return job;
       await new Promise((resolve) => setTimeout(resolve, this.options.pollMs ?? 2000));
       job = await this.getResult(baseUrl, jobId, token);
     }
@@ -398,6 +410,11 @@ export class PaymentClient {
 
 function noMethod(requirements: PaymentRequirements): string {
   return `no installed payment method pays scheme "${String(requirements.scheme)}" on ${String(requirements.network)}`;
+}
+
+/** Without Node's Buffer, so the core runs in the browser too. */
+function base64url(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
 function pick(requirements: PaymentRequirements) {

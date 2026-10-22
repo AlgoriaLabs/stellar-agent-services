@@ -4,8 +4,8 @@ The buyer side: approval, spending policy, a hash-chained journal, payment and j
 [docs/payment-client.md](../../docs/payment-client.md).
 
 **Status: proof of concept.** The core flow works end to end on Stellar testnet with the built-in signer and
-payment method and the `stellar-pay` CLI. The web app, MCP server, browser-wallet and passkey signers come later
-and reuse this core.
+payment method, both in Node (the `stellar-pay` CLI) and in the browser (the minimal web page in
+[apps/wallet](../../apps/wallet)). The MCP server, browser-wallet and passkey signers come later and reuse this core.
 
 Signers and payment methods are strategies: the core keeps every safety step, and adapters for other wallets or
 payment infrastructure plug in without changing it (docs/payment-client.md, "Strategies").
@@ -18,15 +18,26 @@ const client = new PaymentClient({
 });
 ```
 
+The main entry point runs in Node and the browser. Journal storage depends on where it runs:
+
+| Entry point | Contents |
+| --- | --- |
+| `@stellar-agent-services/payment-client` | The core, the built-in signer and payment method |
+| `…/node` | `fileJournalStorage`, `fileSecretStore`: files only the owner can read |
+| `…/browser` | `indexedDbJournalStorage`, `indexedDbSecretStore`: IndexedDB with strict durability |
+| `…/conformance` | The checks every adapter must pass |
+
 | File | Contents |
 | --- | --- |
-| `src/client.ts` | `PaymentClient`: `quote()` (nothing signed), `pay()` (signs once), `recover()` (never pays) |
+| `src/client.ts` | `PaymentClient`: `quote()` (nothing signed), `pay()` (signs once), `decline()`, `recover()` (never pays) |
 | `src/strategies.ts` | The `Signer` and `PaymentMethod` interfaces |
 | `src/local-key-signer.ts` | The built-in signer: a secret key in this process |
 | `src/x402-exact-stellar.ts` | The built-in payment method: x402 `exact` on Stellar, the only one Provider Standard v1 allows |
 | `src/conformance.ts` | Checks that every signer and payment-method adapter must pass (`./conformance` entry point) |
 | `src/policy.ts` | Spending policy with ERC-8196 field names; `checkPolicy()` fails closed |
 | `src/journal.ts` | Append-only, hash-chained journal; job tokens kept apart in a `SecretStore` |
+| `src/file-storage.ts` | Journal and job-token storage in files (`./node` entry point) |
+| `src/browser-storage.ts` | Journal and job-token storage in IndexedDB (`./browser` entry point) |
 | `src/manifest.ts` | Fetches and validates a provider manifest |
 | `src/onchain.ts` | Confirms the settlement transaction on chain |
 | `src/cli.ts` | `stellar-pay`, the PoC surface |
@@ -59,5 +70,5 @@ then run the `stellar-pay recover <job-id> --dev` command it prints. `stellar-pa
 
 - `minVerificationScore` and `stellar.minProviderLevel` are stored but not enforced.
 - The wallet secret is a plain file (mode 600). Testnet only.
-- No browser storage, web app or MCP server yet.
+- No MCP server yet.
 - Only the built-in signer and method. Adapters for other wallets come later, each in its own package.

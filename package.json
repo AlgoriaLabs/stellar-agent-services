@@ -13,7 +13,8 @@
     "packages/provider-kit",
     "packages/payment-client",
     "packages/verifier",
-    "examples/paid-service"
+    "examples/paid-service",
+    "apps/wallet"
   ],
   "scripts": {
     "build": "tsc -b",

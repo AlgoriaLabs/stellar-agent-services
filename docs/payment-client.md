@@ -1,8 +1,8 @@
 # Payment Client: design
 
 > Status: **accepted** (2026-10-21). A proof of concept of the core, the local-key signer and a CLI is in
-> [packages/payment-client](../packages/payment-client). IMPLEMENTATION_PLAN.md §5.6 and principle 3 follow
-> this design.
+> [packages/payment-client](../packages/payment-client), and a minimal web page on the same core is in
+> [apps/wallet](../apps/wallet) (2026-10-22). IMPLEMENTATION_PLAN.md §5.6 and principle 3 follow this design.
 
 ## Who it is for
 
@@ -54,7 +54,9 @@ agents, with spending rules set by a human**. It is the demand side of the Provi
 - **Signers** plug in behind one interface, so the core never sees how a key is held.
 - **Payment methods** plug in behind another, so a new way to pay never touches the safety rules. See
   [Strategies](#strategies-signers-and-payment-methods).
-- **Web app** (`apps/wallet`, static, no backend): the main UI for everyone, and what the D1 video shows.
+- **Web app** (`apps/wallet`, static, no backend): the main UI for everyone, and what the D1 video shows. The
+  minimal page is built (2026-10-22): a test wallet, the form from the schema, the approval screen, spending
+  limits, recent payments and recovery, with the local-key signer.
   - Turns each service's `inputSchema` into a form, so any provider is usable with no frontend work.
   - Shows price, payee, verification badges and `charge` on one approval screen.
   - Budget settings, history with explorer links, and a "recover job" button.
@@ -189,7 +191,9 @@ something the owner turns on.
   last `sending` with no `settled` or `result` after it, and never re-signs that job.
 - Job tokens are secrets, so they are stored next to the journal, not in it. The journal can then be exported
   or anchored without exposing them.
-- Storage is a file in Node and IndexedDB in the browser. Anchoring a Merkle root on chain is later work.
+- Storage is a file in Node (the `./node` entry point) and IndexedDB in the browser (`./browser`, written with
+  strict durability). A journal has one writer, so the web app runs in one tab at a time. Anchoring a Merkle root
+  on chain is later work.
 
 ### One payment, step by step
 
@@ -198,10 +202,12 @@ something the owner turns on.
 3. Call create-job without paying and get the 402. `checkChallenge()` against the manifest, and pick the
    payment method that matches it. A violation, or no matching method, refuses.
 4. Policy check, plus the wallet's own budget for a policy wallet. If either fails, journal `refused` and
-   stop (fail closed). If the amount is above `autoApproveUpTo`, show the approval screen.
+   stop (fail closed). If the amount is above `autoApproveUpTo`, show the approval screen. `decline()` journals
+   `refused` and never signs.
 5. Journal `approved`, sign, then journal `sending` and send.
 6. Get the job view. Confirm the USDC `transfer` on chain before showing "paid", then journal `settled`.
-7. On `202`, or if the connection drops: check-status, then get-result, never paying again.
+7. On `202`, or if the connection drops: check-status, then get-result, never paying again. A job the provider
+   marks `payment_uncertain` comes back at once: only the provider's `reconcile` resolves it, so polling doesn't.
 
 ## Sprint plan
 

@@ -7,8 +7,9 @@ Job Recovery, delivered and piloted within one 30-day Instaward sprint.
 - **Source of truth:** Instawards SOW "Stellar Agent MCP" (submitted 29.09.2026, $4,000, 30 days).
 - **Background:** `stellar-agent-search/docs/provider-network-phase-2.md` and `issues/P3-23-provider-network-phase-2.md`.
 - **Network:** Stellar **testnet** for the whole build. Mainnet is a later, separate decision (see [Open decisions](#10-open-decisions)).
-- **Status:** Week 1. The protocol package, a thin Provider Kit slice and the payment client core work end to end
-  on testnet. The other modules are scaffolds with TODO comments.
+- **Status:** Week 1. The protocol package, a thin Provider Kit slice and the payment client (core, `stellar-pay`
+  CLI and a minimal web approval page) work end to end on testnet. The other modules are scaffolds with TODO
+  comments.
 
 ---
 
@@ -118,6 +119,8 @@ packages/
                    manifest + 8004 registration, operator CLI.
   payment-client/  Buyer side: policy, journal, payment, recovery (§5.6).
   verifier/        Provider checks → verification receipt → badges → Validation Registry response.
+apps/
+  wallet/          Web approval page: static, no backend, the payment-client core in the browser (§5.6).
 examples/
   paid-service/    Sample provider built only with provider-kit (one on-success + one upfront service).
 docs/              Provider Standard v1, setup guide, job recovery, verification, payment client, pilot.
@@ -318,8 +321,8 @@ It runs on Hono with `@hono/node-server`. The `.env` holds only the `payTo` publ
 - Two surfaces: a static web app for everyone and a keyed MCP server for agents.
 - Policy and journal use ERC-8196 field names. Out of the box, every payment needs approval.
 
-The core, the local-key signer and the `stellar-pay` CLI work end to end on testnet. Settlement proof checks the
-`transfer` event against the approved payment ([J16]).
+The core, the local-key signer, the `stellar-pay` CLI and a minimal web approval page (`apps/wallet`) work end to
+end on testnet. Settlement proof checks the `transfer` event against the approved payment ([J16]).
 
 ### 5.7 Discovery integration (changes in `stellar-agent-search`, not this repo)
 
@@ -355,9 +358,9 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
 - [x] Freeze v1 (2026-10-21, open decision 6).
 - [x] Verification receipt format defined (spec only).
 - [x] Thin provider slice: manifest, create-job with an on-success service, x402 resource server, memory store.
-- [ ] Payment client, first working version: approval screen, caps, signing, journal.
+- [x] Payment client, first working version: approval screen, caps, signing, journal.
   - [x] Core, local-key signer and `stellar-pay` CLI (approval prompt, caps, journal, on-chain check).
-  - [ ] Minimal web approval page (`apps/wallet`), for the D1 video.
+  - [x] Minimal web approval page (`apps/wallet`), for the D1 video.
 - [ ] One successful testnet payment flow, recorded (tx link, screenshots, short video).
   - [x] Testnet tx links.
   - [ ] Screenshots and the short video.

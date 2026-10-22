@@ -1,8 +1,6 @@
 // Fetching and validating a provider manifest (provider-standard.md §2.4): no redirects, at most
 // MANIFEST_MAX_BYTES, the JSON Schema, then checkManifestRules().
 
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import {
   checkManifestRules,
   MANIFEST_MAX_BYTES,
@@ -10,12 +8,10 @@ import {
   type JsonValue,
   type ProviderManifest,
 } from "@stellar-agent-services/protocol";
+import schema from "@stellar-agent-services/protocol/manifest.schema.json" with { type: "json" };
 import { Ajv2020 } from "ajv/dist/2020.js";
 
-const schema = JSON.parse(
-  readFileSync(createRequire(import.meta.url).resolve("@stellar-agent-services/protocol/manifest.schema.json"), "utf8"),
-) as JsonObject;
-const validateManifest = new Ajv2020({ strict: false, allErrors: true, validateFormats: false }).compile(schema);
+const validateManifest = new Ajv2020({ strict: false, allErrors: true, validateFormats: false }).compile(schema as JsonObject);
 
 export class ManifestError extends Error {
   override name = "ManifestError";
