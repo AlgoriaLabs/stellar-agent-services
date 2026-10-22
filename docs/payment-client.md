@@ -38,7 +38,7 @@ agents, with spending rules set by a human**. It is the demand side of the Provi
               └──────────┬─────────────────┘
                          ▼
              payment-client core (TypeScript, no UI)
-   manifest → checkChallenge → pick method → policy → approve → journal → pay → send → recover → confirm
+   manifest → checkChallenge → pick method → policy + budget → approve → sign → journal → send → confirm
                 │                                                           │
                 ▼                                                           ▼
    PaymentMethod  (how a payment is made)                     Signer  (who holds the key)
@@ -80,59 +80,84 @@ The agent key is what lets an agent pay without a prompt, so how much damage it 
 
 ### Strategies: signers and payment methods
 
-The core uses the Strategy pattern on two independent axes. Any signer works with any method that supports
-it, so other Stellar wallets and payment schemes can be added without changing the core.
+**Built 2026-10-22**, with the built-ins only (`packages/payment-client/src/strategies.ts`).
+
+The core uses the Strategy pattern on two independent axes. Other Stellar wallets and payment infrastructure
+can then be plugged in later without changing the core: ours, existing projects such as Eunomia or an
+ERC-8196 wallet, or new ones. Any signer works with any method that supports it.
 
 ```ts
-/** Who holds the key. SEP-43 shape, as @x402/stellar's ClientStellarSigner expects. */
+/** Who holds the key: the SEP-43 shape @x402/stellar signs with. */
 interface Signer {
   address: string;                       // G… or C…
   signAuthEntry: SignAuthEntry;
   signTransaction?: SignTransaction;
+  /** A policy wallet's remaining on-chain budget for `asset`, in base units. Undefined: no limit. */
+  budget?(network: StellarNetwork, asset: string): Promise<string | undefined>;
 }
 
-/** How a payment is made: one per payment scheme and network family. */
+/** How an x402 challenge entry is paid, and how that payment is proven. */
 interface PaymentMethod {
-  id: string;                            // "x402-exact-stellar"
-  /** Can this method pay this challenge entry? */
+  id: string;                            // "x402-exact-stellar", journaled with each payment
   matches(requirements: PaymentRequirements): boolean;
-  /** What the approval screen, the policy and the journal see. */
-  terms(requirements: PaymentRequirements): { network: string; asset: string; amount: string; payTo: string };
-  /** Builds the signed payload. The only step that uses the signer. */
   createPayload(requirements: PaymentRequirements, signer: Signer): Promise<SignedPayload>;
-  /** Settlement proof, checked against the journaled terms, never the provider's receipt. */
   confirm(transaction: string, expected: ExpectedPayment): Promise<Confirmation>;
 }
 ```
 
-**The core keeps the safety rules; strategies can't skip them.** For every method, in this order:
+The built-ins are `localKeySigner(secret, network)` and `x402ExactStellar({ rpcUrl })`.
+`new PaymentClient({ signer, methods })` uses `[x402ExactStellar()]` when `methods` is not given.
+
+**The core keeps every safety step; adapters can't skip them.** For every signer and method:
 
 1. `checkChallenge()`: the challenge equals the manifest's payment option [P4].
-2. Pick the first method whose `matches()` is true. If none matches, refuse and journal why (fail closed).
-3. `terms()` must equal the challenge's `network`, `asset`, `amount` and `payTo`. On any mismatch, refuse.
-   A method can describe a payment, but it can't change one.
-4. Policy and approval run on those terms. Journal `approved`, then `sending` with the terms and payer.
-5. `createPayload()` runs once per job. The core never calls it again for a job that has a `sending` entry.
-6. `confirm()` gets the expected payment from the journal.
+2. The first installed method whose `matches()` is true pays. If none matches, or `matches()` throws, the
+   payment is refused before anything is signed.
+3. The terms the user approves (network, asset, amount, payTo) come from the challenge entry, never from an
+   adapter, so no adapter can change them.
+4. The spending policy applies, and so does a policy wallet's `budget()`. A budget that is too low, can't be
+   read, or isn't in base units blocks the payment (fail closed). Both run again inside `pay()`.
+5. Approval, then journal `approved`.
+6. `createPayload()` signs. Only one `pay()` per job runs at a time, so a slow wallet popup can't lead to a
+   second signature. If the wallet does not sign, the core journals `refused`. Nothing was sent, so the user
+   can try again.
+7. Journal `sending` with the terms, the payer and the method id, and flush it. Only then send.
+8. The method recorded in `sending` confirms the payment against the journaled terms. If that method is not
+   installed, or it throws, the result is "not confirmed" with a reason, never "paid".
 
-Every method and signer must pass one shared contract test suite (`describePaymentMethod(method)`). For
-example: it never signs before `sending` is on disk, a changed amount in `terms()` is refused, and
-`confirm()` rejects a transfer to another payee.
+**Conformance checks** (`@stellar-agent-services/payment-client/conformance`). The core enforces the steps
+above whatever is plugged in, so these checks cover what only an adapter can get right. They work with any
+test framework.
 
-| Signer | For | Status |
-| --- | --- | --- |
-| Local key | Developers, CI, the agent's allowance wallet | Works |
-| [Stellar Wallets Kit](https://stellarwalletskit.dev): Freighter, xBull, Lobstr, Albedo, Hana, … | Stellar users in the browser, through one adapter | Week 1 spike: which wallets implement `signAuthEntry` the way `@x402/stellar` needs |
-| Passkey smart account (OpenZeppelin) | Non-technical users; agent keys with an on-chain policy | Week 3 spike |
-
-| Payment method | Status |
+| For | Checks |
 | --- | --- |
-| x402 `exact` on Stellar, USDC SAC | Works. The only method Provider Standard v1 allows. |
-| Other x402 schemes (such as `upto` for usage pricing) or other Stellar assets | After the sprint. Each needs a Provider Standard change and a provider that offers it. |
+| Signers: `signerConformance()` | Has a Stellar `G…` or `C…` address. Signs an auth entry as its own address. For a `G…` key, the signature verifies against it. `budget()`, if present, reports base units. |
+| Payment methods: `paymentMethodConformance()` | Has a stable id. Matches its own entry, but not an unknown scheme, an unknown network or a malformed entry. Confirms a settled payment, but not the same transaction with another payee, amount, asset or payer. |
 
-**When to build it.** The signer side already works this way. Until a second method has a provider, the PoC's
-`createPayload` and `confirmPayment` options in `client.ts` are the seam. The refactor into `PaymentMethod`
-follows when the second method arrives, or after the sprint, whichever is first.
+The built-ins pass them, and the test suite also checks that they fail broken adapters.
+
+**Adapters and trust levels.** An adapter for another wallet or payment infrastructure lives in its own package
+(`signer-<name>` or `method-<name>`). It depends on the core's types, and the core never depends on it. Users
+see how far we vouch for each one:
+
+| Level | Meaning | Shown as |
+| --- | --- | --- |
+| Built-in | Ours, in this package: `localKeySigner`, `x402ExactStellar` | No label |
+| Verified | Passes the conformance checks, and we reviewed it | A "verified" badge |
+| Community | Anyone's adapter that we have not reviewed | A warning at setup |
+
+A wallet's own security, such as how it stores its key, stays its own responsibility. The core guarantees only
+that what leaves through it is what the user approved.
+
+**Integrations, later.** None is built yet. Each will be its own package.
+
+| Integration | Slot | Status and what to check first |
+| --- | --- | --- |
+| [Stellar Wallets Kit](https://stellarwalletskit.dev): Freighter, xBull, Lobstr, Albedo, Hana, … | Signer | Week 1 spike: which wallets' `signAuthEntry` works with `@x402/stellar` |
+| Passkey smart account (OpenZeppelin) | Signer, with `budget()` from its policy | Week 3 spike: a `C…` account paying through the facilitator |
+| [Eunomia](https://github.com/eunomia-finance/eunomia) treasury | Signer with `budget()` if its treasury can authorize the SAC `transfer` that x402 `exact` uses; otherwise a payment method, which needs a Provider Standard change | Testnet only. Read its `packages/x402` first. |
+| ERC-8196 policy wallet (a parallel project) | Signer with `budget()` | In development. Our policy and journal already use ERC-8196 field names. |
+| Other x402 schemes (such as `upto`) or other assets | Payment method | Each needs a Provider Standard change and a provider that offers it |
 
 ### Policy (ERC-8196 field names plus Stellar extensions)
 
@@ -159,7 +184,7 @@ something the owner turns on.
 - One entry per step: `intent`, `approved` or `refused` (with the policy rule that refused), `sending`,
   `settled` or `uncertain`, `recovered`, `result`.
 - Each entry has `seq`, `previousHash`, `policyHash`, `jobId`, `service`, `baseUrl`, `bindingHash`, `amount`,
-  `payTo` and, when known, the transaction hash. `hash = sha256(JCS(entry))`.
+  `payTo`, the payment method and, when known, the transaction hash. `hash = sha256(JCS(entry))`.
 - `sending` is written, and flushed to disk, **before** the paid request goes out. Recovery starts from the
   last `sending` with no `settled` or `result` after it, and never re-signs that job.
 - Job tokens are secrets, so they are stored next to the journal, not in it. The journal can then be exported
@@ -170,11 +195,11 @@ something the owner turns on.
 
 1. Fetch the manifest and validate it (the protocol package).
 2. Build the job: `jobId`, `Job-Token` and binding hash. Journal `intent`.
-3. Call create-job without paying and get the 402. `checkChallenge()` against the manifest; any violation
-   refuses.
-4. Policy check. If it fails, journal `refused` and stop (fail closed). If the amount is above
-   `autoApproveUpTo`, show the approval screen.
-5. Journal `approved`, then `sending`, then sign and send.
+3. Call create-job without paying and get the 402. `checkChallenge()` against the manifest, and pick the
+   payment method that matches it. A violation, or no matching method, refuses.
+4. Policy check, plus the wallet's own budget for a policy wallet. If either fails, journal `refused` and
+   stop (fail closed). If the amount is above `autoApproveUpTo`, show the approval screen.
+5. Journal `approved`, sign, then journal `sending` and send.
 6. Get the job view. Confirm the USDC `transfer` on chain before showing "paid", then journal `settled`.
 7. On `202`, or if the connection drops: check-status, then get-result, never paying again.
 
@@ -213,5 +238,5 @@ cover the sprint whatever the spike shows.
 | Node library + CLI with an encrypted keystore | Fine for developers, unusable for non-technical users. It survives as the core plus the local-key signer. |
 | Keyed MCP server with elicitation | Agents only. It survives as one of the two surfaces. |
 | Browser page with Freighter | Needs an extension, and every payment needs a human, so agents can't act on their own. It survives as one signer, through Stellar Wallets Kit. |
-| Payment methods as separate options (`createPayload`, `confirmPayment`, as in the PoC) | Nothing ties a method's payload to its proof, so a new method could pair them wrongly. Kept only until the refactor. |
+| Payment methods as separate options (`createPayload`, `confirmPayment`, as in the first PoC) | Nothing tied a method's payload to its proof, so a new method could pair them wrongly. Replaced by `PaymentMethod` on 2026-10-22. |
 | Hosted wallet that holds keys | Custody, which is out of scope and a regulatory burden. |

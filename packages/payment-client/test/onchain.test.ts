@@ -1,6 +1,7 @@
 import { Keypair, nativeToScVal, StrKey, xdr } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 import { checkTransfer, type ExpectedPayment } from "../src/index.js";
+import { transferEvent } from "./support/chain.js";
 
 const usdc = StrKey.encodeContract(Buffer.alloc(32, 1));
 const payer = Keypair.random().publicKey();
@@ -8,23 +9,8 @@ const payTo = Keypair.random().publicKey();
 const expected: ExpectedPayment = { network: "stellar:testnet", asset: usdc, amount: "100000", payTo, payer };
 
 function transfer(options: { contract?: string; from?: string; to?: string; data?: xdr.ScVal } = {}): xdr.ContractEvent {
-  return new xdr.ContractEvent({
-    ext: new xdr.ExtensionPoint(0),
-    contractId: StrKey.decodeContract(options.contract ?? usdc),
-    type: xdr.ContractEventType.contract(),
-    body: new xdr.ContractEventBody(
-      0,
-      new xdr.ContractEventV0({
-        topics: [
-          nativeToScVal("transfer", { type: "symbol" }),
-          nativeToScVal(options.from ?? payer, { type: "address" }),
-          nativeToScVal(options.to ?? payTo, { type: "address" }),
-          nativeToScVal("USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"),
-        ],
-        data: options.data ?? nativeToScVal(100000n, { type: "i128" }),
-      }),
-    ),
-  });
+  const event = { asset: options.contract ?? usdc, from: options.from ?? payer, to: options.to ?? payTo };
+  return transferEvent(options.data === undefined ? event : { ...event, data: options.data });
 }
 
 describe("checkTransfer", () => {

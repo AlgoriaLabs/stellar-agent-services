@@ -1,8 +1,9 @@
 // An offline provider + client pair: the real provider-kit and payment-client code, with a fake
-// facilitator and a fake signed payload instead of the network.
+// facilitator, signer and payment method instead of the network.
 
 import { createProvider, defineService, type Facilitator, type ProviderConfig } from "@stellar-agent-services/provider-kit";
 import { Keypair } from "@stellar/stellar-sdk";
+import type { PaymentRequirements } from "@x402/core/types";
 import { vi } from "vitest";
 import {
   defaultPolicy,
@@ -11,12 +12,28 @@ import {
   memorySecretStore,
   PaymentClient,
   type PaymentClientOptions,
+  type PaymentMethod,
+  type Signer,
   type SpendingPolicy,
 } from "../../src/index.js";
 
 export const payTo = Keypair.random().publicKey();
 export const payer = Keypair.random().publicKey();
 export const manifestUrl = "http://localhost:8787/.well-known/stellar-agent-services.json";
+
+export const signer: Signer = { address: payer, signAuthEntry: async () => ({ signedAuthEntry: "", signerAddress: payer }) };
+
+/** A payment method for `exact` challenges that signs nothing real and confirms every payment. */
+export function testMethod(overrides: Partial<PaymentMethod> = {}) {
+  let signed = 0;
+  return {
+    id: "test-exact",
+    matches: (requirements: PaymentRequirements) => requirements.scheme === "exact",
+    createPayload: vi.fn<PaymentMethod["createPayload"]>(async () => ({ x402Version: 2, payload: { transaction: `signed-${++signed}` } })),
+    confirm: vi.fn<PaymentMethod["confirm"]>(async () => ({ confirmed: true })),
+    ...overrides,
+  };
+}
 
 export const textStats = defineService({
   name: "text-stats",
@@ -82,20 +99,20 @@ export async function setup(
   }) as typeof globalThis.fetch;
 
   const journal = await Journal.open(memoryJournalStorage());
+  const secrets = memorySecretStore();
   const policy: SpendingPolicy = { ...defaultPolicy(payer, "stellar:testnet"), ...options.policy };
-  let signed = 0;
+  const method = testMethod();
   const client = new PaymentClient({
-    signer: { address: payer, signAuthEntry: async () => ({ signedAuthEntry: "", signerAddress: payer }) },
+    signer,
+    methods: [method],
     policy,
     journal,
-    secrets: memorySecretStore(),
+    secrets,
     fetch,
     allowLocalhost: true,
     pollMs: 20,
     followSeconds: 5,
-    confirmPayment: async () => ({ confirmed: true }),
-    createPayload: async () => ({ x402Version: 2, payload: { transaction: `signed-${++signed}` } }),
     ...options.client,
   });
-  return { provider, facilitator, client, journal, policy, fetch };
+  return { provider, facilitator, client, method, journal, secrets, policy, fetch };
 }

@@ -310,9 +310,11 @@ It runs on Hono with `@hono/node-server`. The `.env` holds only the `payTo` publ
 
 **Decided 2026-10-21.** The design is in [docs/payment-client.md](docs/payment-client.md):
 - One core (`packages/payment-client`) that keeps every safety rule.
-- Two strategies behind it (Strategy pattern, added 2026-10-22):
+- Two strategies behind it (Strategy pattern, built 2026-10-22 with the built-ins only):
   - signers: a local key, browser wallets through Stellar Wallets Kit, then a passkey smart account
   - payment methods: x402 `exact` on Stellar, the only one v1 allows
+  - adapters for other projects (such as Eunomia or an ERC-8196 wallet) come later as separate packages that
+    must pass the conformance checks
 - Two surfaces: a static web app for everyone and a keyed MCP server for agents.
 - Policy and journal use ERC-8196 field names. Out of the box, every payment needs approval.
 

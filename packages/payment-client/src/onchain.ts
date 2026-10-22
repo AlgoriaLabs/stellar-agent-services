@@ -6,6 +6,7 @@
 
 import type { StellarNetwork } from "@stellar-agent-services/protocol";
 import { rpc, scValToNative, StrKey, type xdr } from "@stellar/stellar-sdk";
+import type { Confirmation, ExpectedPayment } from "./strategies.js";
 
 const RPC_URLS: Record<StellarNetwork, string | undefined> = {
   "stellar:testnet": "https://soroban-testnet.stellar.org",
@@ -13,30 +14,19 @@ const RPC_URLS: Record<StellarNetwork, string | undefined> = {
   "stellar:pubnet": undefined,
 };
 
-/** What the user approved, as journaled in `sending`. */
-export interface ExpectedPayment {
-  network: StellarNetwork;
-  /** The asset's contract address (C...), as in the challenge. */
-  asset: string;
-  /** Base units. */
-  amount: string;
-  payTo: string;
-  payer: string;
-}
-
-export interface Confirmation {
-  confirmed: boolean;
-  /** Why the payment is not confirmed. */
-  reason?: string;
-}
-
 export type ConfirmPayment = (transaction: string, expected: ExpectedPayment) => Promise<Confirmation>;
 
-export function rpcConfirmPayment(rpcUrl?: string): ConfirmPayment {
+/** The one RPC call confirmation needs: an rpc.Server, or a fake chain in tests. */
+export type TransactionReader = Pick<rpc.Server, "getTransaction">;
+
+export function rpcConfirmPayment(options: { rpcUrl?: string; server?: TransactionReader } = {}): ConfirmPayment {
   return async (transaction, expected) => {
-    const url = rpcUrl ?? RPC_URLS[expected.network];
-    if (url === undefined) throw new Error(`no RPC URL for ${expected.network}; pass rpcUrl`);
-    const server = new rpc.Server(url);
+    let server = options.server;
+    if (server === undefined) {
+      const url = options.rpcUrl ?? RPC_URLS[expected.network];
+      if (url === undefined) return { confirmed: false, reason: `no RPC URL for ${expected.network}; pass rpcUrl` };
+      server = new rpc.Server(url);
+    }
     // The provider may answer before the RPC node has ingested the ledger.
     for (let attempt = 0; attempt < 10; attempt++) {
       let result: rpc.Api.GetTransactionResponse;

@@ -1,10 +1,13 @@
 // The payment flow (docs/payment-client.md, "One payment, step by step"):
 //
 //   quote():   manifest -> job id, token, binding hash -> unpaid create-job -> 402 -> checkChallenge
-//              -> policy. Nothing is signed.
-//   pay():     approval -> journal `sending` -> sign once -> paid create-job -> follow the job ->
+//              -> pick a payment method -> policy and wallet budget. Nothing is signed.
+//   pay():     approval -> sign once -> journal `sending` -> paid create-job -> follow the job ->
 //              confirm on chain.
 //   recover(): check-status / get-result from the journal. Never signs or pays again.
+//
+// The signer and the payment methods are strategies (strategies.ts). Every safety step stays here, so
+// it holds whichever ones are plugged in.
 
 import {
   bindingHash,
@@ -22,24 +25,23 @@ import {
 } from "@stellar-agent-services/protocol";
 import { decodePaymentRequiredHeader, encodePaymentSignatureHeader } from "@x402/core/http";
 import type { PaymentPayload, PaymentRequired, PaymentRequirements } from "@x402/core/types";
-import type { ClientStellarSigner } from "@x402/stellar";
-import { ExactStellarScheme } from "@x402/stellar/exact/client";
 import type { Journal, SecretStore } from "./journal.js";
 import { loadManifest } from "./manifest.js";
-import { rpcConfirmPayment, type Confirmation, type ConfirmPayment } from "./onchain.js";
-import { checkPolicy, PAY_ACTION, policyHash, type PolicyViolation, type SpendingPolicy } from "./policy.js";
+import { checkPolicy, PAY_ACTION, policyHash, type PolicyDecision, type PolicyViolation, type SpendingPolicy } from "./policy.js";
+import type { Confirmation, PaymentMethod, SignedPayload, Signer } from "./strategies.js";
+import { X402_EXACT_STELLAR, x402ExactStellar } from "./x402-exact-stellar.js";
 
 export interface PaymentClientOptions {
-  signer: ClientStellarSigner;
+  /** Who pays: localKeySigner(), or a wallet adapter. */
+  signer: Signer;
+  /** How to pay. The first method that matches the challenge is used. Default: x402ExactStellar(). */
+  methods?: PaymentMethod[];
   policy: SpendingPolicy;
   journal: Journal;
   secrets: SecretStore;
   fetch?: typeof fetch;
-  /** Soroban RPC for signing and confirmation. Defaults to the public testnet RPC. */
+  /** Soroban RPC for the default payment method. Defaults to the public testnet RPC. */
   rpcUrl?: string;
-  confirmPayment?: ConfirmPayment;
-  /** Builds the signed x402 payload. Defaults to @x402/stellar's ExactStellarScheme with `signer`. */
-  createPayload?: (requirements: PaymentRequirements) => Promise<Pick<PaymentPayload, "x402Version" | "payload">>;
   /** Accept http://localhost providers, for local development. */
   allowLocalhost?: boolean;
   /** How long pay() and recover() follow a running job before returning it. Default 120 s. */
@@ -57,8 +59,13 @@ export interface Quote {
   bindingHash: string;
   challenge: PaymentRequired;
   requirements: PaymentRequirements;
-  /** The 402 does not match the manifest [P7]. Any entry blocks the payment. */
+  /** The 402 does not match the manifest [P7], or no installed method can pay it. Any entry blocks the payment. */
   challengeViolations: string[];
+  /** The installed payment method that pays this challenge. */
+  methodId: string | undefined;
+  /** What a policy wallet can still pay on chain, when the signer reports a budget. */
+  walletBudget: string | undefined;
+  /** The spending policy's violations, and the wallet budget's (`wallet.budget`). */
   policyViolations: PolicyViolation[];
   /** No violations, but above the auto-approve amount: a human must approve. */
   needsApproval: boolean;
@@ -99,14 +106,17 @@ export class ProviderError extends Error {
 
 export class PaymentClient {
   private readonly fetch: typeof fetch;
-  private readonly confirmPayment: ConfirmPayment;
-  private readonly createPayload: NonNullable<PaymentClientOptions["createPayload"]>;
+  private readonly methods: readonly PaymentMethod[];
+  /** Jobs inside pay() right now. A slow signer, such as a wallet popup, must not let a job be signed twice. */
+  private readonly paying = new Set<string>();
 
   constructor(private readonly options: PaymentClientOptions) {
     this.fetch = options.fetch ?? fetch;
-    this.confirmPayment = options.confirmPayment ?? rpcConfirmPayment(options.rpcUrl);
-    const scheme = new ExactStellarScheme(options.signer, options.rpcUrl === undefined ? undefined : { url: options.rpcUrl });
-    this.createPayload = options.createPayload ?? ((requirements) => scheme.createPaymentPayload(2, requirements));
+    this.methods = options.methods ?? [x402ExactStellar(options.rpcUrl === undefined ? {} : { rpcUrl: options.rpcUrl })];
+    if (this.methods.length === 0) throw new TypeError("PaymentClient needs at least one payment method");
+    const ids = this.methods.map((method) => method.id);
+    // Recovery finds the method that paid by its id.
+    if (new Set(ids).size !== ids.length) throw new TypeError(`payment method ids must be unique: ${ids.join(", ")}`);
   }
 
   get address(): string {
@@ -148,14 +158,9 @@ export class PaymentClient {
 
     const challengeViolations = checkChallenge(manifest, service.name, challenge).map((v) => `[${v.rule}] ${v.pointer}: ${v.message}`);
     const requirements = challenge.accepts?.[0] ?? ({} as PaymentRequirements);
-    const decision = checkPolicy(policy, {
-      action: PAY_ACTION,
-      network: requirements.network,
-      asset: requirements.asset,
-      amount: requirements.amount ?? "0",
-      payTo: requirements.payTo,
-      spentLast24h: journal.spentSince(new Date(Date.now() - 86400_000)),
-    });
+    const method = this.methodFor(requirements);
+    if (method === undefined) challengeViolations.push(noMethod(requirements));
+    const limits = await this.checkLimits(requirements);
 
     const quote: Quote = {
       manifestUrl,
@@ -167,8 +172,10 @@ export class PaymentClient {
       challenge,
       requirements,
       challengeViolations,
-      policyViolations: decision.violations,
-      needsApproval: decision.needsApproval,
+      methodId: method?.id,
+      walletBudget: limits.walletBudget,
+      policyViolations: limits.violations,
+      needsApproval: limits.needsApproval,
     };
     if (!this.payable(quote)) await journal.append("refused", jobId, hash, { reasons: this.reasons(quote) });
     return quote;
@@ -184,18 +191,27 @@ export class PaymentClient {
    * payments the policy auto-approves. A refusal is journaled and thrown.
    */
   async pay(quote: Quote, { approved }: { approved: boolean }): Promise<PaymentResult> {
-    const { journal, policy } = this.options;
-    const hash = await policyHash(policy);
     if (!this.payable(quote)) throw new PaymentRefusedError(this.reasons(quote).join("; "));
-    if (journal.forJob(quote.jobId).some((entry) => entry.event === "sending")) {
+    if (this.options.journal.forJob(quote.jobId).some((entry) => entry.event === "sending")) {
       throw new PaymentRefusedError(`job ${quote.jobId} was already paid for; use recover()`);
     }
+    // Checked and marked before the first await, so a second pay() for this job can't sign it again.
+    if (this.paying.has(quote.jobId)) throw new PaymentRefusedError(`job ${quote.jobId} is already being paid`);
+    this.paying.add(quote.jobId);
+    try {
+      return await this.payOnce(quote, approved);
+    } finally {
+      this.paying.delete(quote.jobId);
+    }
+  }
+
+  private async payOnce(quote: Quote, approved: boolean): Promise<PaymentResult> {
+    const { journal, policy, signer } = this.options;
+    const hash = await policyHash(policy);
+    const method = this.methodFor(quote.requirements);
+    if (method === undefined) throw new PaymentRefusedError(noMethod(quote.requirements));
     // Limits are checked again: another payment may have run since the quote.
-    const decision = checkPolicy(policy, {
-      action: PAY_ACTION,
-      ...pick(quote.requirements),
-      spentLast24h: journal.spentSince(new Date(Date.now() - 86400_000)),
-    });
+    const decision = await this.checkLimits(quote.requirements);
     if (!decision.allowed) {
       await journal.append("refused", quote.jobId, hash, { reasons: decision.violations.map((v) => `${v.field}: ${v.message}`) });
       throw new PaymentRefusedError(decision.violations.map((v) => v.message).join("; "));
@@ -206,10 +222,18 @@ export class PaymentClient {
     }
     await journal.append("approved", quote.jobId, hash, { by: decision.needsApproval ? "user" : "policy" });
 
-    const signed = await this.createPayload(quote.requirements);
+    let signed: SignedPayload;
+    try {
+      signed = await method.createPayload(quote.requirements, signer);
+    } catch (error) {
+      // Nothing was sent, so nothing was charged, and the user may try again.
+      const reason = `the payment was not signed: ${(error as Error).message}`;
+      await journal.append("refused", quote.jobId, hash, { reasons: [reason] });
+      throw new PaymentRefusedError(reason);
+    }
     const payload: PaymentPayload = { ...signed, x402Version: 2, resource: quote.challenge.resource, accepted: quote.requirements };
     // Written and flushed before the request goes out: from here on, this job is never signed again.
-    await journal.append("sending", quote.jobId, hash, { ...pick(quote.requirements), payer: this.address });
+    await journal.append("sending", quote.jobId, hash, { ...pick(quote.requirements), payer: signer.address, method: method.id });
 
     const token = (await this.options.secrets.get(quote.jobId))!;
     let response: Response;
@@ -291,14 +315,59 @@ export class PaymentClient {
       .entries()
       .find((entry) => entry.event === "settled" && entry.jobId !== jobId && entry.details["confirmed"] === true && entry.details["transaction"] === transaction);
     if (other !== undefined) return { confirmed: false, reason: `transaction ${transaction} already confirmed job ${other.jobId}` };
-    return this.confirmPayment(transaction, {
-      network: String(sending["network"]) as StellarNetwork,
-      asset: String(sending["asset"]),
-      amount: String(sending["amount"]),
-      payTo: String(sending["payTo"]),
-      // Journals from before `payer` was recorded were signed by this client's key.
-      payer: typeof sending["payer"] === "string" ? sending["payer"] : this.address,
+    // Journals from before `method` was recorded were paid with the only method there was.
+    const methodId = typeof sending["method"] === "string" ? sending["method"] : X402_EXACT_STELLAR;
+    const method = this.methods.find((candidate) => candidate.id === methodId);
+    if (method === undefined) return { confirmed: false, reason: `payment method "${methodId}" is not installed, so the payment can't be checked` };
+    try {
+      return await method.confirm(transaction, {
+        network: String(sending["network"]) as StellarNetwork,
+        asset: String(sending["asset"]),
+        amount: String(sending["amount"]),
+        payTo: String(sending["payTo"]),
+        // Journals from before `payer` was recorded were signed by this client's key.
+        payer: typeof sending["payer"] === "string" ? sending["payer"] : this.address,
+      });
+    } catch (error) {
+      return { confirmed: false, reason: `the payment could not be checked: ${(error as Error).message}` };
+    }
+  }
+
+  /** The first installed method that pays the entry. A method that throws does not match (fail closed). */
+  private methodFor(requirements: PaymentRequirements): PaymentMethod | undefined {
+    return this.methods.find((method) => {
+      try {
+        return method.matches(requirements);
+      } catch {
+        return false;
+      }
     });
+  }
+
+  /** The spending policy, plus a policy wallet's own on-chain budget. Both must pass (fail closed). */
+  private async checkLimits(requirements: PaymentRequirements): Promise<PolicyDecision & { walletBudget: string | undefined }> {
+    const { policy, journal, signer } = this.options;
+    const terms = pick(requirements);
+    const decision = checkPolicy(policy, {
+      action: PAY_ACTION,
+      ...terms,
+      amount: terms.amount ?? "0",
+      spentLast24h: journal.spentSince(new Date(Date.now() - 86400_000)),
+    });
+    if (signer.budget === undefined || terms.amount === undefined) return { ...decision, walletBudget: undefined };
+
+    let walletBudget: string | undefined;
+    let problem: string | undefined;
+    try {
+      const reported = await signer.budget(terms.network, terms.asset);
+      if (reported !== undefined && !/^\d+$/.test(reported)) problem = `the wallet reported an invalid budget "${reported}"`;
+      else walletBudget = reported;
+    } catch (error) {
+      problem = `the wallet's budget could not be read: ${(error as Error).message}`;
+    }
+    if (walletBudget !== undefined && BigInt(terms.amount) > BigInt(walletBudget)) problem = "the amount is above what the wallet's on-chain budget has left";
+    if (problem === undefined) return { ...decision, walletBudget };
+    return { allowed: false, violations: [...decision.violations, { field: "wallet.budget", message: problem }], needsApproval: false, walletBudget };
   }
 
   /** Polls get-result until the job finishes or followSeconds pass. */
@@ -325,6 +394,10 @@ export class PaymentClient {
   private reasons(quote: Quote): string[] {
     return [...quote.challengeViolations, ...quote.policyViolations.map((v) => `${v.field}: ${v.message}`)];
   }
+}
+
+function noMethod(requirements: PaymentRequirements): string {
+  return `no installed payment method pays scheme "${String(requirements.scheme)}" on ${String(requirements.network)}`;
 }
 
 function pick(requirements: PaymentRequirements) {

@@ -3,12 +3,28 @@
 The buyer side: approval, spending policy, a hash-chained journal, payment and job recovery. The design is in
 [docs/payment-client.md](../../docs/payment-client.md).
 
-**Status: proof of concept.** The core flow works end to end on Stellar testnet with a local-key signer and the
-`stellar-pay` CLI. The web app, MCP server, browser-wallet and passkey signers come later and reuse this core.
+**Status: proof of concept.** The core flow works end to end on Stellar testnet with the built-in signer and
+payment method and the `stellar-pay` CLI. The web app, MCP server, browser-wallet and passkey signers come later
+and reuse this core.
+
+Signers and payment methods are strategies: the core keeps every safety step, and adapters for other wallets or
+payment infrastructure plug in without changing it (docs/payment-client.md, "Strategies").
+
+```ts
+const client = new PaymentClient({
+  signer: localKeySigner(secret, "stellar:testnet"), // or a wallet adapter
+  methods: [x402ExactStellar()],                      // the default
+  policy, journal, secrets,
+});
+```
 
 | File | Contents |
 | --- | --- |
 | `src/client.ts` | `PaymentClient`: `quote()` (nothing signed), `pay()` (signs once), `recover()` (never pays) |
+| `src/strategies.ts` | The `Signer` and `PaymentMethod` interfaces |
+| `src/local-key-signer.ts` | The built-in signer: a secret key in this process |
+| `src/x402-exact-stellar.ts` | The built-in payment method: x402 `exact` on Stellar, the only one Provider Standard v1 allows |
+| `src/conformance.ts` | Checks that every signer and payment-method adapter must pass (`./conformance` entry point) |
 | `src/policy.ts` | Spending policy with ERC-8196 field names; `checkPolicy()` fails closed |
 | `src/journal.ts` | Append-only, hash-chained journal; job tokens kept apart in a `SecretStore` |
 | `src/manifest.ts` | Fetches and validates a provider manifest |
@@ -44,3 +60,4 @@ then run the `stellar-pay recover <job-id> --dev` command it prints. `stellar-pa
 - `minVerificationScore` and `stellar.minProviderLevel` are stored but not enforced.
 - The wallet secret is a plain file (mode 600). Testnet only.
 - No browser storage, web app or MCP server yet.
+- Only the built-in signer and method. Adapters for other wallets come later, each in its own package.

@@ -11,7 +11,6 @@ import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import type { JsonObject, StellarNetwork } from "@stellar-agent-services/protocol";
 import { Asset, Horizon, Keypair, Networks, Operation, TransactionBuilder } from "@stellar/stellar-sdk";
-import { createEd25519Signer } from "@x402/stellar";
 import {
   PaymentClient,
   PaymentRefusedError,
@@ -20,6 +19,7 @@ import {
   type Quote,
 } from "./client.js";
 import { fileJournalStorage, fileSecretStore, Journal, verifyChain } from "./journal.js";
+import { localKeySigner } from "./local-key-signer.js";
 import { loadManifest } from "./manifest.js";
 import { explorerUrl } from "./onchain.js";
 import { defaultPolicy, type SpendingPolicy } from "./policy.js";
@@ -225,10 +225,12 @@ function showQuote(quote: Quote, client: PaymentClient): void {
     ["Network", `${requirements.network}${requirements.network === "stellar:testnet" ? "  (test money)" : ""}`],
     ["Charged", service.charge === "on-success" ? "only if the work succeeds" : "up front, before the work starts"],
     ["From", client.address],
+    ["Method", quote.methodId ?? "none installed for this challenge"],
   ];
+  if (quote.walletBudget !== undefined) rows.push(["Budget", `${usdc(quote.walletBudget)} left in the wallet`]);
   console.log(`\n┌─ Payment approval ${"─".repeat(50)}`);
   for (const [label, value] of rows) console.log(`│ ${label.padEnd(9)} ${value}`);
-  for (const violation of quote.challengeViolations) console.log(`│ ✗ provider mismatch ${violation}`);
+  for (const violation of quote.challengeViolations) console.log(`│ ✗ challenge ${violation}`);
   for (const violation of quote.policyViolations) console.log(`│ ✗ policy ${violation.field}: ${violation.message}`);
   if (client.payable(quote)) console.log("│ ✓ The challenge matches the manifest and your spending policy.");
   console.log(`└${"─".repeat(69)}`);
@@ -278,7 +280,7 @@ async function journalVerify(): Promise<void> {
 async function openClient(dev: boolean): Promise<PaymentClient> {
   const wallet = await readWallet();
   return new PaymentClient({
-    signer: createEd25519Signer(wallet.secret, wallet.network),
+    signer: localKeySigner(wallet.secret, wallet.network),
     policy: await readPolicy(),
     journal: await Journal.open(fileJournalStorage(files.journal)),
     secrets: fileSecretStore(files.tokens),
