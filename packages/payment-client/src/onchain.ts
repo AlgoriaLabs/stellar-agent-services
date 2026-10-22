@@ -50,8 +50,8 @@ export function rpcConfirmPayment(options: { rpcUrl?: string; server?: Transacti
 export function checkTransfer(events: readonly xdr.ContractEvent[], expected: ExpectedPayment): Confirmation {
   const transfers = events.flatMap((event) => {
     const contractId = event.contractId();
-    // Typed as Opaque[], but a Buffer at runtime.
-    if (contractId === null || StrKey.encodeContract(Buffer.from(contractId as unknown as Uint8Array)) !== expected.asset) return [];
+    // Typed as Opaque[], but the SDK's own Buffer at runtime, in Node and in the browser.
+    if (contractId === null || StrKey.encodeContract(contractId as unknown as Buffer) !== expected.asset) return [];
     const topics = event.body().v0().topics().map((topic) => scValToNative(topic) as unknown);
     if (topics[0] !== "transfer" || topics[1] !== expected.payer) return [];
     return [{ to: topics[2], amount: transferAmount(event.body().v0().data()) }];

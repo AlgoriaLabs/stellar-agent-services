@@ -12,9 +12,11 @@ payment side:
 | [`packages/provider-kit`](packages/provider-kit) | Turn a function, or an existing API in any language (gateway mode), into a paid service: pricing, x402 USDC payments, Job Recovery |
 | [`packages/payment-client`](packages/payment-client) | Buyer side: approval, spending controls, payment, recovery (proof of concept) |
 | [`packages/verifier`](packages/verifier) | Provider checks, verification receipts, badges, Stellar 8004 Validation Registry |
+| [`apps/wallet`](apps/wallet) | Web page where a person approves and pays a service (testnet) |
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
 
-**Status:** project structure only, with no working code yet. The plan is in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+**Status:** proof of concept. A paid call works end to end, from the sample provider to the payment client's CLI
+and web page; the verifier is still a scaffold. The plan is in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 Development runs on Stellar **testnet**.
 
 We stay compatible with ERC-8126 (agent verification) and ERC-8196 (agent authenticated wallet). See

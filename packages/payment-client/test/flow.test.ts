@@ -61,6 +61,27 @@ describe("payment flow", () => {
     expect(journal.forJob(quote.jobId).map((entry) => entry.event)).toEqual(["intent", "refused"]);
   });
 
+  it("declines without signing, even inside the auto-approve budget", async () => {
+    const { client, facilitator, journal, method } = await setup({ policy: { stellar: { network: "stellar:testnet", payees: { block: [] }, autoApproveUpTo: "100000" } } });
+    const quote = await client.quote(manifestUrl, "text-stats", { text: "hi" });
+
+    await client.decline(quote);
+    await client.decline(quote);
+    expect(method.createPayload).not.toHaveBeenCalled();
+    expect(facilitator.verify).not.toHaveBeenCalled();
+    expect(journal.forJob(quote.jobId).map((entry) => entry.event)).toEqual(["intent", "refused"]);
+    expect(journal.forJob(quote.jobId)[1]?.details).toEqual({ reasons: ["the user declined"] });
+  });
+
+  it("does not journal a decline once the job was paid", async () => {
+    const { client, journal } = await setup();
+    const quote = await client.quote(manifestUrl, "text-stats", { text: "hi" });
+    await client.pay(quote, { approved: true });
+
+    await client.decline(quote);
+    expect(journal.forJob(quote.jobId).map((entry) => entry.event)).toEqual(["intent", "approved", "sending", "settled", "result"]);
+  });
+
   it("pays without a prompt inside the auto-approve budget", async () => {
     const { client } = await setup({ policy: { stellar: { network: "stellar:testnet", payees: { block: [] }, autoApproveUpTo: "100000" } } });
     const quote = await client.quote(manifestUrl, "text-stats", { text: "hi" });
@@ -112,6 +133,24 @@ describe("payment flow", () => {
 });
 
 describe("job recovery", () => {
+  it("hands back a job whose settlement the provider can't confirm, without paying again", async () => {
+    const facilitator = fakeFacilitator();
+    facilitator.settle.mockRejectedValue(new Error("facilitator timeout"));
+    const { client, journal } = await setup({ provider: { facilitator }, client: { followSeconds: 60 } });
+    const quote = await client.quote(manifestUrl, "slow-report", { topic: "stellar" });
+
+    const started = Date.now();
+    const { job, confirmed } = await client.pay(quote, { approved: true });
+    expect(job).toMatchObject({ status: "payment_uncertain", charged: "unknown" });
+    expect(confirmed).toBe(false);
+    expect(Date.now() - started).toBeLessThan(5000);
+    expect(facilitator.settle).toHaveBeenCalledTimes(1);
+    expect(journal.forJob(quote.jobId).map((entry) => entry.event)).toEqual(["intent", "approved", "sending"]);
+    // Still recoverable, and recovery doesn't pay either.
+    expect((await client.recover(quote.jobId)).job.status).toBe("payment_uncertain");
+    expect(facilitator.settle).toHaveBeenCalledTimes(1);
+  });
+
   it("recovers a lost response without paying again", async () => {
     const { client, facilitator, journal } = await setup({ provider: { loseCreateJobResponse: true } });
     const quote = await client.quote(manifestUrl, "text-stats", { text: "lost and found" });

@@ -1,0 +1,25 @@
+{
+  "name": "@stellar-agent-services/wallet",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Agent Wallet: the web page where a person approves and pays Provider Standard services (Stellar testnet).",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings"
+  },
+  "dependencies": {
+    "@stellar-agent-services/payment-client": "0.0.0",
+    "@stellar-agent-services/protocol": "0.0.0",
+    "@stellar/stellar-sdk": "16.3.1"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "svelte": "5.57.2",
+    "svelte-check": "4.7.6",
+    "vite": "8.3.3"
+  }
+}

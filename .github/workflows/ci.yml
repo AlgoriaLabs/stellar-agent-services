@@ -17,3 +17,5 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run check --workspace @stellar-agent-services/wallet
+      - run: npm run build --workspace @stellar-agent-services/wallet

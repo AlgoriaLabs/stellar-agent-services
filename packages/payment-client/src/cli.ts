@@ -18,7 +18,8 @@ import {
   type PaymentResult,
   type Quote,
 } from "./client.js";
-import { fileJournalStorage, fileSecretStore, Journal, verifyChain } from "./journal.js";
+import { fileJournalStorage, fileSecretStore } from "./file-storage.js";
+import { Journal, verifyChain } from "./journal.js";
 import { localKeySigner } from "./local-key-signer.js";
 import { loadManifest } from "./manifest.js";
 import { explorerUrl } from "./onchain.js";
