@@ -7,7 +7,8 @@ Job Recovery, delivered and piloted within one 30-day Instaward sprint.
 - **Source of truth:** Instawards SOW "Stellar Agent MCP" (submitted 29.09.2026, $4,000, 30 days).
 - **Background:** `stellar-agent-search/docs/provider-network-phase-2.md` and `issues/P3-23-provider-network-phase-2.md`.
 - **Network:** Stellar **testnet** for the whole build. Mainnet is a later, separate decision (see [Open decisions](#10-open-decisions)).
-- **Status:** planning. The repository holds structure and comments only.
+- **Status:** Week 1. The protocol package, a thin Provider Kit slice and the payment client core work end to end
+  on testnet. The other modules are scaffolds with TODO comments.
 
 ---
 
@@ -139,7 +140,7 @@ evidence/          Receipts, payment references, validation records, pilot repor
 | USDC issuer (trustline check) | `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` |
 | Soroban RPC / Horizon | `https://soroban-testnet.stellar.org` / `https://horizon-testnet.stellar.org` |
 | 8004 contracts | `TESTNET_CONFIG` from `@trionlabs/stellar8004`. Validation: `CC5USZRO26MOIAVNYTTJDS63C2OBBLREOAOET4CPF2EZWO3YFKLMO3SL` |
-| Facilitator | Candidate: `https://x402.org/facilitator`. **Week 1 day 1:** confirm `stellar:testnet` + `exact` through `getSupported()`. |
+| Facilitator | `https://x402.org/facilitator`. Confirmed: it supports `stellar:testnet` + `exact` with sponsored fees, and sets no authorization window of its own (the window follows `maxTimeoutSeconds`). |
 | Decimals | 7 (`0.01 USDC = 100000` base units) |
 
 | Package | Version | Note |
@@ -336,11 +337,11 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
 
 ### Week 1: Standard, payment client, first paid flow (D1)
 
-- [ ] Day 1:
-  - Testnet accounts: provider `payTo`, test payer, verifier.
+- [x] Day 1:
+  - Testnet accounts: provider `payTo` and test payer. The verifier account waits for the verifier (Week 3).
   - USDC trustlines and testnet USDC.
-  - Facilitator `getSupported()` probe, and its limit on the payment authorization window
-    (the spec's `maxTimeoutSeconds` range of 30–300 depends on it).
+  - Facilitator `getSupported()` probe: `stellar:testnet` + `exact` is supported, and the facilitator adds no
+    limit of its own on the payment authorization window, so the spec's 30–300 range stands.
 - [x] Day 1–2: **Payment client design decision** (§5.6).
 - [x] `docs/provider-standard.md` v1 draft.
 - [x] Manifest JSON Schema, test vectors and reference checks in `packages/protocol` (canonical JSON, binding
@@ -348,9 +349,13 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
 - [x] Remaining protocol types (job view, job states, errors, receipts), with test vectors.
 - [x] Freeze v1 (2026-10-21, open decision 6).
 - [x] Verification receipt format defined (spec only).
-- [ ] Thin provider slice: manifest, create-job with an on-success service, x402 resource server, memory store.
+- [x] Thin provider slice: manifest, create-job with an on-success service, x402 resource server, memory store.
 - [ ] Payment client, first working version: approval screen, caps, signing, journal.
+  - [x] Core, local-key signer and `stellar-pay` CLI (approval prompt, caps, journal, on-chain check).
+  - [ ] Minimal web approval page (`apps/wallet`), for the D1 video.
 - [ ] One successful testnet payment flow, recorded (tx link, screenshots, short video).
+  - [x] Testnet tx links.
+  - [ ] Screenshots and the short video.
 - [ ] Start pilot outreach: shortlist 4–5 candidate providers and 6–7 users.
 
 **Exit:** spec published, approval-before-payment video, testnet tx link.
