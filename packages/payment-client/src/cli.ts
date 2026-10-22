@@ -2,7 +2,7 @@
 // stellar-pay: the PoC surface on top of the payment-client core (docs/payment-client.md).
 //
 // The key is a local file (the "local key" signer), which is fine for testnet and development.
-// The web app, passkeys and Freighter come later; they reuse the same core.
+// The web app, browser wallets and passkeys come later; they reuse the same core.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";

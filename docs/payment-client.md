@@ -28,7 +28,7 @@ agents, with spending rules set by a human**. It is the demand side of the Provi
 
 ## Decision
 
-### Shape: one core, swappable signers, two surfaces
+### Shape: one core, two strategies, two surfaces
 
 ```
    Web app (everyone)              MCP server (agents)
@@ -38,20 +38,22 @@ agents, with spending rules set by a human**. It is the demand side of the Provi
               └──────────┬─────────────────┘
                          ▼
              payment-client core (TypeScript, no UI)
-   manifest → checkChallenge → policy → journal → sign → send → recover → prove
-                         │
-                         ▼
-              Signer  { address, signAuthEntry }   (SEP-43 shape, as @x402/stellar expects)
-     ┌──────────────┬──────────────┬─────────────────────────────────────────┐
-     │ local key    │ Freighter    │ smart account: passkey owner +          │
-     │ (dev, CI)    │ (Stellar     │ scoped agent key, policy enforced       │
-     │              │  users)      │ on chain in __check_auth                │
-     └──────────────┴──────────────┴─────────────────────────────────────────┘
+   manifest → checkChallenge → pick method → policy → approve → journal → pay → send → recover → confirm
+                │                                                           │
+                ▼                                                           ▼
+   PaymentMethod  (how a payment is made)                     Signer  (who holds the key)
+   ┌──────────────────────────────┐                ┌──────────────┬──────────────────┬──────────────────┐
+   │ x402 exact on Stellar (USDC) │                │ local key    │ Stellar Wallets  │ smart account:   │
+   │ later: other schemes/assets  │                │ (dev, CI,    │ Kit: Freighter,  │ passkey owner +  │
+   │ once the standard has them   │                │  allowance)  │ xBull, Lobstr, … │ scoped agent key │
+   └──────────────────────────────┘                └──────────────┴──────────────────┴──────────────────┘
 ```
 
 - **Core** (`packages/payment-client`): everything that has to be right for money to be safe. It has no UI and
   no key storage, and the same code runs in Node and the browser.
 - **Signers** plug in behind one interface, so the core never sees how a key is held.
+- **Payment methods** plug in behind another, so a new way to pay never touches the safety rules. See
+  [Strategies](#strategies-signers-and-payment-methods).
 - **Web app** (`apps/wallet`, static, no backend): the main UI for everyone, and what the D1 video shows.
   - Turns each service's `inputSchema` into a form, so any provider is usable with no frontend work.
   - Shows price, payee, verification badges and `charge` on one approval screen.
@@ -75,6 +77,62 @@ The agent key is what lets an agent pay without a prompt, so how much damage it 
   account, whose `__check_auth` enforces the agent's policy on chain. Even a compromised agent machine can't
   spend beyond the policy. Contract accounts hold USDC without a trustline, which removes a step for
   non-technical users.
+
+### Strategies: signers and payment methods
+
+The core uses the Strategy pattern on two independent axes. Any signer works with any method that supports
+it, so other Stellar wallets and payment schemes can be added without changing the core.
+
+```ts
+/** Who holds the key. SEP-43 shape, as @x402/stellar's ClientStellarSigner expects. */
+interface Signer {
+  address: string;                       // G… or C…
+  signAuthEntry: SignAuthEntry;
+  signTransaction?: SignTransaction;
+}
+
+/** How a payment is made: one per payment scheme and network family. */
+interface PaymentMethod {
+  id: string;                            // "x402-exact-stellar"
+  /** Can this method pay this challenge entry? */
+  matches(requirements: PaymentRequirements): boolean;
+  /** What the approval screen, the policy and the journal see. */
+  terms(requirements: PaymentRequirements): { network: string; asset: string; amount: string; payTo: string };
+  /** Builds the signed payload. The only step that uses the signer. */
+  createPayload(requirements: PaymentRequirements, signer: Signer): Promise<SignedPayload>;
+  /** Settlement proof, checked against the journaled terms, never the provider's receipt. */
+  confirm(transaction: string, expected: ExpectedPayment): Promise<Confirmation>;
+}
+```
+
+**The core keeps the safety rules; strategies can't skip them.** For every method, in this order:
+
+1. `checkChallenge()`: the challenge equals the manifest's payment option [P4].
+2. Pick the first method whose `matches()` is true. If none matches, refuse and journal why (fail closed).
+3. `terms()` must equal the challenge's `network`, `asset`, `amount` and `payTo`. On any mismatch, refuse.
+   A method can describe a payment, but it can't change one.
+4. Policy and approval run on those terms. Journal `approved`, then `sending` with the terms and payer.
+5. `createPayload()` runs once per job. The core never calls it again for a job that has a `sending` entry.
+6. `confirm()` gets the expected payment from the journal.
+
+Every method and signer must pass one shared contract test suite (`describePaymentMethod(method)`). For
+example: it never signs before `sending` is on disk, a changed amount in `terms()` is refused, and
+`confirm()` rejects a transfer to another payee.
+
+| Signer | For | Status |
+| --- | --- | --- |
+| Local key | Developers, CI, the agent's allowance wallet | Works |
+| [Stellar Wallets Kit](https://stellarwalletskit.dev): Freighter, xBull, Lobstr, Albedo, Hana, … | Stellar users in the browser, through one adapter | Week 1 spike: which wallets implement `signAuthEntry` the way `@x402/stellar` needs |
+| Passkey smart account (OpenZeppelin) | Non-technical users; agent keys with an on-chain policy | Week 3 spike |
+
+| Payment method | Status |
+| --- | --- |
+| x402 `exact` on Stellar, USDC SAC | Works. The only method Provider Standard v1 allows. |
+| Other x402 schemes (such as `upto` for usage pricing) or other Stellar assets | After the sprint. Each needs a Provider Standard change and a provider that offers it. |
+
+**When to build it.** The signer side already works this way. Until a second method has a provider, the PoC's
+`createPayload` and `confirmPayment` options in `client.ts` are the seam. The refactor into `PaymentMethod`
+follows when the second method arrives, or after the sprint, whichever is first.
 
 ### Policy (ERC-8196 field names plus Stellar extensions)
 
@@ -124,7 +182,7 @@ something the owner turns on.
 
 | Week | Build | Shows |
 | --- | --- | --- |
-| 1 | Core (policy, journal, x402 flow, recovery skeleton), local-key signer, a minimal approval page. Spike: Freighter `signAuthEntry` with `@x402/stellar`. | The first paid testnet transaction; the D1 video of the approval screen |
+| 1 | Core (policy, journal, x402 flow, recovery skeleton), local-key signer, a minimal approval page. Spike: Stellar Wallets Kit, listing the wallets whose `signAuthEntry` works with `@x402/stellar`. | The first paid testnet transaction; the D1 video of the approval screen |
 | 2 | Web app v1: form from schema, approval, budget, history. MCP server: paying inside the budget, approval above it. | Developers and non-technical users can both run the flow |
 | 3 | Recovery in both surfaces. Spike: a passkey smart account paying an x402 service through the facilitator. | The recovery demo |
 | 4 | Pilot. If the spike passed, non-technical pilot users get passkey wallets. | Five user flows |
@@ -137,8 +195,9 @@ cover the sprint whatever the spike shows.
 - **Browser calls need CORS.** The web app calls providers straight from the browser. Provider Standard v1
   makes this a SHOULD ([J17]) and Provider Kit turns it on by default. A provider without CORS is reachable
   only through the MCP server or SDK.
-- **Freighter:** that its `signAuthEntry` output fits what `@x402/stellar` expects is unverified (Week 1
-  spike). Fallback for the D1 video: the local-key signer behind the same approval page.
+- **Browser wallets:** whether each wallet's `signAuthEntry` output fits what `@x402/stellar` expects is
+  unverified (Week 1 spike, through Stellar Wallets Kit). Freighter is the first to test. Fallback for the D1
+  video: the local-key signer behind the same approval page.
 - **Smart account x402 payments** are unverified (erc-compatibility.md, T5). We use an existing audited
   smart-account contract, such as OpenZeppelin's Stellar smart accounts, rather than writing our own. Building
   an ERC-8196 contract stays with the parallel project.
@@ -153,5 +212,6 @@ cover the sprint whatever the spike shows.
 | --- | --- |
 | Node library + CLI with an encrypted keystore | Fine for developers, unusable for non-technical users. It survives as the core plus the local-key signer. |
 | Keyed MCP server with elicitation | Agents only. It survives as one of the two surfaces. |
-| Browser page with Freighter | Needs an extension, and every payment needs a human, so agents can't act on their own. It survives as one signer. |
+| Browser page with Freighter | Needs an extension, and every payment needs a human, so agents can't act on their own. It survives as one signer, through Stellar Wallets Kit. |
+| Payment methods as separate options (`createPayload`, `confirmPayment`, as in the PoC) | Nothing ties a method's payload to its proof, so a new method could pair them wrongly. Kept only until the refactor. |
 | Hosted wallet that holds keys | Custody, which is out of scope and a regulatory burden. |

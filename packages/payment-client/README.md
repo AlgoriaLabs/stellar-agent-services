@@ -4,7 +4,7 @@ The buyer side: approval, spending policy, a hash-chained journal, payment and j
 [docs/payment-client.md](../../docs/payment-client.md).
 
 **Status: proof of concept.** The core flow works end to end on Stellar testnet with a local-key signer and the
-`stellar-pay` CLI. The web app, MCP server, Freighter and passkey signers come later and reuse this core.
+`stellar-pay` CLI. The web app, MCP server, browser-wallet and passkey signers come later and reuse this core.
 
 | File | Contents |
 | --- | --- |
