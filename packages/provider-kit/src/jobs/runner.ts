@@ -1,9 +1,12 @@
 // Runs a claimed job under its charge policy (docs/provider-standard.md §3.2, §5.6).
 //
-// - "on-success": the job is claimed as running -> run handler -> validate output -> settle. A handler
-//   failure or an invalid output settles nothing [S1].
-// - "upfront": the job is claimed as pending -> settle -> queued -> running -> succeeded | failed.
-// Every state change is stored before the next step, so a lost response is always recoverable.
+// - "on-success": the job is claimed as queued -> waits for a slot -> running -> run handler ->
+//   validate output -> settle. A handler failure or an invalid output settles nothing [S1]. A job that
+//   can't start before its payment expires fails with `timeout`, also uncharged [S2].
+// - "upfront": the job is claimed as pending -> settle -> queued -> waits for a slot -> running ->
+//   succeeded | failed. It settles before it waits, so the payment can't expire in the queue.
+// Every state change is stored before the next step, so a lost response is always recoverable. The
+// slot comes from the service's lane (scheduler.ts, docs/provider-standard.md §5.8).
 //
 // TODO:
 // - Durable background work: an upfront job whose process dies while queued or running stays there.
@@ -22,7 +25,12 @@ export interface RunContext {
   input: JsonObject;
   payload: PaymentPayload;
   requirements: PaymentRequirements;
+  /** Runs the work when the service has a free slot (Reservation.run). */
+  queue: <T>(work: () => Promise<T>) => Promise<T>;
 }
+
+/** Room left, after an "on-success" job's work, to settle before the signed payment expires [S2]. */
+export const SETTLE_MARGIN_SECONDS = 10;
 
 /** Resolves when the job is final or payment_uncertain. Returns the settle response if settled. */
 export async function runJob(job: StoredJob, context: RunContext): Promise<SettleResponse | undefined> {
@@ -30,9 +38,22 @@ export async function runJob(job: StoredJob, context: RunContext): Promise<Settl
 }
 
 async function runOnSuccess(job: StoredJob, context: RunContext): Promise<SettleResponse | undefined> {
-  const { store, facilitator, payload, requirements } = context;
+  const { store, requirements } = context;
   // The signed payment expires maxTimeoutSeconds after signing [S2]; leave room to settle.
-  const budgetMs = Math.max(1, requirements.maxTimeoutSeconds - 10) * 1000;
+  const deadline = Date.now() + Math.max(1, requirements.maxTimeoutSeconds - SETTLE_MARGIN_SECONDS) * 1000;
+  return context.queue(async () => {
+    await store.update(job.jobId, "queued", { status: "running" });
+    const budgetMs = deadline - Date.now();
+    if (budgetMs <= 0) {
+      await fail(store, job.jobId, "running", "timeout", "the job could not start before its payment expired; nothing was charged");
+      return undefined;
+    }
+    return workAndSettle(job, context, budgetMs);
+  });
+}
+
+async function workAndSettle(job: StoredJob, context: RunContext, budgetMs: number): Promise<SettleResponse | undefined> {
+  const { store, facilitator, payload, requirements } = context;
   const work = await doWork(context, budgetMs);
   if ("failure" in work) {
     await fail(store, job.jobId, "running", work.failure, work.detail);
@@ -66,10 +87,12 @@ async function runUpfront(job: StoredJob, context: RunContext): Promise<SettleRe
   }
 
   await store.update(job.jobId, "pending", { status: "queued", payment: settlement.receipt });
-  await store.update(job.jobId, "queued", { status: "running" });
-  const work = await doWork(context, (context.service.expectedDurationSeconds ?? 300) * 2 * 1000);
-  if ("failure" in work) await fail(store, job.jobId, "running", work.failure, work.detail);
-  else await store.update(job.jobId, "running", finished({ status: "succeeded", output: work.output }));
+  await context.queue(async () => {
+    await store.update(job.jobId, "queued", { status: "running" });
+    const work = await doWork(context, (context.service.expectedDurationSeconds ?? 300) * 2 * 1000);
+    if ("failure" in work) await fail(store, job.jobId, "running", work.failure, work.detail);
+    else await store.update(job.jobId, "running", finished({ status: "succeeded", output: work.output }));
+  });
   return settlement.response;
 }
 

@@ -204,9 +204,13 @@ something the owner turns on.
 4. Policy check, plus the wallet's own budget for a policy wallet. If either fails, journal `refused` and
    stop (fail closed). If the amount is above `autoApproveUpTo`, show the approval screen. `decline()` journals
    `refused` and never signs.
-5. Journal `approved`, sign, then journal `sending` and send.
+5. Journal `approved`, sign, then journal `sending` and send. A busy provider (`429` or `503`, spec §5.8) answers
+   before it takes the payment: the client waits out `Retry-After` and sends the same signed request again, while
+   the payment is still valid and for at most `busyWaitSeconds`. If the provider stays busy, it journals `failed`
+   with `charged: false`. The unpaid request in step 3 is waited out the same way.
 6. Get the job view. Confirm the USDC `transfer` on chain before showing "paid", then journal `settled`.
-7. On `202`, or if the connection drops: check-status, then get-result, never paying again. A job the provider
+7. On `202`, or if the connection drops: check-status, then get-result, never paying again, at the pace the
+   provider's `Retry-After` sets. A job the provider
    marks `payment_uncertain` comes back at once: only the provider's `reconcile` resolves it, so polling doesn't.
 
 ## Sprint plan

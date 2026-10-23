@@ -6,6 +6,11 @@
 //              confirm on chain.
 //   recover(): check-status / get-result from the journal. Never signs or pays again.
 //
+// A busy provider answers create-job with 429 or 503 before it claims or settles anything. The client
+// waits out Retry-After and sends the same request again, the paid one with the same signed payment,
+// which still buys at most one job (docs/provider-standard.md §5.8) [Q8]. It gives up after
+// busyWaitSeconds, or once the signed payment is about to expire.
+//
 // The signer and the payment methods are strategies (strategies.ts). Every safety step stays here, so
 // it holds whichever ones are plugged in.
 
@@ -16,6 +21,7 @@ import {
   IDEMPOTENCY_KEY,
   JOB_TOKEN,
   jobResultUrl,
+  parseRetryAfter,
   type JobView,
   type JsonObject,
   type Problem,
@@ -46,8 +52,10 @@ export interface PaymentClientOptions {
   allowLocalhost?: boolean;
   /** How long pay() and recover() follow a running job before returning it. Default 120 s. */
   followSeconds?: number;
-  /** Time between polls while following a job. Default 2000 ms. */
+  /** Time between polls while following a job. Default: the provider's Retry-After, or 2000 ms. */
   pollMs?: number;
+  /** How long quote() and pay() wait out a busy provider (429 or 503) before giving up. Default 30 s. */
+  busyWaitSeconds?: number;
 }
 
 export interface Quote {
@@ -104,6 +112,26 @@ export class ProviderError extends Error {
   }
 }
 
+/** The provider is busy (429 or 503) and answered before taking the payment: nothing was charged. */
+export class ProviderBusyError extends ProviderError {
+  override name = "ProviderBusyError";
+  constructor(
+    status: number,
+    problem: Partial<Problem<string>> | undefined,
+    /** When the provider suggested trying again. */
+    readonly retryAfterSeconds: number | undefined,
+  ) {
+    super(status, problem);
+    const again = retryAfterSeconds === undefined ? "later" : `in ${retryAfterSeconds} s`;
+    this.message = `the provider is busy${problem?.code ? ` (${problem.code})` : ""}; try again ${again}`;
+  }
+}
+
+/** Seconds to wait when a busy answer has no usable Retry-After. */
+const BUSY_RETRY_SECONDS = 2;
+/** Room left, before the signed payment expires, for the provider to settle it. */
+const PAYMENT_EXPIRY_MARGIN_SECONDS = 10;
+
 export class PaymentClient {
   private readonly fetch: typeof fetch;
   private readonly methods: readonly PaymentMethod[];
@@ -146,12 +174,12 @@ export class PaymentClient {
       input,
     });
 
-    const response = await this.fetch(createJobUrl(manifest.baseUrl, service.name), {
-      method: "POST",
-      headers: this.jobHeaders(jobId, token),
-      body: JSON.stringify(input),
-      redirect: "manual",
-    });
+    const response = await this.createJob(
+      createJobUrl(manifest.baseUrl, service.name),
+      { method: "POST", headers: this.jobHeaders(jobId, token), body: JSON.stringify(input), redirect: "manual" },
+      Date.now() + this.busyWaitMs,
+    );
+    if (isBusy(response)) throw await busyError(response);
     if (response.status !== 402) throw new ProviderError(response.status, await readProblem(response));
     const header = response.headers.get("PAYMENT-REQUIRED");
     const challenge = header !== null ? decodePaymentRequiredHeader(header) : ((await response.json()) as PaymentRequired);
@@ -234,6 +262,8 @@ export class PaymentClient {
     await journal.append("approved", quote.jobId, hash, { by: decision.needsApproval ? "user" : "policy" });
 
     let signed: SignedPayload;
+    // Taken before signing, which may wait on a wallet popup: the payment's validity starts when it is built.
+    const signedAt = Date.now();
     try {
       signed = await method.createPayload(quote.requirements, signer);
     } catch (error) {
@@ -247,14 +277,20 @@ export class PaymentClient {
     await journal.append("sending", quote.jobId, hash, { ...pick(quote.requirements), payer: signer.address, method: method.id });
 
     const token = (await this.options.secrets.get(quote.jobId))!;
+    // A busy provider is waited out with the same signed payment [Q8], but only while it can still settle it.
+    const expiresAt = signedAt + (quote.requirements.maxTimeoutSeconds - PAYMENT_EXPIRY_MARGIN_SECONDS) * 1000;
     let response: Response;
     try {
-      response = await this.fetch(createJobUrl(quote.manifest.baseUrl, quote.service.name), {
-        method: "POST",
-        headers: { ...this.jobHeaders(quote.jobId, token), "PAYMENT-SIGNATURE": encodePaymentSignatureHeader(payload) },
-        body: JSON.stringify(quote.input),
-        redirect: "manual",
-      });
+      response = await this.createJob(
+        createJobUrl(quote.manifest.baseUrl, quote.service.name),
+        {
+          method: "POST",
+          headers: { ...this.jobHeaders(quote.jobId, token), "PAYMENT-SIGNATURE": encodePaymentSignatureHeader(payload) },
+          body: JSON.stringify(quote.input),
+          redirect: "manual",
+        },
+        Math.min(Date.now() + this.busyWaitMs, expiresAt),
+      );
     } catch (error) {
       await journal.append("uncertain", quote.jobId, hash, { reason: "the paid request failed in transit" });
       throw new PaymentUncertainError(quote.jobId, `the paid request failed (${(error as Error).message})`);
@@ -266,12 +302,18 @@ export class PaymentClient {
       await journal.append("failed", quote.jobId, hash, { charged: false, reason });
       throw new PaymentRefusedError(`the provider rejected the payment: ${reason}`);
     }
+    if (isBusy(response)) {
+      // Answered at step 5 of §5.4, before the payment was verified or claimed: nothing was charged.
+      const error = await busyError(response);
+      await journal.append("failed", quote.jobId, hash, { charged: false, reason: error.problem?.code ?? `provider_busy_${response.status}` });
+      throw error;
+    }
     if (response.status !== 200 && response.status !== 202) {
       await journal.append("uncertain", quote.jobId, hash, { reason: `the provider answered ${response.status}` });
       throw new PaymentUncertainError(quote.jobId, `the provider answered ${response.status}`);
     }
     const job = (await response.json()) as JobView;
-    return this.finish(quote.manifest.baseUrl, quote.jobId, token, job, hash);
+    return this.finish(quote.manifest.baseUrl, quote.jobId, token, job, hash, retryAfterMs(response));
   }
 
   /** Resumes a job from the journal with check-status and get-result. Never pays. */
@@ -287,13 +329,15 @@ export class PaymentClient {
     const hash = await policyHash(policy);
     const baseUrl = String(intent.details["baseUrl"]);
     await journal.append("recovered", jobId, hash, {});
-    const job = await this.getResult(baseUrl, jobId, token);
-    return this.finish(baseUrl, jobId, token, job, hash);
+    const response = await this.getResult(baseUrl, jobId, token);
+    if (isBusy(response)) throw await busyError(response);
+    const job = await readJob(response);
+    return this.finish(baseUrl, jobId, token, job, hash, retryAfterMs(response));
   }
 
-  private async finish(baseUrl: string, jobId: string, token: string, first: JobView, hash: string): Promise<PaymentResult> {
+  private async finish(baseUrl: string, jobId: string, token: string, first: JobView, hash: string, retryAfter: number | undefined): Promise<PaymentResult> {
     const { journal } = this.options;
-    const job = await this.follow(baseUrl, jobId, token, first);
+    const job = await this.follow(baseUrl, jobId, token, first, retryAfter);
 
     let confirmation: Confirmation = { confirmed: false };
     if (job.charged === true) {
@@ -381,22 +425,46 @@ export class PaymentClient {
     return { allowed: false, violations: [...decision.violations, { field: "wallet.budget", message: problem }], needsApproval: false, walletBudget };
   }
 
-  /** Polls get-result until the job finishes or followSeconds pass. */
-  private async follow(baseUrl: string, jobId: string, token: string, job: JobView): Promise<JobView> {
+  /**
+   * Polls get-result until the job finishes or followSeconds pass, at the provider's Retry-After pace.
+   * A busy answer while polling only means "ask again later" [Q9].
+   */
+  private async follow(baseUrl: string, jobId: string, token: string, job: JobView, retryAfter: number | undefined): Promise<JobView> {
     const deadline = Date.now() + (this.options.followSeconds ?? 120) * 1000;
     while ((job.status !== "succeeded" && job.status !== "failed") || (job.status === "succeeded" && job.output === undefined)) {
       // Only the provider's reconcile can resolve it [J13]; polling won't, so hand it back now.
       if (job.status === "payment_uncertain" || Date.now() >= deadline) return job;
-      await new Promise((resolve) => setTimeout(resolve, this.options.pollMs ?? 2000));
-      job = await this.getResult(baseUrl, jobId, token);
+      const wait = this.options.pollMs ?? retryAfter ?? 2000;
+      await sleep(Math.min(wait, deadline - Date.now()));
+      const response = await this.getResult(baseUrl, jobId, token);
+      retryAfter = retryAfterMs(response);
+      if (!isBusy(response)) job = await readJob(response);
     }
     return job;
   }
 
-  private async getResult(baseUrl: string, jobId: string, token: string): Promise<JobView> {
+  /** get-result. Answers other than a job view or a busy provider throw. */
+  private async getResult(baseUrl: string, jobId: string, token: string): Promise<Response> {
     const response = await this.fetch(jobResultUrl(baseUrl, jobId), { headers: { [JOB_TOKEN]: token }, redirect: "manual" });
-    if (response.status !== 200 && response.status !== 202) throw new ProviderError(response.status, await readProblem(response));
-    return (await response.json()) as JobView;
+    if (response.status !== 200 && response.status !== 202 && !isBusy(response)) throw new ProviderError(response.status, await readProblem(response));
+    return response;
+  }
+
+  /** Sends create-job, and sends it again while the provider is busy and `until` allows [Q8]. */
+  private async createJob(url: string, init: RequestInit, until: number): Promise<Response> {
+    for (;;) {
+      const response = await this.fetch(url, init);
+      if (!isBusy(response)) return response;
+      // A little jitter, so clients turned away together don't all come back together.
+      const wait = (retryAfterMs(response) ?? BUSY_RETRY_SECONDS * 1000) * (1 + Math.random() * 0.2);
+      if (Date.now() + wait > until) return response;
+      await response.body?.cancel();
+      await sleep(wait);
+    }
+  }
+
+  private get busyWaitMs(): number {
+    return (this.options.busyWaitSeconds ?? 30) * 1000;
   }
 
   private jobHeaders(jobId: string, token: string): Record<string, string> {
@@ -424,6 +492,27 @@ function pick(requirements: PaymentRequirements) {
     amount: requirements.amount,
     payTo: requirements.payTo,
   };
+}
+
+function isBusy(response: Response): boolean {
+  return response.status === 429 || response.status === 503;
+}
+
+function retryAfterMs(response: Response): number | undefined {
+  const seconds = parseRetryAfter(response.headers.get("Retry-After"));
+  return seconds === undefined ? undefined : seconds * 1000;
+}
+
+async function busyError(response: Response): Promise<ProviderBusyError> {
+  return new ProviderBusyError(response.status, await readProblem(response), parseRetryAfter(response.headers.get("Retry-After")));
+}
+
+async function readJob(response: Response): Promise<JobView> {
+  return (await response.json()) as JobView;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
 }
 
 async function readProblem(response: Response): Promise<Partial<Problem<string>> | undefined> {

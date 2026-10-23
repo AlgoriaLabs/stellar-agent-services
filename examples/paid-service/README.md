@@ -6,7 +6,7 @@ their template.
 | Service | Charge | Price | Purpose |
 | --- | --- | --- | --- |
 | `text-stats` | on-success | 0.01 USDC | The basic paid call: finishes at once, failed work is never charged |
-| `delayed-report` | upfront | 0.02 USDC | The Job Recovery demo: answers `202`, then check-status and get-result |
+| `delayed-report` | upfront | 0.02 USDC | The Job Recovery demo: answers `202`, then check-status and get-result. Also the capacity demo: 2 at a time, up to 8 queued, then `503` before payment. |
 
 Providers with an existing API in another language don't need this template. They can use the kit's gateway
 mode (`provider-kit serve --config <file>`) instead.

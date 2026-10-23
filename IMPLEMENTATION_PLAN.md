@@ -233,7 +233,7 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 
 | Module | Responsibility |
 | --- | --- |
-| `define-service.ts` | `defineService({ name, title, description, price, charge, expectedDurationSeconds, inputSchema, outputSchema, examples, handler })`, with schema validation of input (before the 402) and output (before settling) |
+| `define-service.ts` | `defineService({ name, title, description, price, charge, expectedDurationSeconds, capacity, inputSchema, outputSchema, examples, handler })`, with schema validation of input (before the 402) and output (before settling) |
 | `provider.ts` | `createProvider(config)` → `{ fetch(request): Promise<Response> }`, which wires every part together |
 | `http/router.ts` | Manifest, create-job, check-status and get-result routes, in the spec's processing order. RFC 9457 errors, body size caps, no redirects. |
 | `gateway/config.ts`, `gateway/upstream.ts` | Gateway mode: a config file describes services whose handler forwards the input to an existing HTTP API in any language |
@@ -244,6 +244,8 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 | `jobs/store.ts` | `JobStore` interface: atomic claim, compare-and-set transitions, fingerprint uniqueness |
 | `jobs/memory-store.ts`, `jobs/sqlite-store.ts` | Reference stores (`node:sqlite`). Providers may add Postgres. |
 | `jobs/runner.ts` | Both charge policies, the 30-second hold before `202`, retention |
+| `jobs/scheduler.ts` | Capacity (spec §5.8): a lane per service with `concurrency` slots and a bounded queue. Admits a job before the 402 or answers `503` with `Retry-After`; queue positions for the job view. |
+| `http/rate-limit.ts` | Optional per-caller limit on create-job: `429` with `Retry-After` |
 | `manifest.ts` | Builds and validates the Provider Standard v1 manifest |
 | `registration.ts` | 8004 registration metadata from the manifest, plus `validation_request` input |
 | `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `register`, `request-validation`, `reconcile` |
@@ -266,9 +268,10 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 | C4 | Paid call | Test payer pays → result matches the `output` schema; on-chain USDC `transfer` to `payTo` for the exact amount |
 | C5 | Recovery | Repeating create-job returns the same job with no second transfer; the same key with other input returns `422`; check-status and get-result work with the token and return `404` without it |
 | C6 | Hygiene | No redirects, no secrets in responses, bounded bodies |
+| C7 | Load | A burst of unpaid create-job requests is answered with `402`, `429` or `503` plus `Retry-After`, never another error or a timeout. With `--pay`, `concurrency + 1` paid jobs are each accepted or refused before settlement. |
 
 **Conformance levels** (each maps to one badge): Described = C1 + C6, Payable = + C3 + C4,
-Recoverable = + C5, and Registered = C2 plus a Validation Registry record. `verifier check` runs the no-payment
+Recoverable = + C5, Registered = C2 plus a Validation Registry record, and Load-safe = C7. `verifier check` runs the no-payment
 checks against any URL. With `--dev` it also accepts a local `http://` server (spec [M6]), so providers can test
 themselves before going live.
 
@@ -382,6 +385,9 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
 - [ ] `examples/paid-service` with both services.
 - [ ] Setup guide (`docs/provider-setup-guide.md`), tested on a clean machine.
 - [ ] Payment-safety test suite (§7).
+- [ ] Capacity (spec §5.8): per-service lanes, `429`/`503` before payment and queue positions work in one
+  process. Still to do: a shared queue with worker leases on the SQLite store, so queued `upfront` jobs survive a
+  restart [Q4] and workers scale apart from the HTTP servers.
 
 **Exit:** a developer installs the kit from scratch, starts the sample provider and completes a paid request. An
 existing Python API becomes a paid service through gateway mode.
@@ -394,7 +400,7 @@ existing Python API becomes a paid service through gateway mode.
   - `reconcile`
   - the response-loss drill
 - [ ] Payment client recovery: resume from the journal, never re-sign.
-- [ ] `verifier`: checks C1–C6, conformance levels, receipt, badges, and the no-payment `check` command.
+- [ ] `verifier`: checks C1–C7, conformance levels, receipt, badges, and the no-payment `check` command.
 - [ ] Validation Registry publishing: `request-validation` (provider) and `validation_response` (verifier) on testnet.
 - [ ] Discovery integration, option (a) from §5.7, in `stellar-agent-search`.
 - [ ] Pilot providers start integrating: send them the guide and template.

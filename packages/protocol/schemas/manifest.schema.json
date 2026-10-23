@@ -185,6 +185,22 @@
           "uniqueItems": true,
           "items": { "type": "string", "pattern": "^[a-z0-9-]{1,32}$" }
         },
+        "capacity": {
+          "description": "How much load the service takes (§5.8). Hints only: the provider's 429, 503 and queue answers are what count.",
+          "type": "object",
+          "properties": {
+            "concurrency": {
+              "description": "Jobs the service runs at the same time.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxQueueWaitSeconds": {
+              "description": "Longest a new job may expect to wait in the queue; beyond it, create-job answers 503. 0 means no queue.",
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
         "extensions": { "$ref": "#/$defs/extensions" }
       },
       "if": {

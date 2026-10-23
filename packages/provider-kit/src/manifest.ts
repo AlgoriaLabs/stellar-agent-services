@@ -9,9 +9,11 @@
 
 import { PROVIDER_STANDARD, USDC_ASSET, type ProviderManifest, type ServiceDescriptor } from "@stellar-agent-services/protocol";
 import type { Service } from "./define-service.js";
+import { laneFor } from "./jobs/scheduler.js";
 import type { ProviderConfig } from "./provider.js";
 
 export function buildManifest(config: ProviderConfig, services: readonly Service[]): ProviderManifest {
+  const maxTimeoutSeconds = config.maxTimeoutSeconds ?? 60;
   const manifest: ProviderManifest = {
     standard: PROVIDER_STANDARD,
     provider: config.provider,
@@ -25,18 +27,18 @@ export function buildManifest(config: ProviderConfig, services: readonly Service
           network: config.network,
           asset: USDC_ASSET[config.network],
           payTo: config.payTo,
-          maxTimeoutSeconds: config.maxTimeoutSeconds ?? 60,
+          maxTimeoutSeconds,
           extra: { areFeesSponsored: true },
         },
       ],
     },
-    services: services.map(describe),
+    services: services.map((service) => describe(service, maxTimeoutSeconds)),
   };
   if (config.retentionSeconds !== undefined) manifest.jobs = { retentionSeconds: config.retentionSeconds };
   return manifest;
 }
 
-function describe(service: Service): ServiceDescriptor {
+function describe(service: Service, maxTimeoutSeconds: number): ServiceDescriptor {
   const descriptor: ServiceDescriptor = {
     name: service.name,
     description: service.description,
@@ -50,5 +52,8 @@ function describe(service: Service): ServiceDescriptor {
   if (service.examples !== undefined) descriptor.examples = service.examples;
   if (service.tags !== undefined) descriptor.tags = service.tags;
   if (service.maxInputBytes !== undefined) descriptor.maxInputBytes = service.maxInputBytes;
+  // What the lane enforces, so the hint matches the 503s [Q2].
+  const lane = laneFor(service, maxTimeoutSeconds);
+  descriptor.capacity = { concurrency: lane.concurrency, maxQueueWaitSeconds: lane.maxQueued === 0 ? 0 : lane.maxWaitSeconds };
   return descriptor;
 }

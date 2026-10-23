@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IDEMPOTENCY_KEY_PATTERN, JOB_TOKEN_PATTERN } from "../src/index.js";
+import { IDEMPOTENCY_KEY_PATTERN, JOB_TOKEN_PATTERN, parseRetryAfter } from "../src/index.js";
 import { loadVectors } from "./support/vectors.js";
 
 interface HeaderFormat {
@@ -24,5 +24,22 @@ describe.each([
 
   it.each(format.invalid)("rejects %j", (value) => {
     expect(pattern.test(value)).toBe(false);
+  });
+});
+
+describe("Retry-After: test-vectors/headers.json", () => {
+  const { retryAfter } = loadVectors<{ retryAfter: { now: string; valid: { value: string; seconds: number }[]; invalid: string[] } }>("headers.json");
+  const now = Date.parse(retryAfter.now);
+
+  it.each(retryAfter.valid)("reads $value as $seconds s", ({ value, seconds }) => {
+    expect(parseRetryAfter(value, now)).toBe(seconds);
+  });
+
+  it.each(retryAfter.invalid)("ignores %j", (value) => {
+    expect(parseRetryAfter(value, now)).toBeUndefined();
+  });
+
+  it("ignores a missing header", () => {
+    expect(parseRetryAfter(null, now)).toBeUndefined();
   });
 });

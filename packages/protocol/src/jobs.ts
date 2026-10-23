@@ -57,8 +57,18 @@ export interface JobView {
   error?: Problem<JobFailureCode>;
   /** When charged is true. */
   payment?: PaymentReceipt;
+  /** While queued [Q5]. */
+  queue?: QueuePosition;
   /** Only in the create-job response, and only when the provider created the token [J2]. */
   jobToken?: string;
+}
+
+/** Where a queued job stands (§5.8). A hint, not a promise. */
+export interface QueuePosition {
+  /** 1 for the next job to start. */
+  position: number;
+  /** RFC 3339. */
+  estimatedStartAt: string;
 }
 
 /** The states a job may start in: (new) → queued | running | payment_uncertain | failed (§5.6). */
