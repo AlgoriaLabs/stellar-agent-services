@@ -82,7 +82,7 @@ export function memoryStore(): JobStore {
       const upfront = ofService(service)
         .filter((job) => job.charge === "upfront")
         .sort((a, b) => a.queueSeq! - b.queueSeq!);
-      const orphan = upfront.find((job) => job.status === "running" && job.lease !== undefined && job.lease.expiresAt < now);
+      const orphan = upfront.find((job) => job.status === "running" && job.lease !== undefined && job.lease.expiresAt < now && job.lease.owner !== owner);
       if (orphan !== undefined) {
         orphan.lease = lease;
         orphan.attempts = (orphan.attempts ?? 0) + 1;

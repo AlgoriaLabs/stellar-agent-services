@@ -10,13 +10,21 @@
 //   MAX_ATTEMPTS starts, so the handler may run more than once for one job.
 // Every state change is stored before the next step, so a lost response is always recoverable, and a
 // process that dies mid-settlement leaves a trail recovery.ts can decide from.
+//
+// Settlement has a deadline (settleTimeoutMs). Past it the job is payment_uncertain, but the answer
+// still counts if it comes: a late or raced result is recorded from payment_uncertain, which the spec
+// allows to become queued, succeeded or failed (§5.6). A charged payment is never dropped.
+//
+// Known limit: an on-success job's deadline counts from its claim, not from the payment's expiration
+// ledger. A client that resends a signed payment long after signing [Q8] may see the work done and
+// then payment_failed, uncharged.
 
 import { jobError, type JobFailureCode, type JsonObject } from "@stellar-agent-services/protocol";
 import type { PaymentPayload, PaymentRequirements, SettleResponse } from "@x402/core/types";
 import type { Service } from "../define-service.js";
 import type { Facilitator } from "../payments/facilitator.js";
 import type { CheckedPayment } from "../payments/payload-checks.js";
-import { settle } from "../payments/settlement.js";
+import { settle, type Settlement } from "../payments/settlement.js";
 import { SETTLE_MARGIN_SECONDS, type Scheduler } from "./scheduler.js";
 import type { JobStore, StoredJob } from "./store.js";
 
@@ -32,6 +40,8 @@ export interface PaidRun {
   payload: PaymentPayload;
   requirements: PaymentRequirements;
   payment: CheckedPayment;
+  /** How long settlement may take before the job is payment_uncertain. */
+  settleTimeoutMs: number;
 }
 
 /** on-success: resolves when the job is final or payment_uncertain, with the settle response if settled. */
@@ -42,9 +52,9 @@ export async function runOnSuccess(job: StoredJob, run: PaidRun): Promise<Settle
   try {
     const started = await scheduler.waitForTurn(job, deadline);
     if (started === undefined) {
-      if (await store.update(job.jobId, "queued", { status: "running" })) {
-        await fail(store, job.jobId, "timeout", "the job could not start before its payment expired; nothing was charged");
-      }
+      // Its turn never came, or came just as it gave up: either way it is failed from running.
+      await store.update(job.jobId, "queued", { status: "running" });
+      await fail(store, job.jobId, "timeout", "the job could not start before its payment expired; nothing was charged");
       return undefined;
     }
     const budgetMs = Math.min(deadline - Date.now(), service.timeoutSeconds * 1000);
@@ -71,10 +81,8 @@ export async function runOnSuccess(job: StoredJob, run: PaidRun): Promise<Settle
 }
 
 /** upfront: settles, then queues the job for a worker. Resolves once it is queued, failed or payment_uncertain. */
-export async function settleUpfront(job: StoredJob, run: PaidRun): Promise<SettleResponse | undefined> {
-  const response = await settleAndRecord(job, run, "pending", (receipt) => ({ status: "queued", payment: receipt }));
-  if (response !== undefined) run.scheduler.wake(run.service.name);
-  return response;
+export function settleUpfront(job: StoredJob, run: PaidRun): Promise<SettleResponse | undefined> {
+  return settleAndRecord(job, run, "pending", (receipt) => ({ status: "queued", payment: receipt }));
 }
 
 async function settleAndRecord(
@@ -83,20 +91,50 @@ async function settleAndRecord(
   from: "pending" | "running",
   settled: (receipt: NonNullable<StoredJob["payment"]>) => { status: "queued" | "succeeded"; payment: NonNullable<StoredJob["payment"]> },
 ): Promise<SettleResponse | undefined> {
-  const { store, facilitator, payload, requirements, payment } = run;
-  const settlement = await settle(facilitator, payload, requirements, payment.payer);
+  const { store, facilitator, payload, requirements, payment, settleTimeoutMs } = run;
+  const attempt = settle(facilitator, payload, requirements, payment.payer);
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<undefined>((resolve) => (timer = setTimeout(resolve, settleTimeoutMs, undefined)));
+  const settlement = await Promise.race([attempt, late]);
+  clearTimeout(timer);
+
+  if (settlement === undefined) {
+    const seconds = Math.round(settleTimeoutMs / 1000);
+    await record(job, run, from, { outcome: "uncertain", reason: `the settlement did not answer in ${seconds} s` }, settled);
+    void attempt.then((answer) => (answer.outcome === "uncertain" ? undefined : record(job, run, "payment_uncertain", answer, settled)));
+    return undefined;
+  }
+  return record(job, run, from, settlement, settled);
+}
+
+/**
+ * Stores a settlement's outcome. If the job is no longer in `from` because recovery already marked it
+ * payment_uncertain, the outcome is recorded from there instead [J13].
+ */
+async function record(
+  job: StoredJob,
+  run: PaidRun,
+  from: "pending" | "running" | "payment_uncertain",
+  settlement: Settlement,
+  settled: (receipt: NonNullable<StoredJob["payment"]>) => { status: "queued" | "succeeded"; payment: NonNullable<StoredJob["payment"]> },
+): Promise<SettleResponse | undefined> {
+  const { store } = run;
+  const update = async (patch: Parameters<JobStore["update"]>[2]) =>
+    (await store.update(job.jobId, from, patch)) ?? (from === "payment_uncertain" ? undefined : await store.update(job.jobId, "payment_uncertain", patch));
   switch (settlement.outcome) {
-    case "settled":
-      await store.update(job.jobId, from, settled(settlement.receipt));
+    case "settled": {
+      const stored = await update(settled(settlement.receipt));
+      if (stored?.status === "queued") run.scheduler.wake(run.service.name);
       return settlement.response;
+    }
     case "failed":
-      await store.update(job.jobId, from, finished({ status: "failed", error: jobError("payment_failed", `the payment was not settled (${settlement.reason}); nothing was charged`) }));
+      await update(finished({ status: "failed", error: jobError("payment_failed", `the payment was not settled (${settlement.reason}); nothing was charged`) }));
       return undefined;
     case "uncertain": {
       // Decided later from on-chain data, never by charging again [J13]. The output stays withheld [J14].
-      const record = settlement.transaction === undefined ? { reason: settlement.reason } : { reason: settlement.reason, transaction: settlement.transaction };
+      const detail = settlement.transaction === undefined ? { reason: settlement.reason } : { reason: settlement.reason, transaction: settlement.transaction };
       console.error(`[provider-kit] job ${job.jobId}: settlement uncertain (${settlement.reason}); run reconcile`);
-      await store.update(job.jobId, from, { status: "payment_uncertain", settlement: record });
+      await update({ status: "payment_uncertain", settlement: detail });
       return undefined;
     }
   }
@@ -115,8 +153,13 @@ export async function runLeased(job: StoredJob, context: WorkerContext): Promise
   const { store, owner, leaseSeconds } = context;
   const finish = (patch: Parameters<JobStore["update"]>[2]) => store.update(job.jobId, "running", patch, owner);
   const service = context.services.get(job.service);
-  if (service === undefined || job.input === undefined) {
-    await finish(finished({ status: "failed", error: jobError("service_failed", "the service is no longer offered") }));
+  if (service === undefined) {
+    // Workers lease only the services they run, so this is a bug: leave the paid job for its lease to expire.
+    console.error(`[provider-kit] job ${job.jobId}: leased for "${job.service}", which this process does not run`);
+    return;
+  }
+  if (job.input === undefined) {
+    await finish(finished({ status: "failed", error: jobError("service_failed", "the job's input was lost") }));
     return;
   }
   if ((job.attempts ?? 1) > MAX_ATTEMPTS) {

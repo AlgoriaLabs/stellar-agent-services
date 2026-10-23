@@ -124,6 +124,16 @@ describe.each(stores)("%s", (_name, open) => {
     expect(await store.lease("svc", 1, "worker-2", 30)).toMatchObject({ jobId: b!.jobId });
   });
 
+  it("never takes over a lease its own owner holds, even once it ran out", async () => {
+    const store = open();
+    const leased = job();
+    await store.claim(leased);
+    // worker-1's event loop stalled past its lease: it is still running the job.
+    await store.lease("svc", 1, "worker-1", -1);
+    expect(await store.lease("svc", 1, "worker-1", 30)).toBeUndefined();
+    expect(await store.lease("svc", 1, "worker-2", 30)).toMatchObject({ jobId: leased.jobId, lease: { owner: "worker-2" } });
+  });
+
   it("does not lease on-success jobs, which only their own process can settle", async () => {
     const store = open();
     await store.claim(job({ charge: "on-success" }));

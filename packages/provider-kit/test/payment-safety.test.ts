@@ -233,6 +233,12 @@ describe("payment safety", () => {
     expect(((await response.json()) as JobView).payment).toMatchObject({ payer: payer.publicKey(), payTo, amount: "100000" });
   });
 
+  it("a malformed service name in the path is not found, not an error", async () => {
+    const { provider } = setup();
+    const response = await provider.fetch(new Request("http://localhost:8787/agent/services/%E0%A4%A/jobs", { method: "POST", body: "{}" }));
+    expect(response.status).toBe(404);
+  });
+
   it("only one of Idempotency-Key and Job-Token is a bad request", async () => {
     const { createJob } = setup();
     expect((await createJob({ text: "hi" }, { "Idempotency-Key": jobId })).status).toBe(400);

@@ -413,6 +413,10 @@ existing Python API becomes a paid service through gateway mode.
   - `reconcile`
   - the response-loss drill
 - [ ] Payment client recovery: resume from the journal, never re-sign.
+- [ ] Payment client: treat `409 request_in_progress` on create-job and while polling as "ask again later".
+- [ ] A ledger clock (Horizon's latest ledger and close time), shared by `reconcile` and the kit: an on-success
+  job's deadline from its payment's expiration ledger rather than from its claim, so a payment resent late
+  [Q8] isn't worked on after it expired.
 - [ ] `verifier`: checks C1–C7, conformance levels, receipt, badges, and the no-payment `check` command.
 - [ ] Validation Registry publishing: `request-validation` (provider) and `validation_response` (verifier) on testnet.
 - [ ] Discovery integration, option (a) from §5.7, in `stellar-agent-search`.

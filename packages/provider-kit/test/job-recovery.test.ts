@@ -172,6 +172,68 @@ describe("a durable queue [Q4]", () => {
   });
 });
 
+describe("slow and late settlements [J13]", () => {
+  /** A facilitator whose settle answers only when the test releases it. */
+  function slowFacilitator() {
+    const facilitator = fakeFacilitator();
+    const answer = facilitator.settle.getMockImplementation()!;
+    let release!: () => void;
+    facilitator.settle.mockImplementation(async (payload, requirements) => {
+      await new Promise<void>((resolve) => (release = resolve));
+      return answer(payload, requirements);
+    });
+    return { facilitator, release: () => release() };
+  }
+
+  it("marks a settlement past its deadline uncertain, then runs the paid job when the answer comes", async () => {
+    const { facilitator, release } = slowFacilitator();
+    const store = memoryStore();
+    const { createJob, payment } = testProvider([quick], { store, facilitator, holdSeconds: 0, settleTimeoutSeconds: 1 });
+    await createJob("quick", {}, { ...ids, "PAYMENT-SIGNATURE": await payment("quick") });
+    await vi.waitFor(async () => expect(await store.get(jobId)).toMatchObject({ status: "payment_uncertain", settlement: { reason: "the settlement did not answer in 1 s" } }), { timeout: 3000 });
+
+    release();
+    await vi.waitFor(async () => expect(await store.get(jobId)).toMatchObject({ status: "succeeded", output: { ok: true }, payment: { amount: "100000" } }));
+    expect(facilitator.settle).toHaveBeenCalledTimes(1);
+  });
+
+  it("records a settlement that lands after a sweep marked the job uncertain", async () => {
+    const { facilitator, release } = slowFacilitator();
+    const store = memoryStore();
+    const { createJob, payment } = testProvider([quick], { store, facilitator, holdSeconds: 0 });
+    await createJob("quick", {}, { ...ids, "PAYMENT-SIGNATURE": await payment("quick") });
+    // Another process's sweep, long after: it takes this process for dead.
+    await sweep(store, { maxTimeoutSeconds: 60, settleTimeoutSeconds: 90, retentionSeconds: 86400 }, Date.now() + 151_000);
+    expect(await store.get(jobId)).toMatchObject({ status: "payment_uncertain" });
+
+    release();
+    await vi.waitFor(async () => expect(await store.get(jobId)).toMatchObject({ status: "succeeded", payment: { amount: "100000" } }));
+  });
+});
+
+describe("a service the provider stopped offering", () => {
+  it("keeps its paid jobs queued and answering check-status, and runs them once it is offered again", async () => {
+    const store = memoryStore();
+    const before = testProvider([quick], { store, runQueuedJobs: false, holdSeconds: 0 });
+    await before.createJob("quick", {}, { ...ids, "PAYMENT-SIGNATURE": await before.payment("quick") });
+    const other = defineService({ name: "other", description: "Something else.", price: "0.01", inputSchema: { type: "object" }, outputSchema: { type: "object" }, handler: () => ({}) });
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const without = testProvider([other], { store });
+    await without.provider.ready();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('1 of "quick"'));
+    warn.mockRestore();
+    const status = await without.getJob(jobId, token, false);
+    expect(status.status).toBe(202);
+    expect(await without.view(status)).toMatchObject({ status: "queued", charged: true });
+    await without.provider.close();
+
+    const again = testProvider([quick], { store });
+    await again.provider.ready();
+    await vi.waitFor(async () => expect(await again.view(await again.getJob(jobId, token))).toMatchObject({ status: "succeeded" }));
+  });
+});
+
 describe("recovery sweep", () => {
   const options = { maxTimeoutSeconds: 60, settleTimeoutSeconds: 90, retentionSeconds: 86400 };
   const longAgo = new Date(Date.now() - 3600_000).toISOString();

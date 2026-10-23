@@ -60,6 +60,8 @@ export interface RouterContext {
   ready: () => Promise<void>;
   rateLimit: RateLimiter | undefined;
   holdSeconds: number;
+  /** How long settlement may take before the job is payment_uncertain (jobs/runner.ts). */
+  settleTimeoutMs: number;
   retentionSeconds: number;
   /** Test-only response-loss drill (docs/job-recovery.md): fail create-job after the job is stored. */
   loseCreateJobResponse: boolean;
@@ -98,7 +100,15 @@ export async function route(request: Request, context: RouterContext): Promise<R
   const path = url.pathname.slice(basePath.length);
 
   const createJob = /^\/services\/([^/]+)\/jobs$/.exec(path);
-  if (createJob !== null && request.method === "POST") return handleCreateJob(request, decodeURIComponent(createJob[1]!), context);
+  if (createJob !== null && request.method === "POST") {
+    let name: string;
+    try {
+      name = decodeURIComponent(createJob[1]!);
+    } catch {
+      return error("service_not_found");
+    }
+    return handleCreateJob(request, name, context);
+  }
 
   const getJob = /^\/jobs\/([^/]+?)(\/result)?$/.exec(path);
   if (getJob !== null && request.method === "GET") return handleGetJob(request, getJob[1]!, getJob[2] !== undefined, context);
@@ -232,7 +242,7 @@ async function payAndRun(
 
   // 9. Settle and run, holding the response for at most holdSeconds [J9].
   const deadline = Date.now() + context.holdSeconds * 1000;
-  const run: PaidRun = { store, facilitator, scheduler, service, input, payload, requirements, payment };
+  const run: PaidRun = { store, facilitator, scheduler, service, input, payload, requirements, payment, settleTimeoutMs: context.settleTimeoutMs };
   let settled: SettleResponse | undefined;
   const work = (service.charge === "on-success" ? runOnSuccess(claim.job, run) : settleUpfront(claim.job, run))
     .then((response) => (settled = response))

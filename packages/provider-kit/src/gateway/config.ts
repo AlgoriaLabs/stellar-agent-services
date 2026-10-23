@@ -32,6 +32,7 @@ export interface GatewayConfig {
   store?: string;
   listen?: { host?: string; port?: number };
   maxTimeoutSeconds?: number;
+  settleTimeoutSeconds?: number;
   retentionSeconds?: number;
   manifestPath?: string;
   holdSeconds?: number;
@@ -173,7 +174,10 @@ export async function loadGatewayConfig(
   const facilitatorExtra = headers(file.facilitatorHeaders, "facilitatorHeaders");
   let facilitator;
   try {
-    facilitator = httpFacilitator(fromEnv(file.facilitator, "facilitator"), { dev, ...(facilitatorExtra === undefined ? {} : { headers: facilitatorExtra }) });
+    facilitator = httpFacilitator(fromEnv(file.facilitator, "facilitator"), {
+      dev,
+      ...stripUndefined({ headers: facilitatorExtra, settleTimeoutSeconds: file.settleTimeoutSeconds }),
+    });
   } catch (error) {
     throw new GatewayConfigError(`facilitator: ${(error as Error).message}`);
   }
@@ -181,6 +185,7 @@ export async function loadGatewayConfig(
   const config: ProviderConfig = {
     ...stripUndefined({
       maxTimeoutSeconds: file.maxTimeoutSeconds,
+      settleTimeoutSeconds: file.settleTimeoutSeconds,
       retentionSeconds: file.retentionSeconds,
       manifestPath: file.manifestPath,
       holdSeconds: file.holdSeconds,

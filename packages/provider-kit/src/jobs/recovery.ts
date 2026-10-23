@@ -48,6 +48,18 @@ export async function sweep(store: JobStore, options: SweepOptions, now = Date.n
   await store.deleteFinishedBefore(new Date(now - options.retentionSeconds * 1000).toISOString());
 }
 
+/**
+ * Paid jobs, by service, of services not in `offered`: queued or running when the provider stopped
+ * offering them. They wait, so restoring the service runs them, and check-status keeps answering.
+ */
+export async function strandedJobs(store: JobStore, offered: ReadonlyMap<string, unknown>): Promise<Map<string, number>> {
+  const stranded = new Map<string, number>();
+  for (const job of await all(store, ["queued", "running"], Date.now() + 1000)) {
+    if (!offered.has(job.service)) stranded.set(job.service, (stranded.get(job.service) ?? 0) + 1);
+  }
+  return stranded;
+}
+
 /** Up to BATCH jobs per status group and sweep: the next sweep takes the rest. */
 function all(store: JobStore, statuses: StoredJob["status"][], before: number): Promise<StoredJob[]> {
   return store.list({ statuses, createdBefore: new Date(before).toISOString(), limit: BATCH });

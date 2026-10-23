@@ -20,7 +20,7 @@ import type { Service } from "./define-service.js";
 import { rateLimiter, type RateLimitConfig } from "./http/rate-limit.js";
 import { MAX_HOLD_SECONDS, route } from "./http/router.js";
 import { memoryStore } from "./jobs/memory-store.js";
-import { sweep } from "./jobs/recovery.js";
+import { strandedJobs, sweep } from "./jobs/recovery.js";
 import { runLeased } from "./jobs/runner.js";
 import { laneFor, scheduler } from "./jobs/scheduler.js";
 import type { JobStore } from "./jobs/store.js";
@@ -41,6 +41,11 @@ export interface ProviderConfig {
   store?: JobStore;
   /** How long a signed payment is valid, 30–300 (§4.1). Default 60. */
   maxTimeoutSeconds?: number;
+  /**
+   * How long a settlement may take before the job is payment_uncertain. Default maxTimeoutSeconds + 30,
+   * since the facilitator waits for the transaction's ledger. A later answer is still recorded.
+   */
+  settleTimeoutSeconds?: number;
   /** How long finished jobs stay retrievable [J15]. At least 3600; default 86400. */
   retentionSeconds?: number;
   /** Default /.well-known/stellar-agent-services.json on the baseUrl origin. */
@@ -89,6 +94,8 @@ export function createProvider(config: ProviderConfig): Provider {
   if (!Number.isInteger(leaseSeconds) || leaseSeconds < 3) throw new RangeError("leaseSeconds must be a whole number of at least 3");
 
   const maxTimeoutSeconds = config.maxTimeoutSeconds ?? DEFAULT_MAX_TIMEOUT_SECONDS;
+  const settleSeconds = config.settleTimeoutSeconds ?? settleTimeoutSeconds(maxTimeoutSeconds);
+  if (!Number.isInteger(settleSeconds) || settleSeconds < 1) throw new RangeError("settleTimeoutSeconds must be a whole number of at least 1");
   const names = new Set<string>();
   for (const service of config.services) {
     if (names.has(service.name)) throw new TypeError(`two services are named "${service.name}" [M7]`);
@@ -110,7 +117,9 @@ export function createProvider(config: ProviderConfig): Provider {
   }
 
   const facilitator =
-    typeof config.facilitator === "string" ? httpFacilitator(config.facilitator, { dev: config.dev ?? false }) : config.facilitator;
+    typeof config.facilitator === "string"
+      ? httpFacilitator(config.facilitator, { dev: config.dev ?? false, settleTimeoutSeconds: settleSeconds })
+      : config.facilitator;
   const store = config.store ?? memoryStore();
   const services = new Map(config.services.map((service) => [service.name, service]));
   const owner = `${hostname()}:${process.pid}:${randomUUID().slice(0, 8)}`;
@@ -124,7 +133,7 @@ export function createProvider(config: ProviderConfig): Provider {
   });
   const sweepOptions = {
     maxTimeoutSeconds,
-    settleTimeoutSeconds: settleTimeoutSeconds(maxTimeoutSeconds),
+    settleTimeoutSeconds: settleSeconds,
     retentionSeconds: config.retentionSeconds ?? DEFAULT_RETENTION_SECONDS,
   };
 
@@ -136,6 +145,11 @@ export function createProvider(config: ProviderConfig): Provider {
     starting ??= (async () => {
       await checkFacilitator(facilitator, config.network);
       await sweep(store, sweepOptions);
+      const stranded = await strandedJobs(store, services);
+      if (stranded.size > 0) {
+        const list = [...stranded].map(([service, count]) => `${count} of "${service}"`).join(", ");
+        console.warn(`[provider-kit] paid jobs of services this provider no longer offers wait until they are offered again: ${list}`);
+      }
       queue.start();
       sweeps = setInterval(() => {
         sweep(store, sweepOptions).catch((error) => console.error("[provider-kit] the recovery sweep failed:", error));
@@ -159,6 +173,7 @@ export function createProvider(config: ProviderConfig): Provider {
     ready,
     rateLimit: config.rateLimit === undefined ? undefined : rateLimiter(config.rateLimit),
     holdSeconds,
+    settleTimeoutMs: settleSeconds * 1000,
     retentionSeconds: sweepOptions.retentionSeconds,
     loseCreateJobResponse: config.loseCreateJobResponse ?? false,
   };

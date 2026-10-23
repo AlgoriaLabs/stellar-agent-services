@@ -104,7 +104,8 @@ export interface JobStore {
   /**
    * Gives a worker the next upfront job of a service, leased until now + leaseSeconds: first a running
    * job whose lease ran out (its worker died), else the oldest queued job if fewer than `concurrency`
-   * are running. Counts the attempt.
+   * are running. Counts the attempt. A lease held by `owner` itself is never taken over: an owner is
+   * one process, which still runs its jobs even when a stalled event loop let a lease run out.
    */
   lease(service: string, concurrency: number, owner: string, leaseSeconds: number): Promise<StoredJob | undefined>;
   /** Extends a running job's lease. False when the worker no longer holds it. */

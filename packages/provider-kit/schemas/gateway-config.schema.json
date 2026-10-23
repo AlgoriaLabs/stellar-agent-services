@@ -55,6 +55,7 @@
       "properties": { "host": { "type": "string" }, "port": { "type": "integer", "minimum": 0, "maximum": 65535 } }
     },
     "maxTimeoutSeconds": { "description": "How long a signed payment is valid. Default 60.", "type": "integer", "minimum": 30, "maximum": 300 },
+    "settleTimeoutSeconds": { "description": "How long a settlement may take before the job is payment_uncertain. Default maxTimeoutSeconds + 30.", "type": "integer", "minimum": 1 },
     "retentionSeconds": { "description": "How long finished jobs stay retrievable. Default 86400.", "type": "integer", "minimum": 3600 },
     "manifestPath": { "description": "Default /.well-known/stellar-agent-services.json.", "type": "string", "pattern": "^/" },
     "holdSeconds": { "description": "How long create-job waits before answering 202. Default 30.", "type": "integer", "minimum": 0, "maximum": 30 },

@@ -159,9 +159,12 @@ export function scheduler(options: SchedulerOptions): Scheduler {
           while (lane.waiters.length > 0) {
             const waiter = lane.waiters[0]!;
             const started = await store.start(waiter.jobId, lane.concurrency);
+            // It timed out while the store answered. Its runner fails the job, from running if it started.
+            const index = lane.waiters.indexOf(waiter);
+            if (index === -1) continue;
             // FIFO: if the first waiter's turn hasn't come, no later one's has.
             if (started === undefined) break;
-            lane.waiters.shift();
+            lane.waiters.splice(index, 1);
             clearTimeout(waiter.timer);
             waiter.resolve(started);
           }
@@ -238,7 +241,9 @@ export function scheduler(options: SchedulerOptions): Scheduler {
     changed: () => change.promise,
 
     async position(job) {
-      const lane = laneOf(job.service);
+      // A job of a service this provider no longer offers has no lane, and no estimate.
+      const lane = lanes.get(job.service);
+      if (lane === undefined) return undefined;
       const position = await store.position(job.jobId);
       if (position === undefined) return undefined;
       return { position, estimatedStartAt: new Date(Date.now() + waitSeconds(lane, position) * 1000).toISOString() };

@@ -134,7 +134,9 @@ mount the config at `/config/provider.config.json` and a volume at `/data` (set 
   signed payment can't buy two jobs even re-wrapped in another transaction [P9].
 - **Uncertain is never failed.** A settlement counts as failed only when the facilitator says it never
   submitted the transaction. Timeouts, errors and unknown answers make the job `payment_uncertain`, decided
-  later from on-chain data and never charged again [J13].
+  later from on-chain data and never charged again [J13]. A settlement past its deadline
+  (`settleTimeoutSeconds`, default `maxTimeoutSeconds` + 30) is uncertain too, and its answer is still recorded
+  if it comes later.
 - **Crash-safe.** Every state change is stored before the next step. A settlement interrupted by a crash
   becomes `payment_uncertain`; an `on-success` job whose payment expired fails uncharged.
 - **Hardened facilitator client.** HTTPS only, no redirects, deadlines on every call, bounded answers, and a

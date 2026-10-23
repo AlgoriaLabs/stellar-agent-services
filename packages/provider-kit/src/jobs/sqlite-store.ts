@@ -69,7 +69,7 @@ export function sqliteStore(path: string, options: SqliteStoreOptions = {}): Job
     running: statement("SELECT COUNT(*) AS n FROM jobs WHERE service = ? AND status = 'running'"),
     ahead: statement("SELECT COUNT(*) AS n FROM jobs WHERE service = ? AND status = 'queued' AND queue_seq < ?"),
     orphan: statement(
-      `SELECT data FROM jobs WHERE service = ? AND charge = 'upfront' AND status = 'running' AND lease_expires_at < ?
+      `SELECT data FROM jobs WHERE service = ? AND charge = 'upfront' AND status = 'running' AND lease_expires_at < ? AND lease_owner != ?
        ORDER BY queue_seq LIMIT 1`,
     ),
     nextQueued: statement("SELECT data FROM jobs WHERE service = ? AND charge = 'upfront' AND status = 'queued' ORDER BY queue_seq LIMIT 1"),
@@ -170,7 +170,7 @@ export function sqliteStore(path: string, options: SqliteStoreOptions = {}): Job
       return transaction(() => {
         const now = Date.now();
         const lease = { owner, expiresAt: now + leaseSeconds * 1000 };
-        const orphan = read(sql.orphan.get(service, now));
+        const orphan = read(sql.orphan.get(service, now, owner));
         if (orphan !== undefined) {
           orphan.lease = lease;
           orphan.attempts = (orphan.attempts ?? 0) + 1;
