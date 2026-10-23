@@ -14,7 +14,19 @@ export const USDC_ASSET: Readonly<Record<StellarNetwork, string>> = {
   "stellar:pubnet": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
 };
 
+/** The USDC issuer on each network: USDC_ASSET is its Stellar Asset Contract. A G... payTo needs a trustline to it [P2]. */
+export const USDC_ISSUER: Readonly<Record<StellarNetwork, string>> = {
+  "stellar:testnet": "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+  "stellar:pubnet": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+};
+
+/** Public Horizon servers, for account reads such as the trustline check. */
+export const HORIZON_URL: Readonly<Record<StellarNetwork, string>> = {
+  "stellar:testnet": "https://horizon-testnet.stellar.org",
+  "stellar:pubnet": "https://horizon.stellar.org",
+};
+
 // TODO:
-// - RPC, Horizon and USDC issuer per network.
+// - RPC per network.
 // - 8004 contract ids come from @trionlabs/stellar8004 TESTNET_CONFIG / MAINNET_CONFIG, never
 //   retyped.

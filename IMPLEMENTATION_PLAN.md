@@ -7,9 +7,9 @@ Job Recovery, delivered and piloted within one 30-day Instaward sprint.
 - **Source of truth:** Instawards SOW "Stellar Agent MCP" (submitted 29.09.2026, $4,000, 30 days).
 - **Background:** `stellar-agent-search/docs/provider-network-phase-2.md` and `issues/P3-23-provider-network-phase-2.md`.
 - **Network:** Stellar **testnet** for the whole build. Mainnet is a later, separate decision (see [Open decisions](#10-open-decisions)).
-- **Status:** Week 1. The protocol package, a thin Provider Kit slice and the payment client (core, `stellar-pay`
-  CLI and a minimal web approval page) work end to end on testnet. The other modules are scaffolds with TODO
-  comments.
+- **Status:** Week 2. The protocol package, the Provider Kit (library, gateway mode, durable SQLite queue, CLI)
+  and the payment client (core, `stellar-pay` CLI and a minimal web approval page) work end to end on testnet.
+  The verifier is a scaffold with TODO comments; `reconcile` and `request-validation` come in Week 3.
 
 ---
 
@@ -123,6 +123,7 @@ apps/
   wallet/          Web approval page: static, no backend, the payment-client core in the browser (§5.6).
 examples/
   paid-service/    Sample provider built only with provider-kit (one on-success + one upfront service).
+  python-upstream/ An existing Python API made a paid service by gateway mode, with only a config file.
 docs/              Provider Standard v1, setup guide, job recovery, verification, payment client, pilot.
 evidence/          Receipts, payment references, validation records, pilot report (filled during the sprint).
 ```
@@ -237,18 +238,22 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 | `provider.ts` | `createProvider(config)` → `{ fetch(request): Promise<Response> }`, which wires every part together |
 | `http/router.ts` | Manifest, create-job, check-status and get-result routes, in the spec's processing order. RFC 9457 errors, body size caps, no redirects. |
 | `gateway/config.ts`, `gateway/upstream.ts` | Gateway mode: a config file describes services whose handler forwards the input to an existing HTTP API in any language |
-| `payments/x402-server.ts` | `@x402/core` resource server with `ExactStellarScheme` (server). Builds the challenge, with the Bazaar extension, from the manifest. |
-| `payments/payload-checks.ts` | Local checks run before calling the facilitator: one SAC `transfer(payer → payTo, amount)`, network, asset, timeout cap, fee sponsorship |
-| `payments/facilitator.ts` | Facilitator client: HTTPS-only, timeouts, `getSupported()` check at startup |
-| `payments/settlement.ts` | Classifies settlement as `settled`, `failed` (definitely not submitted, from an allowlist) or `uncertain` (everything else) |
-| `jobs/store.ts` | `JobStore` interface: atomic claim, compare-and-set transitions, fingerprint uniqueness |
-| `jobs/memory-store.ts`, `jobs/sqlite-store.ts` | Reference stores (`node:sqlite`). Providers may add Postgres. |
-| `jobs/runner.ts` | Both charge policies, the 30-second hold before `202`, retention |
-| `jobs/scheduler.ts` | Capacity (spec §5.8): a lane per service with `concurrency` slots and a bounded queue. Admits a job before the 402 or answers `503` with `Retry-After`; queue positions for the job view. |
+| `payments/x402-server.ts` | The challenge, built from the manifest, with the Bazaar extension while the header stays under 8 KiB; reading the paid request |
+| `payments/payload-checks.ts` | Local checks run before calling the facilitator: exactly one SAC `transfer(payer → payTo, amount)` on the manifest's asset, authorized by the payer's own signed auth entry and nothing else. The fingerprint is `sha256(JCS({ network, payer, nonce }))`, so re-wrapping one signed auth entry can't buy a second job. Signature validity stays with the facilitator's simulation. |
+| `payments/facilitator.ts` | The kit's own facilitator client: HTTPS-only, no redirects, deadlines (settle: `maxTimeoutSeconds` + 30 s), bounded answers, only the fields the facilitator needs; `checkFacilitator()` at startup (network, `exact`, sponsored fees) |
+| `payments/settlement.ts` | Classifies settlement as `settled` (hash, checked payer and network), `failed` (no hash and a reason from the never-submitted allowlist) or `uncertain` (everything else) |
+| `jobs/store.ts` | `JobStore` contract: atomic claim, compare-and-set transitions that never leave a final state, fingerprint uniqueness, and the queue (admission counts, FIFO starts, worker leases, sweeps); `test/job-store.test.ts` is the contract test |
+| `jobs/memory-store.ts`, `jobs/sqlite-store.ts` | Reference stores. SQLite (`node:sqlite`, WAL, fsync on commit, `BEGIN IMMEDIATE`) is shared safely by several processes on one machine. Providers may add Postgres. |
+| `jobs/runner.ts` | Both charge policies; the output and `settlingSince` are stored before settling; leased upfront workers with renewals and at most 3 starts |
+| `jobs/scheduler.ts` | Capacity (spec §5.8) on the store's queue: admission before the 402 from store counts plus local reservations, the claim under the same lock, FIFO turns for on-success jobs, lease-based workers for upfront jobs, queue positions |
+| `jobs/recovery.ts` | Sweeps at startup and every 30 s: a settlement that never answered becomes `payment_uncertain`; an on-success job whose payment expired fails uncharged; retention |
 | `http/rate-limit.ts` | Optional per-caller limit on create-job: `429` with `Retry-After` |
-| `manifest.ts` | Builds and validates the Provider Standard v1 manifest |
-| `registration.ts` | 8004 registration metadata from the manifest, plus `validation_request` input |
-| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `register`, `request-validation`, `reconcile` |
+| `http/node-server.ts` | `listen()`: Node's HTTP server for a provider, with `/healthz` and graceful close |
+| `manifest.ts` | Builds the manifest and checks it at startup with the JSON Schema and `checkManifestRules()` |
+| `registration.ts` | The 8004 registration file from the manifest [I1], and `checkRegistration()` (I1–I3, read-only) |
+| `testing.ts` | `signTestPayment()`: real x402 payments signed offline, for provider and client tests |
+| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `register`; Week 3: `request-validation`, `reconcile` |
+| `Dockerfile`, `schemas/gateway-config.schema.json` | The gateway image; the config file's JSON Schema |
 
 **Developer experience targets (W2 exit criteria):**
 - Library: starting from a clean machine, `npm i`, defining one service and running the server produces a
@@ -373,21 +378,29 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
 
 ### Week 2: Provider Kit (D2, part 1)
 
-- [ ] Full `provider-kit`:
-  - `defineService` with schemas
+- [x] Full `provider-kit`:
+  - `defineService` with schemas, checked at definition time (name, S2, S9) and in the manifest at startup
   - strict payload checks
   - settlement classification
   - SQLite store
-  - background runner
+  - background runner: leased workers, recovery sweeps, retention
   - both charge policies
-- [ ] Gateway mode: `provider-kit serve --config`, a Docker image, tested with a small Python API as upstream.
+- [x] Gateway mode: `provider-kit serve --config`, a Docker image, tested with a small Python API as upstream.
+  - `serve --config`, tested end to end with [examples/python-upstream](examples/python-upstream).
+  - Docker image (`packages/provider-kit/Dockerfile`, 295 MB): built and run against the Python API. Real testnet
+    facilitator check at startup, a paid call settled once, health check, non-root user, and the job recovered
+    from the `/data` volume after a container restart.
 - [ ] Manifest builder and 8004 registration (`provider-kit register`) on testnet.
-- [ ] `examples/paid-service` with both services.
+  - [x] Manifest builder with startup checks; `register` and `check` (reads I1–I3 from the testnet registry).
+  - [ ] Run `provider-kit register` for the sample provider on testnet (needs the owner key in the Stellar CLI).
+- [x] `examples/paid-service` with both services, on the SQLite store.
 - [ ] Setup guide (`docs/provider-setup-guide.md`), tested on a clean machine.
-- [ ] Payment-safety test suite (§7).
-- [ ] Capacity (spec §5.8): per-service lanes, `429`/`503` before payment and queue positions work in one
-  process. Still to do: a shared queue with worker leases on the SQLite store, so queued `upfront` jobs survive a
-  restart [Q4] and workers scale apart from the HTTP servers.
+  - [x] Written for both paths.
+  - [ ] Followed on a clean machine.
+- [x] Payment-safety test suite (§7), provider side.
+- [x] Capacity (spec §5.8): per-service lanes, `429`/`503` before payment and queue positions, on a shared queue
+  with worker leases in the store, so queued `upfront` jobs survive a restart [Q4] and workers scale apart from
+  the HTTP servers (`runQueuedJobs: false` / `serve --no-workers`).
 
 **Exit:** a developer installs the kit from scratch, starts the sample provider and completes a paid request. An
 existing Python API becomes a paid service through gateway mode.
@@ -430,18 +443,19 @@ existing Python API becomes a paid service through gateway mode.
 - job state transitions
 
 **Payment safety:** these tests must exist before the pilot.
-- [ ] A repeated create-job with the same key and input → same job, no facilitator call, no second charge.
-- [ ] The same key with different input or token → `422`. A request while still claiming or settling → `409`.
+- [x] A repeated create-job with the same key and input → same job, no facilitator call, no second charge.
+- [x] The same key with different input or token → `422`. A request while still claiming or settling → `409`.
   A wrong token → `404`.
-- [ ] Invalid input → `400` before any `402`.
-- [ ] One signed payment presented for two jobs → rejected (fingerprint).
-- [ ] A facilitator timeout or 5xx → `payment_uncertain`, never `failed`, never re-charged.
-- [ ] An `on-success` handler failure or invalid output → no settlement.
-- [ ] `on-success` work that outlasts the payment authorization → job failed, nothing charged.
-- [ ] A client without `Idempotency-Key` and `Job-Token` → provider-generated id and token, one charge.
-- [ ] A challenge whose amount, payTo, asset or network differs from the manifest → the client refuses to sign.
-- [ ] A failed spending-limit check → the payment is blocked (fail closed).
-- [ ] A lost response → recovery returns the stored result, with one on-chain transfer.
+- [x] Invalid input → `400` before any `402`.
+- [x] One signed payment presented for two jobs → rejected (fingerprint), also re-signed with the same nonce.
+- [x] A facilitator timeout or 5xx → `payment_uncertain`, never `failed`, never re-charged.
+- [x] An `on-success` handler failure or invalid output → no settlement.
+- [x] `on-success` work that outlasts the payment authorization → job failed, nothing charged.
+- [x] A client without `Idempotency-Key` and `Job-Token` → provider-generated id and token, one charge.
+- [x] A challenge whose amount, payTo, asset or network differs from the manifest → the client refuses to sign.
+- [x] A failed spending-limit check → the payment is blocked (fail closed).
+- [ ] A lost response → recovery returns the stored result, with one on-chain transfer. (Provider side and the
+  client's `recover()` are tested offline; the on-chain demo is Week 3.)
 
 **Integration (testnet, manual or CI-gated):** sample provider + verifier + payment client, end to end.
 

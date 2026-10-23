@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://algorialabs.github.io/stellar-agent-services/schemas/provider-kit/gateway-config.schema.json",
+  "title": "Provider Kit gateway config",
+  "description": "Puts an existing HTTP API, in any language, behind Provider Standard v1: manifest, x402 payment, job recovery and capacity. Run it with `provider-kit serve --config <file>`. Values written \"env:NAME\" are read from the environment variable NAME, in the fields that say so. The gateway holds no Stellar secret key.",
+  "type": "object",
+  "required": ["baseUrl", "network", "payTo", "facilitator", "provider", "services"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "baseUrl": {
+      "description": "The public HTTPS URL job paths are under, such as https://api.example.com/agent. http://localhost only with dev. May be \"env:NAME\".",
+      "type": "string"
+    },
+    "network": { "enum": ["stellar:testnet", "stellar:pubnet"] },
+    "payTo": {
+      "description": "The G... or C... address that receives payments: public, never a secret key. Use the agent wallet of your 8004 registration [I3]. May be \"env:NAME\".",
+      "type": "string"
+    },
+    "facilitator": {
+      "description": "The x402 facilitator URL, such as https://x402.org/facilitator on testnet. May be \"env:NAME\".",
+      "type": "string"
+    },
+    "facilitatorHeaders": {
+      "description": "Headers sent to the facilitator, for one that wants an API key. Values may be \"env:NAME\".",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "provider": {
+      "description": "Who you are, as the manifest shows it (§2.3).",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 500 },
+        "homepage": { "type": "string" },
+        "agentId": { "description": "Your Stellar 8004 agent id, after `provider-kit register`. May be \"env:NAME\".", "type": ["integer", "string"] },
+        "termsUrl": { "type": "string" },
+        "dataUse": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "storesInputs": { "type": "boolean" }, "trainsOnInputs": { "type": "boolean" } }
+        }
+      }
+    },
+    "store": {
+      "description": "Where jobs are kept: a SQLite file path, relative to this config file (default ./jobs.sqlite), or \"memory\" for tests only. May be \"env:NAME\".",
+      "type": "string"
+    },
+    "listen": {
+      "description": "Where `serve` listens. Default port 8787 on 0.0.0.0. The PORT environment variable overrides the port.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "host": { "type": "string" }, "port": { "type": "integer", "minimum": 0, "maximum": 65535 } }
+    },
+    "maxTimeoutSeconds": { "description": "How long a signed payment is valid. Default 60.", "type": "integer", "minimum": 30, "maximum": 300 },
+    "retentionSeconds": { "description": "How long finished jobs stay retrievable. Default 86400.", "type": "integer", "minimum": 3600 },
+    "manifestPath": { "description": "Default /.well-known/stellar-agent-services.json.", "type": "string", "pattern": "^/" },
+    "holdSeconds": { "description": "How long create-job waits before answering 202. Default 30.", "type": "integer", "minimum": 0, "maximum": 30 },
+    "runQueuedJobs": { "description": "Whether this process runs queued upfront jobs. Default true.", "type": "boolean" },
+    "leaseSeconds": { "type": "integer", "minimum": 3 },
+    "rateLimit": {
+      "description": "Per-caller limit on create-job (429). keyHeader names the header a trusted proxy sets to the caller's address.",
+      "type": "object",
+      "required": ["requests", "windowSeconds", "keyHeader"],
+      "additionalProperties": false,
+      "properties": {
+        "requests": { "type": "integer", "minimum": 1 },
+        "windowSeconds": { "type": "integer", "minimum": 1 },
+        "keyHeader": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dev": { "description": "Allows http://localhost for baseUrl and the facilitator. Never in production.", "type": "boolean" },
+    "services": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 25,
+      "items": { "$ref": "#/$defs/service" }
+    }
+  },
+  "$defs": {
+    "service": {
+      "type": "object",
+      "required": ["name", "description", "price", "inputSchema", "outputSchema", "upstream"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+        "title": { "type": "string" },
+        "description": { "description": "What it does, when to use it, and its limits (§3.4).", "type": "string", "minLength": 1, "maxLength": 1000 },
+        "price": { "description": "USDC, as a decimal string such as \"0.05\".", "type": "string", "pattern": "^\\d+(\\.\\d{1,7})?$" },
+        "charge": { "enum": ["on-success", "upfront"] },
+        "expectedDurationSeconds": { "type": "integer", "minimum": 1 },
+        "timeoutSeconds": { "description": "Longest the upstream call may take. Default: twice expectedDurationSeconds, or 600.", "type": "integer", "minimum": 1 },
+        "inputSchema": { "description": "A JSON Schema object, or the path of a JSON file holding one, relative to this config file.", "type": ["object", "string"] },
+        "outputSchema": { "description": "A JSON Schema object, or the path of a JSON file holding one.", "type": ["object", "string"] },
+        "examples": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["input", "output"],
+            "additionalProperties": false,
+            "properties": { "input": { "type": "object" }, "output": { "type": "object" } }
+          }
+        },
+        "tags": { "type": "array", "maxItems": 10, "items": { "type": "string", "pattern": "^[a-z0-9-]{1,32}$" } },
+        "maxInputBytes": { "type": "integer", "minimum": 1, "maximum": 10485760 },
+        "capacity": {
+          "description": "What the upstream can take: calls at once, and how long a new job may wait (§5.8).",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "concurrency": { "type": "integer", "minimum": 1 },
+            "maxQueued": { "type": "integer", "minimum": 0 },
+            "maxQueueWaitSeconds": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "upstream": {
+          "type": "object",
+          "required": ["url"],
+          "additionalProperties": false,
+          "properties": {
+            "url": { "description": "Where the input is POSTed as JSON. May be \"env:NAME\".", "type": "string" },
+            "headers": {
+              "description": "Sent with every call, such as the upstream's own API key. Values may be \"env:NAME\".",
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

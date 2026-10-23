@@ -1,0 +1,34 @@
+{
+  "$schema": "../../packages/provider-kit/schemas/gateway-config.schema.json",
+  "baseUrl": "env:PUBLIC_ORIGIN",
+  "network": "stellar:testnet",
+  "payTo": "env:PAY_TO",
+  "facilitator": "https://x402.org/facilitator",
+  "provider": {
+    "name": "Python summarizer (gateway example)",
+    "description": "An existing Python API, paid in USDC on Stellar through the Provider Kit gateway.",
+    "dataUse": { "storesInputs": false, "trainsOnInputs": false }
+  },
+  "store": "./jobs.sqlite",
+  "services": [
+    {
+      "name": "summarize",
+      "title": "Summarize",
+      "description": "Returns the first sentences of an English text, with sentence and word counts. Use it to shorten text before passing it on. Accepts up to 20,000 characters; it does not paraphrase.",
+      "price": "0.01",
+      "charge": "on-success",
+      "expectedDurationSeconds": 2,
+      "inputSchema": "./schemas/summarize.input.json",
+      "outputSchema": "./schemas/summarize.output.json",
+      "examples": [
+        {
+          "input": { "text": "Stellar settles in seconds. Fees are tiny.", "sentences": 1 },
+          "output": { "summary": "Stellar settles in seconds.", "sentences": 2, "words": 7 }
+        }
+      ],
+      "tags": ["text", "summary"],
+      "capacity": { "concurrency": 4, "maxQueueWaitSeconds": 20 },
+      "upstream": { "url": "http://127.0.0.1:5000/summarize" }
+    }
+  ]
+}

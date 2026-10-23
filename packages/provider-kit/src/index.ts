@@ -20,4 +20,7 @@ export * from "./jobs/memory-store.js";
 export * from "./jobs/sqlite-store.js";
 export * from "./jobs/scheduler.js";
 export * from "./http/rate-limit.js";
+export * from "./http/node-server.js";
+export * from "./payments/facilitator.js";
+export * from "./payments/payload-checks.js";
 export * from "./payments/settlement.js";

@@ -1,9 +1,8 @@
 import type { JobView, Problem } from "@stellar-agent-services/protocol";
 import { Keypair } from "@stellar/stellar-sdk";
-import { encodePaymentSignatureHeader } from "@x402/core/http";
-import type { PaymentRequirements } from "@x402/core/types";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createProvider, defineService, type CapacityConfig, type Facilitator, type ProviderConfig, type ServiceConfig } from "../src/index.js";
+import { client } from "./support/harness.js";
 
 // Capacity and queuing (docs/provider-standard.md §5.8): a busy provider queues or turns requests
 // away before payment, and never answers with an error because of load.
@@ -53,22 +52,9 @@ function setup(
     ...options.provider,
   });
 
-  const requirements = provider.manifest.payment.accepts[0] as unknown as PaymentRequirements;
-  let signatures = 0;
-  const createJob = (n: number, { paid = true, headers = {} }: { paid?: boolean; headers?: Record<string, string> } = {}) => {
-    const payment = encodePaymentSignatureHeader({
-      x402Version: 2,
-      accepted: { ...requirements, amount: "100000" },
-      payload: { transaction: `tx-${++signatures}` },
-    });
-    return provider.fetch(
-      new Request(`${baseUrl}/services/gated/jobs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(paid ? { "PAYMENT-SIGNATURE": payment } : {}), ...headers },
-        body: JSON.stringify({ n }),
-      }),
-    );
-  };
+  const { payment, ...http } = client(provider);
+  const createJob = async (n: number, { paid = true, headers = {} }: { paid?: boolean; headers?: Record<string, string> } = {}) =>
+    http.createJob("gated", { n }, { ...(paid ? { "PAYMENT-SIGNATURE": await payment("gated") } : {}), ...headers });
   const getJob = async (job: JobView) => {
     const response = await provider.fetch(new Request(`${baseUrl}/jobs/${job.jobId}`, { headers: { "Job-Token": job.jobToken! } }));
     return (await response.json()) as JobView;

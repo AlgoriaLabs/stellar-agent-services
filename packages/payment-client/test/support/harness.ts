@@ -2,6 +2,7 @@
 // facilitator, signer and payment method instead of the network.
 
 import { createProvider, defineService, type Facilitator, type ProviderConfig } from "@stellar-agent-services/provider-kit";
+import { signTestPayment } from "@stellar-agent-services/provider-kit/testing";
 import { Keypair } from "@stellar/stellar-sdk";
 import type { PaymentRequirements } from "@x402/core/types";
 import { vi } from "vitest";
@@ -18,18 +19,24 @@ import {
 } from "../../src/index.js";
 
 export const payTo = Keypair.random().publicKey();
-export const payer = Keypair.random().publicKey();
+const payerKeys = Keypair.random();
+export const payer = payerKeys.publicKey();
 export const manifestUrl = "http://localhost:8787/.well-known/stellar-agent-services.json";
 
 export const signer: Signer = { address: payer, signAuthEntry: async () => ({ signedAuthEntry: "", signerAddress: payer }) };
 
-/** A payment method for `exact` challenges that signs nothing real and confirms every payment. */
+/**
+ * A payment method for `exact` challenges that signs a real payment offline, so the provider's payment
+ * checks pass, without any network call, and confirms every payment.
+ */
 export function testMethod(overrides: Partial<PaymentMethod> = {}) {
-  let signed = 0;
   return {
     id: "test-exact",
     matches: (requirements: PaymentRequirements) => requirements.scheme === "exact",
-    createPayload: vi.fn<PaymentMethod["createPayload"]>(async () => ({ x402Version: 2, payload: { transaction: `signed-${++signed}` } })),
+    createPayload: vi.fn<PaymentMethod["createPayload"]>(async (requirements) => ({
+      x402Version: 2,
+      payload: (await signTestPayment(requirements, payerKeys)).payload,
+    })),
     confirm: vi.fn<PaymentMethod["confirm"]>(async () => ({ confirmed: true })),
     ...overrides,
   };

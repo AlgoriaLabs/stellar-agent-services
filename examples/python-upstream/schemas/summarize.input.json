@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["text"],
+  "properties": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 20000, "description": "English text to summarize" },
+    "sentences": { "type": "integer", "minimum": 1, "maximum": 10, "default": 1, "description": "How many sentences to keep" }
+  },
+  "additionalProperties": false
+}

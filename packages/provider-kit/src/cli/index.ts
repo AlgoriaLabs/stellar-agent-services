@@ -1,14 +1,10 @@
-// provider-kit CLI (operator side). Planned commands:
-//
-//   serve --config <file>  gateway mode: put an existing HTTP API behind payment and job recovery
-//   init                   scaffold a provider from examples/paid-service
-//   check                  self-check against Provider Standard v1 (no payment, no keys)
-//   register               register or update the 8004 identity (signs through the Stellar CLI keychain)
-//   request-validation     call validation_request for a chosen verifier (owner signs via keychain)
-//   reconcile              resolve payment_uncertain jobs from on-chain data (read-only)
-//
-// Keys are never read from env vars or files by this CLI; the Stellar CLI keychain does the signing.
-// The `bin` entry is added to package.json once the first command exists. `serve` is also shipped
-// as a Docker image so providers don't need Node installed.
+#!/usr/bin/env node
+// The provider-kit command. It only silences Node's notice that node:sqlite is experimental (the job
+// store uses it, deliberately) and then loads the CLI, which is in main.ts.
 
-export {};
+process.removeAllListeners("warning").on("warning", (warning) => {
+  if (warning.name === "ExperimentalWarning" && warning.message.includes("SQLite")) return;
+  console.warn(`${warning.name}: ${warning.message}`);
+});
+
+await import("./main.js");
