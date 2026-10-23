@@ -2,6 +2,8 @@
 
 > **Status: frozen** (2026-10-21, SOW Deliverable 1). v1 now only gains optional fields and SHOULD rules.
 > Identifier: `stellar-agent-services/provider@1`.
+>
+> **Added since the freeze:** capacity and queuing (§5.8), 2026-10-23. Optional fields and SHOULD rules only.
 
 This standard describes how a paid AI service on Stellar publishes its purpose, input, output, price, network,
 job status and result. Any client can then find it, pay for it once and collect the result, even if the
@@ -52,6 +54,7 @@ Stellar 8004 registration ──▶ manifest ──▶ create-job ──402─�
 | Input and output | JSON Schema 2020-12, with MCP tool field names |
 | Idempotency | [IETF Idempotency-Key](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header) (draft-07) |
 | Long-running work | HTTP `202 Accepted` with `Location` and `Retry-After` |
+| Load | HTTP `429 Too Many Requests` (RFC 6585) and `503 Service Unavailable` with `Retry-After` (RFC 9110) |
 | Errors | RFC 9457 problem details |
 | Hashing | SHA-256 over RFC 8785 canonical JSON (JCS) |
 | Identity | Stellar 8004 (ERC-8004) registration file |
@@ -211,6 +214,7 @@ hashes, header formats and challenge checks.
 | `examples` | array | Up to 5 `{ input, output }` pairs. **[S9]** Each `input` MUST validate against `inputSchema` and each `output` against `outputSchema`. |
 | `maxInputBytes` | integer | Request body limit. Default 1 MiB (1,048,576), maximum 10 MiB. |
 | `tags` | array | Up to 10 strings matching `^[a-z0-9-]{1,32}$` |
+| `capacity` | object | How much load the service takes: `concurrency` and `maxQueueWaitSeconds` (§5.8) |
 | `extensions` | object | See §9 |
 
 There is no sync or async flag. Every service uses the same job flow (§5), and `expectedDurationSeconds` is the
@@ -298,7 +302,7 @@ from each service's `price`.
 ### 4.3 Before payment, and after
 
 - **[P8]** The provider MUST validate the input and check its capacity *before* sending a `402`. Nobody pays for
-  invalid input or a full queue.
+  invalid input or a full queue (§5.8).
 - **[P9]** One signed payment pays for at most one job. The provider MUST refuse to settle a payment it has
   already used. It answers `402` with the x402 `error` set to `payment_already_used`.
 - **[P10]** A response that completes settlement SHOULD carry the x402 `PAYMENT-RESPONSE` header. The job view
@@ -363,7 +367,7 @@ The provider processes a create-job request in this order:
 2. Find the service: `404 service_not_found`.
 3. If the job id exists, apply [J5]–[J7].
 4. Validate the input against `inputSchema`: `400 invalid_input`.
-5. Check capacity: `429` or `503` with `Retry-After`.
+5. Check capacity: `429` or `503` with `Retry-After` (§5.8).
 6. If there is no payment, answer `402` (§4.2).
 7. Check and verify the payment through the facilitator. If it is invalid, answer `402` with the reason.
 8. Claim the job id and the payment together, atomically ([J4], [P9]).
@@ -402,6 +406,7 @@ create-job, check-status and get-result all return a **job view**:
 | `output` | create-job and get-result, when `status` is `succeeded` |
 | `error` | when `status` is `failed`: a problem object (§6) |
 | `payment` | when `charged` is `true` |
+| `queue` | when `status` is `queued`: the job's place in the queue (§5.8) |
 | `jobToken` | only in the create-job response, and only when the provider created the token ([J2]) |
 
 - **[J8]** If the job has finished (`succeeded` or `failed`), the response is `200`. Otherwise it is `202` with
@@ -454,6 +459,79 @@ The `payment` object uses x402 `SettleResponse` names where they exist.
   `amount`. Clients compare with what they approved, not with the receipt, and accept one transaction as proof
   for one job only.
 
+### 5.8 Capacity and queuing
+
+Every provider has limits: GPUs, worker processes, an upstream API's quota. When more requests arrive than it can
+run at once, the provider queues them, or turns them away **before payment**. A user never pays for a job the
+provider can't run, and load is never answered with a `500`, a dropped connection or a timeout.
+
+```
+create-job ──▶ step 5: a free slot?      ──yes──▶ 402 → pay → running
+                         │ no
+                         ▼
+               room in the queue?         ──yes──▶ 402 → pay → queued (position, estimatedStartAt) → running
+                         │ no
+                         ▼
+               503 unavailable + Retry-After            nothing signed, nothing charged
+```
+
+**Turning requests away**
+
+- **[Q1]** A provider that can't take a new job SHOULD answer create-job with `503 unavailable` when the service is
+  at capacity, or `429 rate_limited` when this caller sent too many requests. Both carry `Retry-After` in whole
+  seconds. They are answered at step 5 of §5.4, before the payment is asked for or verified, so nothing is signed
+  or charged ([P8]).
+- **[Q2]** A provider SHOULD take a job only if it expects the job to start within the
+  `capacity.maxQueueWaitSeconds` it advertises. For `charge: "on-success"` it SHOULD also expect the work and the
+  settlement to finish before the signed payment expires ([S2]). Otherwise it answers `503`.
+- **[Q3]** A provider SHOULD check capacity again on the paid request, because the queue may have filled since the
+  unpaid request got its `402`. Like every `429` or `503` from create-job, that answer comes before the payment is
+  claimed or settled (§5.4), so nothing is charged.
+
+**Queued jobs**
+
+- **[Q4]** Once a job is accepted, load SHOULD NOT fail it: it stays `queued` until a slot is free. An `upfront`
+  job is already paid, so its place in the queue SHOULD survive a restart of the provider. An `on-success` job
+  that can't start before its payment expires fails with `timeout` and is not charged.
+- **[Q5]** While a job is `queued`, its job view SHOULD include `queue`:
+
+  ```json
+  "queue": { "position": 3, "estimatedStartAt": "2026-10-20T10:00:12Z" }
+  ```
+
+  `position` is 1 for the next job to start. `estimatedStartAt` (RFC 3339) is a hint, not a promise.
+- **[Q6]** The `Retry-After` of a `202` SHOULD say when the job is likely to have changed, from 1 to 60 seconds.
+  For a queued job, that is about its `estimatedStartAt`.
+- **[Q7]** Capacity limits apply to create-job. A provider at capacity SHOULD keep answering check-status and
+  get-result, so paid jobs can always be collected.
+
+**Clients**
+
+- **[Q8]** On a `429` or `503` from create-job, a client SHOULD wait `Retry-After`, plus a little random jitter,
+  and send the same request again: the same `Idempotency-Key`, `Job-Token` and input and, on a paid request, the
+  same `PAYMENT-SIGNATURE`. One payment still buys at most one job ([J5], [P9]), so this is safe. The client stops
+  before the signed payment expires, gives up after a bounded wait, and tells the user the provider is busy and
+  nothing was charged.
+- **[Q9]** A client SHOULD poll check-status and get-result no faster than `Retry-After` says ([Q6]). A `429` or
+  `503` while polling only means "ask again later".
+
+**Advertising capacity**
+
+Each service MAY describe its capacity in the manifest:
+
+```json
+"capacity": { "concurrency": 4, "maxQueueWaitSeconds": 60 }
+```
+
+| Field | Type | Rules |
+| --- | --- | --- |
+| `capacity.concurrency` | integer | Jobs the service runs at the same time. At least 1. |
+| `capacity.maxQueueWaitSeconds` | integer | Longest a new job may expect to wait before create-job answers `503` instead. 0 means no queue. |
+
+Both are hints: discovery can show them, and a client can pick a less busy provider. The provider's answers
+([Q1], [Q5]) are what count. How a provider scales behind them (worker processes, a shared queue, autoscaling) is
+up to it; the standard only fixes what clients see.
+
 ## 6. Errors
 
 Errors other than `402` use RFC 9457 problem details (`Content-Type: application/problem+json`):
@@ -481,8 +559,8 @@ Errors other than `402` use RFC 9457 problem details (`Content-Type: application
 | `request_in_progress` | 409 | [J7]; with `Retry-After` |
 | `payload_too_large` | 413 | Body over `maxInputBytes` |
 | `idempotency_key_reused` | 422 | [J6] |
-| `rate_limited` | 429 | With `Retry-After` |
-| `unavailable` | 503 | With `Retry-After` |
+| `rate_limited` | 429 | This caller sent too many requests (§5.8); with `Retry-After` |
+| `unavailable` | 503 | The service is at capacity (§5.8), or a dependency such as the facilitator is down; with `Retry-After` |
 
 Codes for a failed job, in the job view's `error.code`:
 
@@ -520,9 +598,10 @@ Verification results are published to the Stellar 8004 Validation Registry. See
 | 2 | Payable | Level 1 + C3 challenge, C4 paid call | Payment verified |
 | 3 | Recoverable | Level 2 + C5 recovery | Recovery verified |
 | – | Registered | C2 identity, plus a Validation Registry record | 8004 validated |
+| – | Load-safe | C7 load: a burst of requests is answered with `402`, `429` or `503`, never an error (§5.8) | Load-safe |
 
-- Each level includes the one below. Registered is independent of the levels.
-- `verifier check <manifest-url>` runs C1, C3 and C6 with no payment. In development mode it also accepts a local
+- Each level includes the one below. Registered and Load-safe are independent of the levels.
+- `verifier check <manifest-url>` runs C1, C3, C6 and C7 with no payment. In development mode it also accepts a local
   `http://` server ([M6]).
 - `verifier verify <manifest-url> --pay` runs every check with a funded testnet payer.
 
@@ -559,6 +638,7 @@ Each item has room to be added later without breaking v1.
 | Other payment protocols, such as MPP | `payment.protocol` |
 | Streaming output | A new optional endpoint |
 | Webhooks | An optional callback field on create-job |
+| Priority or reserved capacity | `capacity` gains fields; a price tier could buy an earlier slot |
 | Refunds | A new `charge` value |
 
 ## Appendix A: example exchange
@@ -600,6 +680,27 @@ Job-Token: q7Zt3m0bX0s8b6f5JmS2kQ9xg3Y1rZcV4nL8pW2eA0c
 
 A longer `upfront` job answers `202 Accepted` with `Location` and `Retry-After`. The client then polls
 check-status until the job finishes and calls get-result.
+
+A busy service queues the job and says where it stands:
+
+```http
+HTTP/1.1 202 Accepted
+Content-Type: application/json
+Location: https://api.example.com/agent/jobs/0192d3a4-7c1e-7b2a-9f00-3c5e8a1b2c3d
+Retry-After: 12
+
+{ "jobId": "0192d3a4-…", "status": "queued", "charged": true, "queue": { "position": 3, "estimatedStartAt": "2026-10-20T10:00:12Z" }, … }
+```
+
+A full one answers before payment, and the client sends the same request again later:
+
+```http
+HTTP/1.1 503 Service Unavailable
+Content-Type: application/problem+json
+Retry-After: 20
+
+{ "type": "…#error-unavailable", "title": "The service is unavailable", "status": 503, "code": "unavailable", "detail": ""text-stats" is at capacity; nothing was charged" }
+```
 
 ## Appendix B: mapping a service to an MCP tool
 

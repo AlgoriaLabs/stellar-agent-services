@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ManifestError, ProviderError, type Quote } from "@stellar-agent-services/payment-client";
+  import { ManifestError, ProviderBusyError, ProviderError, type Quote } from "@stellar-agent-services/payment-client";
   import type { ProviderManifest } from "@stellar-agent-services/protocol";
   import { messageOf, type AgentWallet } from "../lib/agent-wallet.svelte.js";
   import { formatAmount, formatDuration, hostOf } from "../lib/format.js";
@@ -83,6 +83,10 @@
   }
 
   function explainQuoteError(error: unknown): string {
+    if (error instanceof ProviderBusyError) {
+      const again = error.retryAfterSeconds === undefined ? "in a moment" : `in about ${error.retryAfterSeconds} seconds`;
+      return `The provider is busy right now. Try again ${again}. Nothing was paid.`;
+    }
     if (error instanceof ProviderError && error.status === 400) {
       return `The provider did not accept this request${error.problem?.detail ? `: ${error.problem.detail}` : "."}`;
     }

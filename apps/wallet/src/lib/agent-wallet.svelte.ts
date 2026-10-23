@@ -10,6 +10,7 @@ import {
   PaymentClient,
   PaymentRefusedError,
   PaymentUncertainError,
+  ProviderBusyError,
   totalSpentSince,
   type JournalEntry,
   type JournalStorage,
@@ -213,7 +214,8 @@ export class AgentWallet {
   }
 
   #problem(jobId: string, error: unknown): Problem {
-    if (error instanceof PaymentRefusedError) return { kind: "refused", message: error.message };
+    // A busy provider answers before it takes the payment (provider-standard.md §5.8).
+    if (error instanceof PaymentRefusedError || error instanceof ProviderBusyError) return { kind: "refused", message: error.message };
     // Once `sending` is journaled, any failure may hide a payment that went through.
     const sent = this.entries.some((entry) => entry.jobId === jobId && entry.event === "sending");
     if (error instanceof PaymentUncertainError || sent) return { kind: "uncertain", message: messageOf(error) };

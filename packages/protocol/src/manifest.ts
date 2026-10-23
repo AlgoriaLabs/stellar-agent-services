@@ -61,7 +61,16 @@ export interface ServiceDescriptor {
   examples?: { input: JsonObject; output: JsonObject }[];
   maxInputBytes?: number;
   tags?: string[];
+  capacity?: ServiceCapacity;
   extensions?: JsonObject;
+}
+
+/** How much load a service takes (§5.8). Hints only: the provider's 429, 503 and queue answers are what count. */
+export interface ServiceCapacity {
+  /** Jobs the service runs at the same time. */
+  concurrency?: number;
+  /** Longest a new job may expect to wait in the queue; beyond it, create-job answers 503. 0: no queue. */
+  maxQueueWaitSeconds?: number;
 }
 
 /** A broken rule: its id in provider-standard.md and a JSON Pointer to the offending value. */

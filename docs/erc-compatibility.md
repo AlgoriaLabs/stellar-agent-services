@@ -23,7 +23,7 @@ breaking changes on either side.
 | ERC-8196 | Is this action allowed right now? | – | parallel project (on-chain); our payment client enforces off-chain first |
 | x402 | How is the service paid? | – | public `@x402/*` packages |
 
-- **Complementary, not overlapping.** Our checks (C1–C6) test conformance, while ERC-8126 tests security risk.
+- **Complementary, not overlapping.** Our checks (C1–C7) test conformance, while ERC-8126 tests security risk.
   They overlap in two places:
   - ERC-8126 Web Application Verification touches our C1 and C6 (HTTPS, reachability).
   - ERC-8126 Wallet Verification touches our C4 (the `payTo` wallet).

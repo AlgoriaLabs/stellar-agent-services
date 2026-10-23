@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CONFORMANCE_LEVELS, CONFORMANCE_SCORES, conformanceLevel, type CheckId, type CheckResult } from "../src/index.js";
 
-const ALL_CHECKS: CheckId[] = ["C1", "C2", "C3", "C4", "C5", "C6"];
+const ALL_CHECKS: CheckId[] = ["C1", "C2", "C3", "C4", "C5", "C6", "C7"];
 
 function results(passed: CheckId[]): CheckResult[] {
   return ALL_CHECKS.map((check) => ({
@@ -25,9 +25,9 @@ describe("conformanceLevel", () => {
     expect(conformanceLevel(results(passed))).toBe(level);
   });
 
-  it("ignores C2, which only decides Registered", () => {
-    expect(conformanceLevel(results(["C1", "C6", "C3", "C4", "C5", "C2"]))).toBe(3);
-    expect(conformanceLevel(results(["C2"]))).toBe(0);
+  it("ignores C2 and C7, which only decide Registered and Load-safe", () => {
+    expect(conformanceLevel(results(["C1", "C6", "C3", "C4", "C5", "C2", "C7"]))).toBe(3);
+    expect(conformanceLevel(results(["C2", "C7"]))).toBe(0);
   });
 
   it("does not count skipped checks as passed", () => {

@@ -7,7 +7,9 @@
 //     store { type: "sqlite", path }, retentionSeconds?,
 //     services: [{ name, title?, description, price ("0.05", USDC), charge?, expectedDurationSeconds?,
 //                  inputSchema (inline or a file path), outputSchema, examples?, tags?,
-//                  upstream { url, timeoutSeconds, headers? } }] }
+//                  capacity? { concurrency, maxQueued, maxQueueWaitSeconds } (the upstream's limits),
+//                  upstream { url, timeoutSeconds, headers? } }],
+//     rateLimit? { requests, windowSeconds, keyHeader (set by a trusted proxy) } }
 // - Upstream header values may reference environment variables ("env:NAME") for the upstream's own
 //   API credential. Never a Stellar secret key: the gateway, like any provider runtime, holds none.
 // - Validated at startup, failing closed, with the same rules as createProvider().

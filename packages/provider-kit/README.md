@@ -7,6 +7,7 @@ Standard v1. The kit covers:
 - pricing
 - the x402 USDC payment
 - job recovery
+- capacity: a queue per service, and `429`/`503` before payment when it is full
 
 Two ways to use it:
 
@@ -55,6 +56,46 @@ const provider = createProvider({
 The manifest is served at `/.well-known/stellar-agent-services.json`. Create-job, check-status and get-result
 are under `baseUrl`, with CORS open for browser clients.
 
+## Capacity and load
+
+When ten agents call your service at the same time, nothing fails. Each service runs `concurrency` jobs at
+once and queues the rest. When the queue is full, the kit answers `503` with `Retry-After` **before the `402`**,
+so nobody pays for a job you can't run (Provider Standard §5.8).
+
+```ts
+const imageGen = defineService({
+  name: "image-gen",
+  // ...
+  expectedDurationSeconds: 20,
+  capacity: {
+    concurrency: 2,            // jobs at once: what one GPU or one upstream quota allows (default 4)
+    maxQueued: 50,             // jobs waiting for a slot (default 100)
+    maxQueueWaitSeconds: 80,   // longest expected wait before answering 503 instead (default 60; 0 = no queue)
+  },
+});
+
+const provider = createProvider({
+  // ...
+  services: [imageGen],
+  // Optional: 429 for a caller sending too many create-job requests. You decide who a caller is.
+  rateLimit: { requests: 30, windowSeconds: 60, key: (request) => request.headers.get("cf-connecting-ip") ?? undefined },
+});
+```
+
+With 10 requests at once, 2 jobs run and 8 wait. Each waiting job gets `202` with
+`"queue": { "position", "estimatedStartAt" }` and a matching `Retry-After`. The 11th request would wait about
+100 s, over the 80 s limit, so it gets `503` with `Retry-After` and is never asked to pay. The client sends the
+same request again later.
+
+- The manifest publishes `capacity: { concurrency, maxQueueWaitSeconds }` so discovery and clients can see it.
+- `upfront` jobs settle first and then wait for a slot. `on-success` jobs wait only as long as their payment
+  lasts: `maxTimeoutSeconds` minus the work and 10 s to settle. One that can't start in time fails with
+  `timeout` and is not charged.
+- Wait estimates start from `expectedDurationSeconds` and then follow the measured durations.
+- check-status and get-result are never limited, so paid jobs can always be collected.
+- The lanes live in one process. With several instances behind a load balancer, each one enforces its own
+  limits, so set `concurrency` per instance.
+
 | File | Contents |
 | --- | --- |
 | `src/define-service.ts` | `defineService()`: price, charge policy, schemas; input checked before the 402, output before settling |
@@ -64,13 +105,17 @@ are under `baseUrl`, with CORS open for browser clients.
 | `src/payments/x402-server.ts` | The 402 challenge and reading the paid request |
 | `src/payments/settlement.ts` | Settlement as `settled`, `failed` or `uncertain` (never charge twice) |
 | `src/jobs/runner.ts` | The `on-success` and `upfront` charge policies |
+| `src/jobs/scheduler.ts` | Capacity: a lane per service, admission before the 402, queue positions |
+| `src/http/rate-limit.ts` | Optional per-caller rate limit on create-job (`429`) |
 | `src/jobs/memory-store.ts` | In-memory job store with atomic claims and payment fingerprints |
 
 ## Not done in the PoC
 
 - Gateway mode (`provider-kit serve --config`) and the Docker image.
 - The CLI: `init`, `check`, `register`, `request-validation`, `reconcile`.
-- The SQLite store. The memory store loses jobs on restart.
+- The SQLite store. The memory store loses jobs on restart, including queued ones.
+- A shared queue with worker leases, so worker processes scale apart from the HTTP servers and a queued `upfront`
+  job survives a restart (spec [Q4]).
 - Local payload checks before the facilitator, the startup `getSupported()` check and manifest self-validation.
 - 8004 registration metadata.
 - The [setup guide](../../docs/provider-setup-guide.md) is an outline.

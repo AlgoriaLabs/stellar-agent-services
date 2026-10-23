@@ -3,6 +3,9 @@
 // Returns { fetch(request) } for Hono, Node, Workers, Deno or Bun. The provider holds no Stellar
 // secret key: it knows its payTo address, and the facilitator verifies and settles.
 //
+// Each service gets a lane with its capacity (jobs/scheduler.ts), and create-job can have a per-caller
+// rate limit (http/rate-limit.ts): docs/provider-standard.md §5.8.
+//
 // TODO:
 // - Startup check that facilitator getSupported() includes the network with scheme "exact".
 // - Validate the built manifest with the JSON Schema and checkManifestRules().
@@ -16,8 +19,10 @@ import {
 } from "@stellar-agent-services/protocol";
 import { HTTPFacilitatorClient } from "@x402/core/http";
 import type { Service } from "./define-service.js";
+import { rateLimiter, type RateLimitConfig } from "./http/rate-limit.js";
 import { MAX_HOLD_SECONDS, route } from "./http/router.js";
 import { memoryStore } from "./jobs/memory-store.js";
+import { laneFor, localScheduler } from "./jobs/scheduler.js";
 import type { JobStore } from "./jobs/store.js";
 import { buildManifest } from "./manifest.js";
 import type { Facilitator } from "./payments/settlement.js";
@@ -40,6 +45,8 @@ export interface ProviderConfig {
   manifestPath?: string;
   /** How long create-job waits before answering 202. Default and maximum 30 [J9]. */
   holdSeconds?: number;
+  /** Per-caller limit on create-job requests (429). Default: none. Capacity is set per service. */
+  rateLimit?: RateLimitConfig;
   /** Allows an http://localhost baseUrl for local development [M6]. */
   dev?: boolean;
   /** Test-only response-loss drill (docs/job-recovery.md). Never enable in production. */
@@ -81,6 +88,8 @@ export function createProvider(config: ProviderConfig): Provider {
     services: new Map(config.services.map((service) => [service.name, service])),
     store: config.store ?? memoryStore(),
     facilitator,
+    scheduler: localScheduler(config.services.map((service) => laneFor(service, maxTimeoutSeconds))),
+    rateLimit: config.rateLimit === undefined ? undefined : rateLimiter(config.rateLimit),
     holdSeconds,
     loseCreateJobResponse: config.loseCreateJobResponse ?? false,
   };

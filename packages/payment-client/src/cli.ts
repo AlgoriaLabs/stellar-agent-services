@@ -15,6 +15,7 @@ import {
   PaymentClient,
   PaymentRefusedError,
   PaymentUncertainError,
+  ProviderBusyError,
   type PaymentResult,
   type Quote,
 } from "./client.js";
@@ -195,7 +196,7 @@ async function pay(manifestUrl: string, serviceName: string, inputText: string, 
   try {
     showResult(await client.pay(quote, { approved }));
   } catch (error) {
-    if (error instanceof PaymentRefusedError) {
+    if (error instanceof PaymentRefusedError || error instanceof ProviderBusyError) {
       console.log(`\n✗ Not paid: ${error.message}`);
       process.exitCode = 1;
       return;

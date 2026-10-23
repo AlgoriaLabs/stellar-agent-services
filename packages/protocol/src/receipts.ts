@@ -25,7 +25,7 @@ export interface PaymentReceipt {
 /** The Validation Registry tag of every record this standard's verifiers publish (erc-compatibility.md, T2). */
 export const VALIDATION_TAG = "provider-standard-v1";
 
-export type CheckId = "C1" | "C2" | "C3" | "C4" | "C5" | "C6";
+export type CheckId = "C1" | "C2" | "C3" | "C4" | "C5" | "C6" | "C7";
 
 export interface CheckResult {
   check: CheckId;
@@ -55,7 +55,7 @@ export const CONFORMANCE_LEVELS: readonly { level: 1 | 2 | 3; name: string; chec
  */
 export const CONFORMANCE_SCORES: Readonly<Record<ConformanceLevel, number>> = { 0: 0, 1: 33, 2: 67, 3: 100 };
 
-/** The highest level whose checks all passed. Registered (C2) is separate and doesn't count here. */
+/** The highest level whose checks all passed. Registered (C2) and Load-safe (C7) are separate and don't count here. */
 export function conformanceLevel(results: readonly CheckResult[]): ConformanceLevel {
   const passed = new Set(results.filter((result) => result.status === "passed").map((result) => result.check));
   let reached: ConformanceLevel = 0;
@@ -89,7 +89,7 @@ export interface VerificationReceipt {
   level: ConformanceLevel;
   /** The manifest that was checked; sha256 is canonicalSha256 of the parsed manifest. */
   manifest: { url: string; sha256: string };
-  /** One entry per check, C1 to C6, including skipped ones. */
+  /** One entry per check, C1 to C7, including skipped ones. */
   results: CheckResult[];
   /** The receipt of the C4 paid call, after the verifier confirmed it on chain. */
   payment?: PaymentReceipt;

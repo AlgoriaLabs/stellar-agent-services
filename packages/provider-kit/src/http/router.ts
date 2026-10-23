@@ -8,8 +8,12 @@
 // create-job follows the processing order in §5.4. Errors are RFC 9457 problems that never echo
 // headers, payment payloads or tokens [E2]. CORS is open so browser wallets can call providers.
 //
-// TODO: capacity checks (429/503), a request rate limit, and a 409 for a pending job on check-status
-// that the spec does not yet describe.
+// Capacity (§5.8) is step 5: the caller's rate limit (429), then a place in the service's lane (503),
+// both before the 402, so nobody signs or pays for a job the provider can't take [Q1]. A paid request
+// is checked again. The place is held while the payment is verified and claimed, then becomes the
+// queued job.
+//
+// TODO: a 409 for a pending job on check-status, which the spec does not yet describe.
 
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
@@ -37,9 +41,11 @@ import type { SettleResponse } from "@x402/core/types";
 import type { ErrorObject } from "ajv/dist/2020.js";
 import type { Service } from "../define-service.js";
 import { runJob } from "../jobs/runner.js";
+import type { Reservation, Scheduler } from "../jobs/scheduler.js";
 import type { JobStore, StoredJob } from "../jobs/store.js";
 import type { Facilitator } from "../payments/settlement.js";
 import { paymentFingerprint, paymentRequired, paymentRequirements, readPayment } from "../payments/x402-server.js";
+import type { RateLimiter } from "./rate-limit.js";
 
 export interface RouterContext {
   manifest: ProviderManifest;
@@ -47,6 +53,8 @@ export interface RouterContext {
   services: ReadonlyMap<string, Service>;
   store: JobStore;
   facilitator: Facilitator;
+  scheduler: Scheduler;
+  rateLimit: RateLimiter | undefined;
   holdSeconds: number;
   /** Test-only response-loss drill (docs/job-recovery.md): fail create-job after the job is stored. */
   loseCreateJobResponse: boolean;
@@ -54,6 +62,8 @@ export interface RouterContext {
 
 const DEFAULT_MAX_INPUT_BYTES = 64 * 1024;
 const RETRY_AFTER_SECONDS = 2;
+/** Longest Retry-After on a 202 for a queued job [Q6]. */
+const QUEUED_RETRY_AFTER_MAX_SECONDS = 60;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, Location, Retry-After",
@@ -90,7 +100,7 @@ export async function route(request: Request, context: RouterContext): Promise<R
 }
 
 async function handleCreateJob(request: Request, serviceName: string, context: RouterContext): Promise<Response> {
-  const { manifest, store, facilitator } = context;
+  const { store } = context;
 
   // 1. Headers and body.
   const jobIdHeader = request.headers.get(IDEMPOTENCY_KEY);
@@ -128,6 +138,37 @@ async function handleCreateJob(request: Request, serviceName: string, context: R
   // 4. Input [P8].
   if (!service.validateInput(input)) return error("invalid_input", undefined, inputErrors(service.validateInput.errors));
 
+  // 5. Capacity [P8], [Q1], [Q2].
+  const limited = context.rateLimit?.(request);
+  if (limited !== undefined) {
+    return error("rate_limited", "too many requests from this caller; nothing was charged", undefined, { "Retry-After": String(limited) });
+  }
+  const admission = context.scheduler.admit(service.name);
+  if (!admission.accepted) {
+    const detail = `"${service.name}" is at capacity; nothing was charged`;
+    return error("unavailable", detail, undefined, { "Retry-After": String(admission.retryAfterSeconds) });
+  }
+  try {
+    const ids = { jobIdHeader, tokenHeader, tokenHash, binding };
+    return await payAndRun(request, service, input as JsonObject, ids, admission.reservation, context);
+  } finally {
+    // A no-op once the job's work is queued. Otherwise the request ended without a job (or an upfront
+    // job's settlement outlasted holdSeconds or failed), and the place is free again.
+    admission.reservation.release();
+  }
+}
+
+async function payAndRun(
+  request: Request,
+  service: Service,
+  input: JsonObject,
+  ids: { jobIdHeader: string | null; tokenHeader: string | null; tokenHash: string | undefined; binding: string },
+  reservation: Reservation,
+  context: RouterContext,
+): Promise<Response> {
+  const { manifest, store, facilitator } = context;
+  const { jobIdHeader, tokenHeader, tokenHash, binding } = ids;
+
   // 6. No payment: the challenge.
   const requirements = paymentRequirements(manifest, service);
   const paymentHeader = request.headers.get("PAYMENT-SIGNATURE");
@@ -155,7 +196,7 @@ async function handleCreateJob(request: Request, serviceName: string, context: R
       charge: service.charge,
       bindingHash: binding,
       tokenHash: sha256(jobToken),
-      status: service.charge === "on-success" ? "running" : "pending",
+      status: service.charge === "on-success" ? "queued" : "pending",
       createdAt: now,
       updatedAt: now,
     },
@@ -168,7 +209,8 @@ async function handleCreateJob(request: Request, serviceName: string, context: R
 
   // 9. Settle and run, holding the response for at most holdSeconds [J9].
   let settled: SettleResponse | undefined;
-  const run = runJob(claim.job, { store, facilitator, service, input: input as JsonObject, payload, requirements })
+  const queue = <T>(work: () => Promise<T>) => reservation.run(jobId, work);
+  const run = runJob(claim.job, { store, facilitator, service, input, payload, requirements, queue })
     .then((response) => (settled = response))
     .catch((cause) => console.error(`[provider-kit] job ${jobId} crashed:`, cause));
   await Promise.race([run, sleep(context.holdSeconds * 1000)]);
@@ -219,11 +261,18 @@ function jobResponse(
   if (job.status === "failed" && job.error !== undefined) view.error = job.error;
   if (charged === true && job.payment !== undefined) view.payment = job.payment;
   if (options.jobToken !== undefined) view.jobToken = options.jobToken;
+  let retryAfter = RETRY_AFTER_SECONDS;
+  const queue = job.status === "queued" ? context.scheduler.position(job.jobId) : undefined;
+  if (queue !== undefined) {
+    view.queue = queue;
+    const seconds = Math.ceil((Date.parse(queue.estimatedStartAt) - Date.now()) / 1000);
+    retryAfter = Math.min(QUEUED_RETRY_AFTER_MAX_SECONDS, Math.max(1, seconds));
+  }
 
   const status = jobViewHttpStatus(job.status);
   const headers = { ...options.headers };
   if (status === 202) {
-    headers["Retry-After"] = String(RETRY_AFTER_SECONDS);
+    headers["Retry-After"] = String(retryAfter);
     if (options.create) headers["Location"] = jobStatusUrl(context.manifest.baseUrl, job.jobId);
   }
   return json(view, status, headers);

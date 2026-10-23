@@ -201,6 +201,20 @@
       "violations": []
     },
     {
+      "name": "capacity hints (§5.8)",
+      "base": "full",
+      "patch": [{ "op": "add", "path": "/services/0/capacity", "value": { "concurrency": 4, "maxQueueWaitSeconds": 30 } }],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "capacity without a queue (§5.8)",
+      "base": "full",
+      "patch": [{ "op": "add", "path": "/services/0/capacity", "value": { "concurrency": 1, "maxQueueWaitSeconds": 0 } }],
+      "valid": true,
+      "violations": []
+    },
+    {
       "name": "local $ref into $defs [S5]",
       "base": "full",
       "patch": [
@@ -1154,6 +1168,22 @@
       "valid": false,
       "checkedBy": "schema",
       "violations": [{ "rule": "M9", "pointer": "/services/0/tags" }]
+    },
+    {
+      "name": "capacity with a concurrency of 0 (§5.8)",
+      "base": "full",
+      "patch": [{ "op": "add", "path": "/services/0/capacity", "value": { "concurrency": 0 } }],
+      "valid": false,
+      "checkedBy": "schema",
+      "violations": [{ "rule": "M9", "pointer": "/services/0/capacity/concurrency" }]
+    },
+    {
+      "name": "capacity with a negative queue wait (§5.8)",
+      "base": "full",
+      "patch": [{ "op": "add", "path": "/services/0/capacity", "value": { "maxQueueWaitSeconds": -1 } }],
+      "valid": false,
+      "checkedBy": "schema",
+      "violations": [{ "rule": "M9", "pointer": "/services/0/capacity/maxQueueWaitSeconds" }]
     },
     {
       "name": "extensions is not an object",

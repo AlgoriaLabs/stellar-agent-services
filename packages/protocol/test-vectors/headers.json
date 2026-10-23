@@ -1,5 +1,5 @@
 {
-  "description": "Header formats from provider-standard.md §5.2. A provider answers 400 invalid_request to a create-job request whose header doesn't match `pattern` (an ECMA-262 regular expression).",
+  "description": "Header formats from provider-standard.md §5.2. A provider answers 400 invalid_request to a create-job request whose header doesn't match `pattern` (an ECMA-262 regular expression). `retryAfter` (§5.8) gives the whole seconds to wait for each Retry-After value, read at `now`; `invalid` values are ignored.",
   "idempotencyKey": {
     "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     "valid": ["0192d3a4-7c1e-7b2a-9f00-3c5e8a1b2c3d", "f47ac10b-58cc-4372-a567-0e02b2c3d479"],
@@ -22,5 +22,16 @@
       "lDgabH0XuZH0QvUHoZygLnzlIj45A193SL-aZNcnIiEA",
       ""
     ]
+  },
+  "retryAfter": {
+    "now": "2026-10-20T10:00:00Z",
+    "valid": [
+      { "value": "0", "seconds": 0 },
+      { "value": "5", "seconds": 5 },
+      { "value": " 30 ", "seconds": 30 },
+      { "value": "Tue, 20 Oct 2026 10:00:12 GMT", "seconds": 12 },
+      { "value": "Tue, 20 Oct 2026 09:59:00 GMT", "seconds": 0 }
+    ],
+    "invalid": ["", "-1", "1.5", "5s", "soon", "2026-10-20T10:00:12Z"]
   }
 }
