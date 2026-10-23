@@ -19,6 +19,9 @@ payment side:
 and web page; the verifier is still a scaffold. The plan is in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 Development runs on Stellar **testnet**.
 
+**The standard in short:** [for people](docs/standard/README.md) and [for AI coding agents](docs/standard/README-AI.md).
+The full text is [docs/provider-standard.md](docs/provider-standard.md).
+
 We stay compatible with ERC-8126 (agent verification) and ERC-8196 (agent authenticated wallet). See
 [docs/erc-compatibility.md](docs/erc-compatibility.md). Copies of both specs are in [docs/references/](docs/references).
 
