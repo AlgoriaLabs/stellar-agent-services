@@ -4,9 +4,9 @@
 //   init                   write a starter gateway config
 //   check                  self-check against Provider Standard v1 (no payment, no keys)
 //   register               register or update the 8004 identity (signs through the Stellar CLI keychain)
+//   reconcile              decide payment_uncertain jobs from on-chain data (signs nothing)
 //
-// Planned (Week 3): request-validation (owner signs via the keychain) and reconcile (resolves
-// payment_uncertain jobs from on-chain data).
+// Planned (Week 3): request-validation (owner signs via the keychain).
 //
 // Keys are never read from env vars or files by this CLI; the Stellar CLI keychain does the signing.
 // `serve` is also shipped as a Docker image (packages/provider-kit/Dockerfile).
@@ -14,6 +14,7 @@
 import { parseArgs } from "node:util";
 import { check } from "./check.js";
 import { init } from "./init.js";
+import { reconcile } from "./reconcile.js";
 import { register } from "./register.js";
 import { serve } from "./serve.js";
 import { OPTIONS, UsageError } from "./shared.js";
@@ -26,6 +27,8 @@ Usage:
   provider-kit check (--config <file> | --manifest <url>) [--dev]
   provider-kit register (--config <file> | --manifest <url>) --source <stellar-cli key>
                         [--agent-uri <https url>] [--network <stellar-cli network>] [--dry-run]
+  provider-kit reconcile (--config <file> | --store <file> --network <testnet|pubnet>)
+                         [--rpc <url>] [--dry-run] [--dev]
 
 serve       Puts the HTTP API named in the config behind the manifest, x402 payment, job recovery
             and capacity limits. Jobs are kept in SQLite, so paid jobs survive a restart.
@@ -34,6 +37,9 @@ check       Checks a provider without paying: config, manifest, facilitator, pay
             Stellar 8004 registration. Exits 1 if anything fails.
 register    Registers the provider in the Stellar 8004 identity registry, or updates its registration,
             signing with a key from the Stellar CLI keychain. --dry-run prints the commands instead.
+reconcile   Decides payment_uncertain jobs from on-chain data: paid jobs run (or show their output),
+            unpaid ones fail uncharged. A provider with a Soroban RPC does this by itself; --dry-run
+            only reports. Exits 1 if any job is still undecided.
 
 The provider never needs a Stellar secret key. Docs: docs/provider-setup-guide.md`;
 
@@ -53,6 +59,8 @@ async function main(argv: string[]): Promise<number> {
       return check(values);
     case "register":
       return register(values);
+    case "reconcile":
+      return reconcile(values);
     default:
       throw new UsageError(`unknown command "${command}"`);
   }

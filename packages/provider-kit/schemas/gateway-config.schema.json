@@ -44,6 +44,10 @@
         }
       }
     },
+    "rpcUrl": {
+      "description": "The Soroban RPC the gateway reads the chain with, to decide payment_uncertain jobs and time on-success jobs by ledger. Default: the public RPC on testnet; pubnet has none, so set yours. May be \"env:NAME\".",
+      "type": "string"
+    },
     "store": {
       "description": "Where jobs are kept: a SQLite file path, relative to this config file (default ./jobs.sqlite), or \"memory\" for tests only. May be \"env:NAME\".",
       "type": "string"

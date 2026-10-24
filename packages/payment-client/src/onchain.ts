@@ -4,15 +4,9 @@
 // approved: the approved asset contract, from the payer, to payTo, for the amount. The expected values
 // come from the journal, never from the provider's receipt.
 
-import type { StellarNetwork } from "@stellar-agent-services/protocol";
+import { SOROBAN_RPC_URL, type StellarNetwork } from "@stellar-agent-services/protocol";
 import { rpc, scValToNative, StrKey, type xdr } from "@stellar/stellar-sdk";
 import type { Confirmation, ExpectedPayment } from "./strategies.js";
-
-const RPC_URLS: Record<StellarNetwork, string | undefined> = {
-  "stellar:testnet": "https://soroban-testnet.stellar.org",
-  // There is no public default for mainnet; pass rpcUrl.
-  "stellar:pubnet": undefined,
-};
 
 export type ConfirmPayment = (transaction: string, expected: ExpectedPayment) => Promise<Confirmation>;
 
@@ -23,7 +17,7 @@ export function rpcConfirmPayment(options: { rpcUrl?: string; server?: Transacti
   return async (transaction, expected) => {
     let server = options.server;
     if (server === undefined) {
-      const url = options.rpcUrl ?? RPC_URLS[expected.network];
+      const url = options.rpcUrl ?? SOROBAN_RPC_URL[expected.network];
       if (url === undefined) return { confirmed: false, reason: `no RPC URL for ${expected.network}; pass rpcUrl` };
       server = new rpc.Server(url);
     }

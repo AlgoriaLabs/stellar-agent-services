@@ -154,6 +154,10 @@ Clients accept `http://` only in development [M6]. Run the provider behind HTTPS
 
 - set `baseUrl` to the public URL, such as `https://api.example.com/agent`, and remove `dev`;
 - keep the SQLite file on persistent disk: paid jobs and recovery depend on it;
+- give the provider a Soroban RPC (`rpcUrl` in the gateway config, `rpc` in `createProvider()`). It decides
+  `payment_uncertain` jobs from the chain by itself. Testnet uses the public RPC by default; mainnet has none,
+  so set yours. `provider-kit reconcile --config provider.config.json --dry-run` shows where uncertain jobs
+  stand (see [job-recovery.md](job-recovery.md#reconciliation));
 - for `rateLimit`, set `keyHeader` to the header your proxy puts the client address in;
 - health checks can use `GET /healthz`.
 

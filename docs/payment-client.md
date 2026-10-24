@@ -210,8 +210,10 @@ something the owner turns on.
    with `charged: false`. The unpaid request in step 3 is waited out the same way.
 6. Get the job view. Confirm the USDC `transfer` on chain before showing "paid", then journal `settled`.
 7. On `202`, or if the connection drops: check-status, then get-result, never paying again, at the pace the
-   provider's `Retry-After` sets. A job the provider
-   marks `payment_uncertain` comes back at once: only the provider's `reconcile` resolves it, so polling doesn't.
+   provider's `Retry-After` sets. A `409 request_in_progress` means the provider holds the payment and is still
+   settling it: the client keeps polling, and hands the job back for `recover()` if settlement outlasts
+   `followSeconds`. A job the provider marks `payment_uncertain` comes back at once: only the provider's
+   reconciliation resolves it ([job-recovery.md](job-recovery.md#reconciliation)), so polling doesn't.
 
 ## Sprint plan
 

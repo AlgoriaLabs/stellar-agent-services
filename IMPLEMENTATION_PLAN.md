@@ -7,9 +7,10 @@ Job Recovery, delivered and piloted within one 30-day Instaward sprint.
 - **Source of truth:** Instawards SOW "Stellar Agent MCP" (submitted 29.09.2026, $4,000, 30 days).
 - **Background:** `stellar-agent-search/docs/provider-network-phase-2.md` and `issues/P3-23-provider-network-phase-2.md`.
 - **Network:** Stellar **testnet** for the whole build. Mainnet is a later, separate decision (see [Open decisions](#10-open-decisions)).
-- **Status:** Week 2. The protocol package, the Provider Kit (library, gateway mode, durable SQLite queue, CLI)
+- **Status:** Week 3. The protocol package, the Provider Kit (library, gateway mode, durable SQLite queue, CLI)
   and the payment client (core, `stellar-pay` CLI and a minimal web approval page) work end to end on testnet.
-  The verifier is a scaffold with TODO comments; `reconcile` and `request-validation` come in Week 3.
+  Job Recovery is complete in code, reconciliation and the ledger clock included; the recorded testnet demo is
+  still to do. The verifier is a scaffold with TODO comments; `request-validation` comes with it.
 
 ---
 
@@ -218,8 +219,10 @@ response, without the guarantee for lost responses.
 3. **The provider binds the payment.** A unique payment fingerprint (network, payer, signed auth entry)
    means one signed payment can buy at most one job.
 4. **Uncertain means don't pay.** If settlement times out or fails transiently, the job becomes
-   `payment_uncertain` and is never re-charged. `provider-kit reconcile` resolves it from on-chain data: the tx
-   hash, or the USDC `transfer` event to `payTo`.
+   `payment_uncertain` and is never re-charged. The provider resolves it from on-chain data after every sweep,
+   and operators with `provider-kit reconcile`: the tx hash the facilitator named, or the payer's USDC
+   `transfer` events, matched to the job by the payer's signed auth entry and its nonce. "Not settled" needs the
+   expiration ledger closed and every ledger the payment could have landed in searched (docs/job-recovery.md).
 5. **Recovery never re-sends `PAYMENT-SIGNATURE`.** It only calls check-status and get-result.
 
 **When the user is charged** is set per service with `charge`:
@@ -246,13 +249,15 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 | `jobs/memory-store.ts`, `jobs/sqlite-store.ts` | Reference stores. SQLite (`node:sqlite`, WAL, fsync on commit, `BEGIN IMMEDIATE`) is shared safely by several processes on one machine. Providers may add Postgres. |
 | `jobs/runner.ts` | Both charge policies; the output and `settlingSince` are stored before settling; leased upfront workers with renewals and at most 3 starts |
 | `jobs/scheduler.ts` | Capacity (spec §5.8) on the store's queue: admission before the 402 from store counts plus local reservations, the claim under the same lock, FIFO turns for on-success jobs, lease-based workers for upfront jobs, queue positions |
-| `jobs/recovery.ts` | Sweeps at startup and every 30 s: a settlement that never answered becomes `payment_uncertain`; an on-success job whose payment expired fails uncharged; retention |
+| `jobs/recovery.ts` | Sweeps at startup and every 30 s: a settlement that never answered becomes `payment_uncertain`; an on-success job whose payment expired (by ledger, or by time) fails uncharged; retention |
+| `jobs/reconcile.ts`, `payments/onchain.ts` | Decides `payment_uncertain` jobs after every sweep [J13]: finds the transaction carrying the payer's auth entry with the job's nonce (the facilitator's hash, else the payer's `transfer` events up to the expiration ledger); settled → queued or succeeded, provably not settled → failed uncharged, anything else waits |
+| `payments/chain.ts` | Soroban RPC reads (`rpc`, default the public testnet RPC) and the ledger clock: on-success deadlines from the payment's expiration ledger, and a create-job check that a signature does not expire too far out |
 | `http/rate-limit.ts` | Optional per-caller limit on create-job: `429` with `Retry-After` |
 | `http/node-server.ts` | `listen()`: Node's HTTP server for a provider, with `/healthz` and graceful close |
 | `manifest.ts` | Builds the manifest and checks it at startup with the JSON Schema and `checkManifestRules()` |
 | `registration.ts` | The 8004 registration file from the manifest [I1], and `checkRegistration()` (I1–I3, read-only) |
 | `testing.ts` | `signTestPayment()`: real x402 payments signed offline, for provider and client tests |
-| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `register`; Week 3: `request-validation`, `reconcile` |
+| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `register`, `reconcile`; Week 3: `request-validation` |
 | `Dockerfile`, `schemas/gateway-config.schema.json` | The gateway image; the config file's JSON Schema |
 
 **Developer experience targets (W2 exit criteria):**
@@ -407,16 +412,18 @@ existing Python API becomes a paid service through gateway mode.
 
 ### Week 3: Verification and Job Recovery (D2, part 2)
 
-- [ ] Complete Job Recovery:
+- [x] Complete Job Recovery (docs/job-recovery.md):
   - create-job, check-status and get-result
   - `payment_uncertain`
-  - `reconcile`
+  - reconciliation: automatic after every sweep, and `provider-kit reconcile` (`--dry-run`, `--rpc`)
   - the response-loss drill
-- [ ] Payment client recovery: resume from the journal, never re-sign.
-- [ ] Payment client: treat `409 request_in_progress` on create-job and while polling as "ask again later".
-- [ ] A ledger clock (Horizon's latest ledger and close time), shared by `reconcile` and the kit: an on-success
-  job's deadline from its payment's expiration ledger rather than from its claim, so a payment resent late
-  [Q8] isn't worked on after it expired.
+  - [ ] Record the recovery demo on testnet: one interrupted job, recovered, with exactly one on-chain transfer.
+- [x] Payment client recovery: resume from the journal, never re-sign.
+- [x] Payment client: treat `409 request_in_progress` on create-job and while polling as "ask again later".
+- [x] A ledger clock, shared by reconciliation and the kit: an on-success job's deadline from its payment's
+  expiration ledger rather than from its claim, so a payment resent late [Q8] isn't worked on after it expired.
+  It reads Soroban RPC (latest ledger, close time, average ledger duration) rather than Horizon, so one endpoint
+  serves the clock and reconciliation.
 - [ ] `verifier`: checks C1–C7, conformance levels, receipt, badges, and the no-payment `check` command.
 - [ ] Validation Registry publishing: `request-validation` (provider) and `validation_response` (verifier) on testnet.
 - [ ] Discovery integration, option (a) from §5.7, in `stellar-agent-search`.
@@ -460,6 +467,11 @@ existing Python API becomes a paid service through gateway mode.
 - [x] A failed spending-limit check → the payment is blocked (fail closed).
 - [ ] A lost response → recovery returns the stored result, with one on-chain transfer. (Provider side and the
   client's `recover()` are tested offline; the on-chain demo is Week 3.)
+- [x] An uncertain settlement is decided from the transaction carrying the job's nonce: another job's equal
+  transfer never counts, and "not settled" comes only after the expiration ledger closed and the whole window
+  was searched. An RPC outage, a window older than the RPC's history, or a ledger still to come leave the job
+  waiting.
+- [x] A `409` while the provider settles → the client follows the job and never signs again.
 
 **Integration (testnet, manual or CI-gated):** sample provider + verifier + payment client, end to end.
 

@@ -176,6 +176,48 @@ describe("job recovery", () => {
     ]);
   });
 
+  /** A facilitator whose settle answers only when the test releases it. */
+  function heldFacilitator() {
+    const facilitator = fakeFacilitator();
+    const answer = facilitator.settle.getMockImplementation() as (...args: unknown[]) => Promise<unknown>;
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => (release = resolve));
+    facilitator.settle.mockImplementation(async (...args: unknown[]) => {
+      await released;
+      return answer(...args);
+    });
+    return { facilitator, release };
+  }
+
+  it("follows a paid job the provider is still settling (409), without paying again [J7]", async () => {
+    const { facilitator, release } = heldFacilitator();
+    const { client, method, journal } = await setup({ provider: { facilitator, holdSeconds: 0 } });
+    const quote = await client.quote(manifestUrl, "slow-report", { topic: "settling" });
+    setTimeout(release, 200);
+
+    const { job, confirmed } = await client.pay(quote, { approved: true });
+    expect(job).toMatchObject({ status: "succeeded", charged: true, output: { report: "report on settling" } });
+    expect(confirmed).toBe(true);
+    expect(method.createPayload).toHaveBeenCalledTimes(1);
+    expect(facilitator.settle).toHaveBeenCalledTimes(1);
+    expect(journal.forJob(quote.jobId).map((entry) => entry.event)).toEqual(["intent", "approved", "sending", "settled", "result"]);
+  });
+
+  it("hands back a job whose settlement outlasts the wait, and recovers it once settled", async () => {
+    const { facilitator, release } = heldFacilitator();
+    const { client, journal } = await setup({ provider: { facilitator, holdSeconds: 0 }, client: { followSeconds: 0.3 } });
+    const quote = await client.quote(manifestUrl, "slow-report", { topic: "later" });
+
+    await expect(client.pay(quote, { approved: true })).rejects.toThrow(/still settling.*recover job/);
+    expect(journal.forJob(quote.jobId).map((entry) => entry.event)).toEqual(["intent", "approved", "sending", "uncertain"]);
+    // Still settling: recovery waits, then hands it back again, never paying.
+    await expect(client.recover(quote.jobId)).rejects.toThrow(PaymentUncertainError);
+
+    release();
+    await vi.waitFor(async () => expect((await client.recover(quote.jobId)).job).toMatchObject({ status: "succeeded", charged: true }), { timeout: 3000 });
+    expect(facilitator.settle).toHaveBeenCalledTimes(1);
+  });
+
   it("does not recover a job that was never paid", async () => {
     const { client } = await setup();
     const quote = await client.quote(manifestUrl, "text-stats", { text: "hi" });
