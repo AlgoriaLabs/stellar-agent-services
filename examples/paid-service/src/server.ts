@@ -15,6 +15,7 @@ const origin = process.env["PUBLIC_ORIGIN"] ?? `http://localhost:${port}`;
 const payTo = process.env["PAY_TO"];
 if (payTo === undefined) throw new Error("set PAY_TO to the public G... address that receives payments");
 const agentId = process.env["AGENT_ID"];
+const rpcUrl = process.env["SOROBAN_RPC_URL"];
 
 const provider = createProvider({
   baseUrl: origin,
@@ -30,6 +31,8 @@ const provider = createProvider({
   },
   services: [textStats, delayedReport],
   store: sqliteStore(process.env["JOB_DB_PATH"] ?? "./jobs.sqlite"),
+  // Reads the chain to decide payment_uncertain jobs. Testnet defaults to the public RPC; mainnet needs one.
+  ...(rpcUrl === undefined || rpcUrl === "" ? {} : { rpc: rpcUrl }),
   // Test-only Job Recovery drill: the job is paid and stored, then the create-job response is lost.
   loseCreateJobResponse: process.env["DRILL_LOSE_RESPONSE"] === "1",
 });

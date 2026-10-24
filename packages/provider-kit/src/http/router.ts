@@ -14,7 +14,9 @@
 // claim runs under the lane's lock, so the job is counted exactly once.
 //
 // Step 7 checks the payment locally before the facilitator sees it (payments/payload-checks.ts): a
-// payment for another recipient, amount or asset is refused with a 402 and never forwarded.
+// payment for another recipient, amount or asset is refused with a 402 and never forwarded. So is one
+// whose signature expires further out than maxTimeoutSeconds allows, when the ledger clock can tell:
+// the facilitator refuses it too, and reconciliation relies on it (payments/onchain.ts).
 
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
@@ -43,7 +45,9 @@ import type { Service } from "../define-service.js";
 import { runOnSuccess, settleUpfront, type PaidRun } from "../jobs/runner.js";
 import type { Reservation, Scheduler } from "../jobs/scheduler.js";
 import { FINAL_STATUSES, type JobStore, type StoredJob } from "../jobs/store.js";
+import type { LedgerClock } from "../payments/chain.js";
 import type { Facilitator } from "../payments/facilitator.js";
+import { EXPIRATION_TOLERANCE_LEDGERS } from "../payments/onchain.js";
 import { checkPayment, isRefused } from "../payments/payload-checks.js";
 import { paymentRequired, paymentRequirements, readPayment } from "../payments/x402-server.js";
 import { readBounded } from "./bounded.js";
@@ -62,6 +66,8 @@ export interface RouterContext {
   holdSeconds: number;
   /** How long settlement may take before the job is payment_uncertain (jobs/runner.ts). */
   settleTimeoutMs: number;
+  /** The ledger clock, when the provider has a Soroban RPC (payments/chain.ts). */
+  clock: LedgerClock | undefined;
   retentionSeconds: number;
   /** Test-only response-loss drill (docs/job-recovery.md): fail create-job after the job is stored. */
   loseCreateJobResponse: boolean;
@@ -200,6 +206,11 @@ async function payAndRun(
   if (payload === undefined) return challenge(manifest, service, "invalid_payment");
   const payment = await checkPayment(payload, requirements);
   if (isRefused(payment)) return challenge(manifest, service, payment.reason);
+  // A ledger takes at least a second, so maxTimeoutSeconds is also the most ledgers a payment may live.
+  const latestLedger = await context.clock?.latest().catch(() => undefined);
+  if (latestLedger !== undefined && payment.expirationLedger > latestLedger + requirements.maxTimeoutSeconds + EXPIRATION_TOLERANCE_LEDGERS) {
+    return challenge(manifest, service, "invalid_exact_stellar_payload_signature_expiration_too_far");
+  }
   try {
     const verified = await facilitator.verify(payload, requirements);
     if (!verified.isValid) return challenge(manifest, service, verified.invalidReason ?? "invalid_payment");
@@ -242,7 +253,7 @@ async function payAndRun(
 
   // 9. Settle and run, holding the response for at most holdSeconds [J9].
   const deadline = Date.now() + context.holdSeconds * 1000;
-  const run: PaidRun = { store, facilitator, scheduler, service, input, payload, requirements, payment, settleTimeoutMs: context.settleTimeoutMs };
+  const run: PaidRun = { store, facilitator, scheduler, service, input, payload, requirements, payment, settleTimeoutMs: context.settleTimeoutMs, clock: context.clock };
   let settled: SettleResponse | undefined;
   const work = (service.charge === "on-success" ? runOnSuccess(claim.job, run) : settleUpfront(claim.job, run))
     .then((response) => (settled = response))

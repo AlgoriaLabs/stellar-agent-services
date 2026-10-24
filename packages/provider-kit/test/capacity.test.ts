@@ -60,6 +60,7 @@ function setup(
     services: [defineService(config)],
     facilitator,
     holdSeconds: 0,
+    rpc: false,
     ...options.provider,
   });
 

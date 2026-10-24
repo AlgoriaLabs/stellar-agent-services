@@ -97,6 +97,8 @@ export async function setup(
     provider: { name: "Test provider" },
     services: [textStats, slowReport],
     facilitator,
+    // Offline: the provider reads no chain.
+    rpc: false,
     ...options.provider,
   });
   const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {

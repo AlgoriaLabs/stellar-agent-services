@@ -13,6 +13,8 @@ export const OPTIONS = {
   source: { type: "string" },
   "agent-uri": { type: "string" },
   network: { type: "string" },
+  store: { type: "string" },
+  rpc: { type: "string" },
   "dry-run": { type: "boolean" },
   help: { type: "boolean", short: "h" },
 } as const;

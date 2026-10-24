@@ -26,7 +26,15 @@ export const HORIZON_URL: Readonly<Record<StellarNetwork, string>> = {
   "stellar:pubnet": "https://horizon.stellar.org",
 };
 
+/**
+ * Public Soroban RPC servers, for settlement proofs [J16], reconciliation [J13] and the ledger clock.
+ * SDF runs no public mainnet RPC, so pubnet has no default: pass your provider's URL.
+ */
+export const SOROBAN_RPC_URL: Readonly<Record<StellarNetwork, string | undefined>> = {
+  "stellar:testnet": "https://soroban-testnet.stellar.org",
+  "stellar:pubnet": undefined,
+};
+
 // TODO:
-// - RPC per network.
 // - 8004 contract ids come from @trionlabs/stellar8004 TESTNET_CONFIG / MAINNET_CONFIG, never
 //   retyped.

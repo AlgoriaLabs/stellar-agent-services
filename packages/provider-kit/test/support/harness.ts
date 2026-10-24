@@ -38,6 +38,8 @@ export function testProvider(services: Service[], options: Partial<ProviderConfi
     payTo,
     provider: { name: "Test" },
     services,
+    // Tests never read the real chain; the ones about it pass a fake.
+    rpc: false,
     ...options,
     facilitator,
   });

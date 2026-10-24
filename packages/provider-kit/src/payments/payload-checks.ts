@@ -109,7 +109,7 @@ export function isRefused(result: CheckedPayment | RefusedPayment): result is Re
 }
 
 /** Address credentials, in either encoding the x402 facilitator accepts. */
-function addressCredentials(credentials: xdr.SorobanCredentials): xdr.SorobanAddressCredentials | undefined {
+export function addressCredentials(credentials: xdr.SorobanCredentials): xdr.SorobanAddressCredentials | undefined {
   switch (credentials.switch()) {
     case xdr.SorobanCredentialsType.sorobanCredentialsAddress():
       return credentials.address();

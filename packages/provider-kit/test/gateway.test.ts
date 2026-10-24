@@ -120,6 +120,14 @@ describe("loadGatewayConfig", () => {
     expect(createProvider(config).manifestUrl).toBe("https://api.example.com/.well-known/stellar-agent-services.json");
   });
 
+  it("reads the Soroban RPC URL, and refuses a plain http:// one outside dev", async () => {
+    const withRpc = { ...minimal, rpcUrl: "env:RPC_URL" };
+    const { config } = await loadGatewayConfig(write("rpc.json", withRpc), { env: { ...env, RPC_URL: "https://rpc.example.com" } });
+    expect(config.rpc).toBe("https://rpc.example.com");
+    const plain = await loadGatewayConfig(write("rpc-http.json", withRpc), { env: { ...env, RPC_URL: "http://rpc.example.com" } });
+    expect(() => createProvider(plain.config)).toThrow(/Soroban RPC URL must be https/);
+  });
+
   it("refuses a config with a missing env value, a schema problem or a bad service, saying where", async () => {
     await expect(loadGatewayConfig(write("env.json", minimal), { env: { ...env, UPSTREAM_KEY: "" } })).rejects.toThrow(/UPSTREAM_KEY/);
     await expect(loadGatewayConfig(write("schema.json", { ...minimal, payto: "typo" }), { env })).rejects.toThrow(/must NOT have additional properties/);
@@ -156,7 +164,8 @@ describe.skipIf(!python)("the Python example behind the gateway", () => {
     writeFileSync(path, JSON.stringify(config));
 
     const loaded = await loadGatewayConfig(path, { env: { PUBLIC_ORIGIN: "http://localhost:8787", PAY_TO: payTo } });
-    const provider = createProvider(loaded.config);
+    // The test runs offline: no chain reads.
+    const provider = createProvider({ ...loaded.config, rpc: false });
     await provider.ready();
     gateway = await listen(provider, { host: "127.0.0.1", port: 0 });
   });

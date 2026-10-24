@@ -11,6 +11,10 @@
 // which still buys at most one job (docs/provider-standard.md §5.8) [Q8]. It gives up after
 // busyWaitSeconds, or once the signed payment is about to expire.
 //
+// 409 request_in_progress means the opposite: the provider has claimed the payment and is still
+// settling it [J7]. The client never pays again; it follows the job with get-result until it has a job
+// view, for followSeconds, and otherwise hands it back for recover().
+//
 // The signer and the payment methods are strategies (strategies.ts). Every safety step stays here, so
 // it holds whichever ones are plugged in.
 
@@ -308,6 +312,15 @@ export class PaymentClient {
       await journal.append("failed", quote.jobId, hash, { charged: false, reason: error.problem?.code ?? `provider_busy_${response.status}` });
       throw error;
     }
+    if (isInProgress(response)) {
+      // The provider holds the payment and is still settling it: follow the job, never pay again.
+      const settled = await this.whileSettling(quote.manifest.baseUrl, quote.jobId, token, response);
+      if (settled === undefined) {
+        await journal.append("uncertain", quote.jobId, hash, { reason: "the provider was still settling the payment" });
+        throw new PaymentUncertainError(quote.jobId, "the provider is still settling the payment");
+      }
+      return this.finish(quote.manifest.baseUrl, quote.jobId, token, settled.job, hash, settled.retryAfter);
+    }
     if (response.status !== 200 && response.status !== 202) {
       await journal.append("uncertain", quote.jobId, hash, { reason: `the provider answered ${response.status}` });
       throw new PaymentUncertainError(quote.jobId, `the provider answered ${response.status}`);
@@ -331,8 +344,30 @@ export class PaymentClient {
     await journal.append("recovered", jobId, hash, {});
     const response = await this.getResult(baseUrl, jobId, token);
     if (isBusy(response)) throw await busyError(response);
+    if (isInProgress(response)) {
+      const settled = await this.whileSettling(baseUrl, jobId, token, response);
+      if (settled === undefined) throw new PaymentUncertainError(jobId, "the provider is still settling the payment");
+      return this.finish(baseUrl, jobId, token, settled.job, hash, settled.retryAfter);
+    }
     const job = await readJob(response);
     return this.finish(baseUrl, jobId, token, job, hash, retryAfterMs(response));
+  }
+
+  /**
+   * Polls get-result while the provider answers 409 request_in_progress, at its Retry-After pace, for at
+   * most followSeconds. Resolves with the first job view, or undefined if settlement outlasted the wait.
+   */
+  private async whileSettling(baseUrl: string, jobId: string, token: string, response: Response): Promise<{ job: JobView; retryAfter: number | undefined } | undefined> {
+    const deadline = Date.now() + (this.options.followSeconds ?? 120) * 1000;
+    for (;;) {
+      const wait = this.options.pollMs ?? retryAfterMs(response) ?? 2000;
+      await response.body?.cancel();
+      if (Date.now() + wait > deadline) return undefined;
+      await sleep(wait);
+      response = await this.getResult(baseUrl, jobId, token);
+      // Busy is "ask again later" too [Q9].
+      if (!isInProgress(response) && !isBusy(response)) return { job: await readJob(response), retryAfter: retryAfterMs(response) };
+    }
   }
 
   private async finish(baseUrl: string, jobId: string, token: string, first: JobView, hash: string, retryAfter: number | undefined): Promise<PaymentResult> {
@@ -427,26 +462,29 @@ export class PaymentClient {
 
   /**
    * Polls get-result until the job finishes or followSeconds pass, at the provider's Retry-After pace.
-   * A busy answer while polling only means "ask again later" [Q9].
+   * A busy or in-progress answer while polling only means "ask again later" [Q9], [J7].
    */
   private async follow(baseUrl: string, jobId: string, token: string, job: JobView, retryAfter: number | undefined): Promise<JobView> {
     const deadline = Date.now() + (this.options.followSeconds ?? 120) * 1000;
     while ((job.status !== "succeeded" && job.status !== "failed") || (job.status === "succeeded" && job.output === undefined)) {
-      // Only the provider's reconcile can resolve it [J13]; polling won't, so hand it back now.
+      // Only the provider's reconciliation can resolve it [J13]; polling won't, so hand it back now.
       if (job.status === "payment_uncertain" || Date.now() >= deadline) return job;
       const wait = this.options.pollMs ?? retryAfter ?? 2000;
       await sleep(Math.min(wait, deadline - Date.now()));
       const response = await this.getResult(baseUrl, jobId, token);
       retryAfter = retryAfterMs(response);
-      if (!isBusy(response)) job = await readJob(response);
+      if (isBusy(response) || isInProgress(response)) await response.body?.cancel();
+      else job = await readJob(response);
     }
     return job;
   }
 
-  /** get-result. Answers other than a job view or a busy provider throw. */
+  /** get-result. Answers other than a job view, a busy provider or a job still settling throw. */
   private async getResult(baseUrl: string, jobId: string, token: string): Promise<Response> {
     const response = await this.fetch(jobResultUrl(baseUrl, jobId), { headers: { [JOB_TOKEN]: token }, redirect: "manual" });
-    if (response.status !== 200 && response.status !== 202 && !isBusy(response)) throw new ProviderError(response.status, await readProblem(response));
+    if (response.status !== 200 && response.status !== 202 && !isBusy(response) && !isInProgress(response)) {
+      throw new ProviderError(response.status, await readProblem(response));
+    }
     return response;
   }
 
@@ -496,6 +534,11 @@ function pick(requirements: PaymentRequirements) {
 
 function isBusy(response: Response): boolean {
   return response.status === 429 || response.status === 503;
+}
+
+/** 409 request_in_progress: the job exists and its payment is still being claimed or settled [J7]. */
+function isInProgress(response: Response): boolean {
+  return response.status === 409;
 }
 
 function retryAfterMs(response: Response): number | undefined {

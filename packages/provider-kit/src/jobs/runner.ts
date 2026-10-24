@@ -15,13 +15,15 @@
 // still counts if it comes: a late or raced result is recorded from payment_uncertain, which the spec
 // allows to become queued, succeeded or failed (§5.6). A charged payment is never dropped.
 //
-// Known limit: an on-success job's deadline counts from its claim, not from the payment's expiration
-// ledger. A client that resends a signed payment long after signing [Q8] may see the work done and
-// then payment_failed, uncharged.
+// An on-success job's deadline is when its payment expires, less room to settle: the close of its
+// expiration ledger by the ledger clock (payments/chain.ts), so a payment the client resent long after
+// signing [Q8] is not worked on past its life. The claim time plus maxTimeoutSeconds bounds it too,
+// and is the deadline when the clock can't answer.
 
 import { jobError, type JobFailureCode, type JsonObject } from "@stellar-agent-services/protocol";
 import type { PaymentPayload, PaymentRequirements, SettleResponse } from "@x402/core/types";
 import type { Service } from "../define-service.js";
+import type { LedgerClock } from "../payments/chain.js";
 import type { Facilitator } from "../payments/facilitator.js";
 import type { CheckedPayment } from "../payments/payload-checks.js";
 import { settle, type Settlement } from "../payments/settlement.js";
@@ -42,13 +44,14 @@ export interface PaidRun {
   payment: CheckedPayment;
   /** How long settlement may take before the job is payment_uncertain. */
   settleTimeoutMs: number;
+  /** Times an on-success job by its payment's expiration ledger. */
+  clock?: LedgerClock | undefined;
 }
 
 /** on-success: resolves when the job is final or payment_uncertain, with the settle response if settled. */
 export async function runOnSuccess(job: StoredJob, run: PaidRun): Promise<SettleResponse | undefined> {
-  const { store, scheduler, service, requirements } = run;
-  // The signed payment expires about maxTimeoutSeconds after signing [S2]; leave room to settle.
-  const deadline = Date.parse(job.createdAt) + Math.max(1, requirements.maxTimeoutSeconds - SETTLE_MARGIN_SECONDS) * 1000;
+  const { store, scheduler, service } = run;
+  const deadline = await paymentDeadline(job, run);
   try {
     const started = await scheduler.waitForTurn(job, deadline);
     if (started === undefined) {
@@ -78,6 +81,16 @@ export async function runOnSuccess(job: StoredJob, run: PaidRun): Promise<Settle
   } finally {
     scheduler.wake(service.name);
   }
+}
+
+/**
+ * When an on-success job's work must be done, leaving room to settle before its payment expires [S2]:
+ * the close of its expiration ledger, but no later than maxTimeoutSeconds after the claim.
+ */
+async function paymentDeadline(job: StoredJob, run: PaidRun): Promise<number> {
+  const byClaim = Date.parse(job.createdAt) + Math.max(1, run.requirements.maxTimeoutSeconds - SETTLE_MARGIN_SECONDS) * 1000;
+  const expires = await run.clock?.closesAt(job.claim.expirationLedger).catch(() => undefined);
+  return expires === undefined ? byClaim : Math.min(byClaim, expires - SETTLE_MARGIN_SECONDS * 1000);
 }
 
 /** upfront: settles, then queues the job for a worker. Resolves once it is queued, failed or payment_uncertain. */

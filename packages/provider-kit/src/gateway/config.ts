@@ -29,6 +29,7 @@ export interface GatewayConfig {
   facilitator: string;
   facilitatorHeaders?: Record<string, string>;
   provider: Omit<ProviderInfo, "agentId"> & { agentId?: number | string };
+  rpcUrl?: string;
   store?: string;
   listen?: { host?: string; port?: number };
   maxTimeoutSeconds?: number;
@@ -198,6 +199,7 @@ export async function loadGatewayConfig(
     provider,
     services,
     facilitator,
+    ...(file.rpcUrl === undefined ? {} : { rpc: fromEnv(file.rpcUrl, "rpcUrl") }),
     store: storePath === "memory" || options.openStore === false ? memoryStore() : sqliteStore(resolve(directory, storePath)),
     dev,
   };

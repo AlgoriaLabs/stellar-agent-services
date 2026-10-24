@@ -121,8 +121,9 @@ mount the config at `/config/provider.config.json` and a volume at `/data` (set 
 | `provider-kit init [--upstream <url>]` | Writes a starter gateway config. |
 | `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. |
 | `provider-kit register (--config \| --manifest) --source <key>` | Registers in the Stellar 8004 identity registry, or updates the registration, signing with the [Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain. `--dry-run` prints the commands. |
+| `provider-kit reconcile (--config <file> \| --store <file> --network <net>)` | Decides `payment_uncertain` jobs from on-chain data [J13]. `--dry-run` only reports; `--rpc <url>` picks the Soroban RPC. It reads the chain, writes only the job store and signs nothing, so it is safe next to a running provider. Exits 1 while a job is undecided. |
 
-`reconcile` (deciding `payment_uncertain` jobs from on-chain data) and `request-validation` come in Week 3.
+`request-validation` comes in Week 3.
 
 ## Payment safety
 
@@ -133,10 +134,17 @@ mount the config at `/config/provider.config.json` and a volume at `/data` (set 
 - **One payment, one job.** The fingerprint is the payer's auth-entry nonce, which Soroban accepts once, so a
   signed payment can't buy two jobs even re-wrapped in another transaction [P9].
 - **Uncertain is never failed.** A settlement counts as failed only when the facilitator says it never
-  submitted the transaction. Timeouts, errors and unknown answers make the job `payment_uncertain`, decided
-  later from on-chain data and never charged again [J13]. A settlement past its deadline
-  (`settleTimeoutSeconds`, default `maxTimeoutSeconds` + 30) is uncertain too, and its answer is still recorded
-  if it comes later.
+  submitted the transaction. Timeouts, errors and unknown answers make the job `payment_uncertain`, never
+  charged again [J13]. A settlement past its deadline (`settleTimeoutSeconds`, default `maxTimeoutSeconds` + 30)
+  is uncertain too, and its answer is still recorded if it comes later.
+- **Reconciled from the chain.** With a Soroban RPC (`rpc`, the public one by default on testnet; set your own
+  on mainnet), the provider decides `payment_uncertain` jobs after every sweep. It looks for the transaction
+  that carries the payer's signed auth entry with the job's nonce, so another job's equal transfer is never
+  mistaken for it. A paid job then runs or shows its output; one whose payment provably never landed before
+  it expired fails uncharged; anything less waits. See [docs/job-recovery.md](../../docs/job-recovery.md#reconciliation).
+- **Timed by ledger.** A signed payment expires at a ledger, so `on-success` jobs are timed by their payment's
+  expiration ledger, read from the same RPC. Without it they fall back to the claim time plus
+  `maxTimeoutSeconds`.
 - **Crash-safe.** Every state change is stored before the next step. A settlement interrupted by a crash
   becomes `payment_uncertain`; an `on-success` job whose payment expired fails uncharged.
 - **Hardened facilitator client.** HTTPS only, no redirects, deadlines on every call, bounded answers, and a
@@ -175,8 +183,8 @@ same request again later.
 
 - The manifest publishes `capacity: { concurrency, maxQueueWaitSeconds }` so discovery and clients can see it.
 - `upfront` jobs settle first and then wait for a slot. `on-success` jobs wait only as long as their payment
-  lasts: `maxTimeoutSeconds` minus the work and 10 s to settle. One that can't start in time fails with
-  `timeout` and is not charged.
+  lasts: until its expiration ledger, less the work and 10 s to settle. One that can't start in time fails
+  with `timeout` and is not charged.
 - Wait estimates start from `expectedDurationSeconds` and then follow the measured durations.
 - check-status and get-result are never limited, so paid jobs can always be collected.
 
@@ -218,10 +226,13 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/payments/payload-checks.ts` | Local payment checks and the payment fingerprint |
 | `src/payments/facilitator.ts` | The facilitator client and the startup check |
 | `src/payments/settlement.ts` | Settlement as `settled`, `failed` or `uncertain` (never charge twice) |
+| `src/payments/chain.ts` | Soroban RPC reads and the ledger clock |
+| `src/payments/onchain.ts` | Finds a job's payment on chain, by the payer's signed auth entry and nonce |
 | `src/payments/x402-server.ts` | The 402 challenge, with the Bazaar discovery extension |
 | `src/jobs/runner.ts` | The `on-success` and `upfront` charge policies; leased workers |
 | `src/jobs/scheduler.ts` | Capacity: admission before the 402, turns, workers, queue positions |
 | `src/jobs/recovery.ts` | Sweeps for what a crash left behind, and retention |
+| `src/jobs/reconcile.ts` | Decides `payment_uncertain` jobs from on-chain data |
 | `src/jobs/memory-store.ts`, `src/jobs/sqlite-store.ts` | Job stores |
 | `src/gateway/config.ts`, `src/gateway/upstream.ts` | Gateway mode |
 | `src/registration.ts` | 8004 registration file and the I1–I3 check |
