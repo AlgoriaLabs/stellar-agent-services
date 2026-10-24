@@ -14,10 +14,13 @@ payment side:
 | [`packages/verifier`](packages/verifier) | Provider checks, verification receipts, badges, Stellar 8004 Validation Registry |
 | [`apps/wallet`](apps/wallet) | Web page where a person approves and pays a service (testnet) |
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
+| [`examples/python-upstream`](examples/python-upstream) | An existing Python API made a paid service with gateway mode |
 
-**Status:** proof of concept. A paid call works end to end, from the sample provider to the payment client's CLI
-and web page; the verifier is still a scaffold. The plan is in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
-Development runs on Stellar **testnet**.
+**Status:** Week 2 of the plan. A paid call works end to end, from a provider (library or gateway mode, with a
+durable job queue) to the payment client's CLI and web page; the verifier is still a scaffold. The plan is in
+[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development runs on Stellar **testnet**.
+
+To offer a service, follow the [provider setup guide](docs/provider-setup-guide.md).
 
 **The standard in short:** [for people](docs/standard/README.md) and [for AI coding agents](docs/standard/README-AI.md).
 The full text is [docs/provider-standard.md](docs/provider-standard.md).

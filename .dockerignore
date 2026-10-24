@@ -1,0 +1,12 @@
+# Docker build context: sources and lockfile only.
+**/node_modules
+**/dist
+.git
+evidence
+**/*.sqlite
+**/*.sqlite-*
+**/.env
+**/.env.*
+!**/.env.example
+**/*.journal.jsonl
+.DS_Store

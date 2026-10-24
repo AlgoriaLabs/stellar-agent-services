@@ -1,9 +1,19 @@
 import type { JobView, Problem } from "@stellar-agent-services/protocol";
 import { Keypair } from "@stellar/stellar-sdk";
-import { encodePaymentSignatureHeader } from "@x402/core/http";
-import type { PaymentRequirements } from "@x402/core/types";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createProvider, defineService, type CapacityConfig, type Facilitator, type ProviderConfig, type ServiceConfig } from "../src/index.js";
+import {
+  createProvider,
+  defineService,
+  memoryStore,
+  scheduler,
+  type CapacityConfig,
+  type Facilitator,
+  type JobStore,
+  type ProviderConfig,
+  type ServiceConfig,
+  type StoredJob,
+} from "../src/index.js";
+import { client } from "./support/harness.js";
 
 // Capacity and queuing (docs/provider-standard.md §5.8): a busy provider queues or turns requests
 // away before payment, and never answers with an error because of load.
@@ -53,22 +63,9 @@ function setup(
     ...options.provider,
   });
 
-  const requirements = provider.manifest.payment.accepts[0] as unknown as PaymentRequirements;
-  let signatures = 0;
-  const createJob = (n: number, { paid = true, headers = {} }: { paid?: boolean; headers?: Record<string, string> } = {}) => {
-    const payment = encodePaymentSignatureHeader({
-      x402Version: 2,
-      accepted: { ...requirements, amount: "100000" },
-      payload: { transaction: `tx-${++signatures}` },
-    });
-    return provider.fetch(
-      new Request(`${baseUrl}/services/gated/jobs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(paid ? { "PAYMENT-SIGNATURE": payment } : {}), ...headers },
-        body: JSON.stringify({ n }),
-      }),
-    );
-  };
+  const { payment, ...http } = client(provider);
+  const createJob = async (n: number, { paid = true, headers = {} }: { paid?: boolean; headers?: Record<string, string> } = {}) =>
+    http.createJob("gated", { n }, { ...(paid ? { "PAYMENT-SIGNATURE": await payment("gated") } : {}), ...headers });
   const getJob = async (job: JobView) => {
     const response = await provider.fetch(new Request(`${baseUrl}/jobs/${job.jobId}`, { headers: { "Job-Token": job.jobToken! } }));
     return (await response.json()) as JobView;
@@ -200,6 +197,26 @@ describe("capacity for on-success jobs", () => {
     expect(await getJob(queued)).toMatchObject({ status: "failed", charged: false, error: { code: "timeout" } });
     expect(started).toEqual([1]);
     expect(facilitator.settle).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("turns with a slow store", () => {
+  it("a job whose wait ends while the store is starting it doesn't block the next one", async () => {
+    const inner = memoryStore();
+    // A store whose start() takes a real round trip, as a networked database's would.
+    const store: JobStore = { ...inner, start: async (jobId, concurrency) => (await new Promise((resolve) => setTimeout(resolve, 50)), inner.start(jobId, concurrency)) };
+    const queue = scheduler({ store, lanes: [{ service: "s", charge: "on-success", concurrency: 2, maxQueued: 10, maxWaitSeconds: 60, expectedSeconds: 1 }], owner: "o", leaseSeconds: 30, pollMs: 1000 });
+    const claim = async (n: number) => {
+      const now = new Date().toISOString();
+      const job: StoredJob = { jobId: `0192d3a4-7c1e-7b2a-9f00-00000000000${n}`, service: "s", charge: "on-success", bindingHash: "b", tokenHash: "t", status: "queued", claim: { fingerprint: `f${n}`, payer: "G", nonce: String(n), expirationLedger: 1 }, createdAt: now, updatedAt: now };
+      return ((await inner.claim(job)) as { job: StoredJob }).job;
+    };
+    const [a, b] = [await claim(1), await claim(2)];
+
+    const turnA = queue.waitForTurn(a, Date.now() + 20);
+    const turnB = queue.waitForTurn(b, Date.now() + 2000);
+    expect(await turnA).toBeUndefined();
+    expect(await turnB).toMatchObject({ jobId: b.jobId, status: "running" });
   });
 });
 
