@@ -2,6 +2,8 @@
 
 The normative rules are in [provider-standard.md §5](provider-standard.md#5-jobs). This document explains how they
 fit together, how the Provider Kit and the payment client implement them, and how the recovery demo is run.
+Short version: [recovery/README.md](recovery/README.md). For AI coding agents:
+[recovery/README-AI.md](recovery/README-AI.md).
 
 **Goal:** if a connection drops after payment, the user collects the same job's result without paying again.
 Nobody is charged twice for one job. A payment whose outcome is unknown is decided from the chain, never by
