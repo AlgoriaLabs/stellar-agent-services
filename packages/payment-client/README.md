@@ -8,7 +8,8 @@ payment method, both in Node (the `stellar-pay` CLI) and in the browser (the min
 [apps/wallet](../../apps/wallet)). The MCP server, browser-wallet and passkey signers come later and reuse this core.
 
 Signers and payment methods are strategies: the core keeps every safety step, and adapters for other wallets or
-payment infrastructure plug in without changing it (docs/payment-client.md, "Strategies").
+payment infrastructure plug in without changing it (docs/payment-client.md, "Strategies"). To build one, see
+[docs/client-integration](../../docs/client-integration/README.md).
 
 ```ts
 const client = new PaymentClient({

@@ -151,6 +151,10 @@ see how far we vouch for each one:
 A wallet's own security, such as how it stores its key, stays its own responsibility. The core guarantees only
 that what leaves through it is what the user approved.
 
+How to build, test and submit an adapter, and what we and the integrator each need, is in
+[client-integration/README.md](client-integration/README.md) (for AI agents:
+[README-AI.md](client-integration/README-AI.md)).
+
 **Integrations, later.** None is built yet. Each will be its own package.
 
 | Integration | Slot | Status and what to check first |
