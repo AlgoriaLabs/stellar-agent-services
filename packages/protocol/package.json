@@ -11,6 +11,7 @@
       "default": "./dist/index.js"
     },
     "./manifest.schema.json": "./schemas/manifest.schema.json",
+    "./verification-receipt.schema.json": "./schemas/verification-receipt.schema.json",
     "./test-vectors/*": "./test-vectors/*"
   },
   "files": [

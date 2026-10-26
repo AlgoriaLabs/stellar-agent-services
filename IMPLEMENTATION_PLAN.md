@@ -10,7 +10,8 @@ Job Recovery, delivered and piloted within one 30-day Instaward sprint.
 - **Status:** Week 3. The protocol package, the Provider Kit (library, gateway mode, durable SQLite queue, CLI)
   and the payment client (core, `stellar-pay` CLI and a minimal web approval page) work end to end on testnet.
   Job Recovery is complete in code, reconciliation and the ledger clock included; the recorded testnet demo is
-  still to do. The verifier is a scaffold with TODO comments; `request-validation` comes with it.
+  still to do. The verifier is complete in code: checks C1–C7 with on-chain payment proofs, receipts, badges and
+  `validation_response`. `provider-kit request-validation` and a first testnet receipt are next.
 
 ---
 
@@ -291,7 +292,8 @@ themselves before going live.
 - It is stored under `evidence/receipts/` and published through the evidence page (GitHub Pages).
 
 **Badges:** SVGs derived **only** from a receipt.
-- Badge set, one per level: `Standard v1`, `Payment verified`, `Recovery verified`, `8004 validated`.
+- Badge set: one per level, `Standard v1`, `Payment verified`, `Recovery verified`; plus `Load-safe` (C7) and
+  `8004 validated` (C2 and a Validation Registry record of the receipt, confirmed on chain).
 - Each badge shows the network.
 
 **Validation Registry flow** (contract read from `stellar-8004/contracts/validation-registry`):
@@ -424,8 +426,14 @@ existing Python API becomes a paid service through gateway mode.
   expiration ledger rather than from its claim, so a payment resent late [Q8] isn't worked on after it expired.
   It reads Soroban RPC (latest ledger, close time, average ledger duration) rather than Horizon, so one endpoint
   serves the clock and reconciliation.
-- [ ] `verifier`: checks C1–C7, conformance levels, receipt, badges, and the no-payment `check` command.
+- [x] `verifier`: checks C1–C7, conformance levels, receipt, badges, and the no-payment `check` command
+  (docs/verification.md). Paid checks prove payments on chain by the signed nonce, and that refused payments never
+  landed; receipts are stored under their own SHA-256, the on-chain `response_hash`.
 - [ ] Validation Registry publishing: `request-validation` (provider) and `validation_response` (verifier) on testnet.
+  - [x] `verifier publish`: `validation_response` through the Stellar CLI keychain, after checking the request, the
+    receipt and the `response_uri`; the request document is defined in docs/verification.md.
+  - [ ] `provider-kit request-validation`.
+  - [ ] Run both on testnet for the sample provider: the first receipt and Validation Registry record.
 - [ ] Discovery integration, option (a) from §5.7, in `stellar-agent-search`.
 - [ ] Pilot providers start integrating: send them the guide and template.
 

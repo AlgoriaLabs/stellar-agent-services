@@ -11,16 +11,24 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "bin": {
+    "verifier": "./dist/cli/index.js"
   },
   "dependencies": {
     "@stellar-agent-services/protocol": "0.0.0",
     "@stellar/stellar-sdk": "16.3.1",
     "@trionlabs/stellar8004": "0.0.11",
     "@x402/core": "2.28.0",
-    "@x402/fetch": "2.28.0",
-    "@x402/stellar": "2.28.0"
+    "@x402/stellar": "2.28.0",
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "@stellar-agent-services/provider-kit": "0.0.0"
   }
 }
