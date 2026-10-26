@@ -12,6 +12,7 @@
     },
     "./manifest.schema.json": "./schemas/manifest.schema.json",
     "./verification-receipt.schema.json": "./schemas/verification-receipt.schema.json",
+    "./validation-request.schema.json": "./schemas/validation-request.schema.json",
     "./test-vectors/*": "./test-vectors/*"
   },
   "files": [

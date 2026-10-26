@@ -37,7 +37,7 @@ A provider tests itself before going live:
 verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
 ```
 
-A verifier answers a validation request:
+A verifier answers a validation request, by the hash that the provider's `provider-kit request-validation` printed:
 
 ```bash
 export VERIFIER_PAYER_SECRET=S...        # the dedicated testnet test payer (see below)
@@ -298,7 +298,9 @@ request names may answer it, and may update its answer later.
 validation_request(caller = owner, validator_address = <verifier G…>, agent_id, request_uri, request_hash)
 ```
 
-The request document names what is to be verified:
+The request document names what is to be verified (`ValidationRequest` in
+[packages/protocol](../packages/protocol/src/validation-request.ts), JSON Schema
+[validation-request.schema.json](../packages/protocol/schemas/validation-request.schema.json)):
 
 ```json
 {
@@ -306,16 +308,43 @@ The request document names what is to be verified:
   "type": "validation-request",
   "agentId": 42,
   "network": "stellar:testnet",
-  "manifest": "https://api.example.com/.well-known/stellar-agent-services.json",
+  "manifest": { "url": "https://api.example.com/.well-known/stellar-agent-services.json" },
   "validator": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
   "requestedAt": "2026-10-26T10:00:00Z"
 }
 ```
 
-`request_hash` is `sha256(JCS(document))`, the `contentHash` mode of `generateRequestNonce`, and `request_uri` is an
-HTTPS URL serving the document, or a `data:application/json;base64,` URI holding it. `requestedAt` makes each request
-unique: the registry refuses a hash it already has. `provider-kit request-validation` will do this; until then, the
-owner can call it with the Stellar CLI:
+| Field | Meaning |
+| --- | --- |
+| `standard`, `type` | `stellar-agent-services/provider@1`, `validation-request` |
+| `agentId`, `network` | The provider's Stellar 8004 agent id, and `stellar:testnet` or `stellar:pubnet` |
+| `manifest` | `{ url }`: the HTTPS manifest URL the agent's registration names [I1] |
+| `validator` | The verifier's `G…` address: the only account that may answer |
+| `requestedAt` | RFC 3339 |
+
+- **One document, one hash.** `request_hash` is the SHA-256 of the document's RFC 8785 canonical JSON, the
+  `contentHash` mode of `generateRequestNonce`. `request_uri` holds exactly those bytes: a
+  `data:application/json;base64,` URI, or an HTTPS URL serving them. Anyone can hash what the URI holds and compare it
+  with the chain. [validation-requests.json](../packages/protocol/test-vectors/validation-requests.json) pins both.
+- **Every request is new.** `requestedAt` makes each document unique, and the registry refuses a hash it already has.
+- **Who may ask.** The registry takes a request only from the agent's owner, the address approved for the agent, or an
+  operator of the owner's.
+- **Never the provider itself.** The validator is not the agent's owner or its wallet. The registry would accept such a
+  request, but its answer would prove nothing.
+- **Ready to verify.** The provider is served over HTTPS and its registration passes [I1]–[I3]. Otherwise C2 fails, and
+  the answer can never earn "8004 validated".
+
+`provider-kit request-validation` checks all of this before anything is signed, puts the document on chain as a
+`data:` URI, signs through the Stellar CLI keychain and reads the registry back:
+
+```bash
+provider-kit request-validation --config provider.config.json --validator <verifier G…> --source owner --dry-run
+provider-kit request-validation --config provider.config.json --validator <verifier G…> --source owner --out request.json
+```
+
+It prints the request hash, which the provider sends the verifier with its manifest URL. `--manifest <url>` instead of
+`--config` works for any provider, library or native. Without the kit, the owner sends the same request with the
+Stellar CLI:
 
 ```bash
 stellar contract invoke --id CC5USZRO26MOIAVNYTTJDS63C2OBBLREOAOET4CPF2EZWO3YFKLMO3SL --source-account owner \

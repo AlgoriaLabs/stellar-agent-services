@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://algorialabs.github.io/stellar-agent-services/schemas/provider/1/validation-request.schema.json",
+  "$comment": "Rule ids such as [I1] refer to docs/provider-standard.md; the request itself is described in docs/verification.md.",
+  "title": "Provider Standard v1 validation request",
+  "description": "What a provider's owner asks a verifier to check, in a Stellar 8004 validation_request. It is published as RFC 8785 canonical JSON: the SHA-256 of those bytes is the request_hash, and the request_uri holds the same bytes. Unknown fields are allowed and ignored, but they are hashed with the rest.",
+  "type": "object",
+  "required": ["standard", "type", "agentId", "network", "manifest", "validator", "requestedAt"],
+  "properties": {
+    "standard": { "const": "stellar-agent-services/provider@1" },
+    "type": { "const": "validation-request" },
+    "agentId": {
+      "description": "The provider's Stellar 8004 agent id (u32).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "network": { "enum": ["stellar:testnet", "stellar:pubnet"] },
+    "manifest": {
+      "description": "The manifest to check.",
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "description": "The HTTPS URL the agent's registration names [I1].",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s]+$"
+        }
+      }
+    },
+    "validator": {
+      "description": "The verifier's account: the only one that may answer the request.",
+      "type": "string",
+      "pattern": "^G[A-D][A-Z2-7]{54}$"
+    },
+    "requestedAt": {
+      "description": "RFC 3339. It makes each request unique: the registry refuses a request_hash it already has.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    }
+  }
+}

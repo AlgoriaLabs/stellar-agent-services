@@ -13,6 +13,7 @@ export * from "./define-service.js";
 export * from "./provider.js";
 export * from "./manifest.js";
 export * from "./registration.js";
+export * from "./validation-request.js";
 export * from "./gateway/config.js";
 export * from "./gateway/upstream.js";
 export * from "./jobs/store.js";

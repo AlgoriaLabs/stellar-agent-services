@@ -191,9 +191,16 @@ the Stellar 8004 Validation Registry (see [verification.md](verification.md)).
 
 1. Once deployed, run `verifier check <your manifest URL>`: every check should pass, and C2 confirms your 8004
    registration.
-2. Ask a verifier for validation: `validation_request` in the Validation Registry, naming the verifier's address
-   ([verification.md](verification.md#stellar-8004-validation-registry) shows the request document and the
-   command). `provider-kit request-validation` will do this in one step.
+2. Ask a verifier for validation, naming its address. Sign with the key you registered with:
+
+   ```bash
+   provider-kit request-validation --config provider.config.json --validator <verifier G…> --source payto --dry-run   # review
+   provider-kit request-validation --config provider.config.json --validator <verifier G…> --source payto
+   ```
+
+   It checks your registration first, records the request in the Validation Registry and prints its hash. Send the
+   verifier your manifest URL and that hash. [verification.md](verification.md#stellar-8004-validation-registry)
+   describes the request.
 3. The verifier runs every check, paying for a few jobs from its own test account, publishes the receipt and answers
    your request on chain. Its receipt gives your badges: Standard v1, Payment verified, Recovery verified,
    Load-safe and 8004 validated.

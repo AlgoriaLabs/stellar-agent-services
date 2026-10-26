@@ -20,7 +20,6 @@ pays one) that follows Provider Standard v1.
 4. Treat every money path as fail-closed. When you can't tell whether a payment settled, the job is
    `payment_uncertain`, never `failed` and never retried with a new charge `[J13]`.
 5. Validate your work with the JSON Schema and test vectors in §13 before you call it done.
-6. One tool is planned but not built yet: `provider-kit request-validation`. Don't tell the user to run it.
 
 ## 1. Choose a path
 
@@ -373,7 +372,11 @@ Every error other than `402` is RFC 9457, sent as `Content-Type: application/pro
 - `[I2]` `provider.agentId` in the manifest is that registration's id.
 - `[I3]` The manifest's `payTo` equals `get_agent_wallet(agentId)` on chain.
 - Registration and validation requests are owner actions. They run offline and sign through the Stellar CLI
-  keychain, never in the provider runtime.
+  keychain, never in the provider runtime: `provider-kit register`, then `provider-kit request-validation
+  --validator <verifier G…> --source <key>`, which works for any provider with `--manifest <url>`.
+- A validation request's `request_hash` is the SHA-256 of its document's canonical JSON, and its `request_uri` holds
+  exactly those bytes ([verification.md](../verification.md#stellar-8004-validation-registry)). The validator is never
+  the agent's owner or wallet.
 
 ## 12. Security invariants (provider)
 
@@ -402,11 +405,12 @@ itself in its `description`.
 | `headers.json` | `Idempotency-Key` and `Job-Token` patterns, and `Retry-After` parsing |
 | `job-states.json` | Allowed transitions and `charged` per status, charge and failure code |
 | `problems.json` | Error codes, HTTP statuses and which ones carry `Retry-After` |
+| `validation-requests.json` | Validation request documents: canonical bytes, `request_hash` and the `data:` URI |
 
 **TypeScript helpers** in `@stellar-agent-services/protocol`, which has no runtime dependencies:
 `checkManifestRules`, `checkChallenge`, `canonicalJson`, `canonicalSha256`, `bindingHash`, `canTransition`,
 `chargedFor`, `jobViewHttpStatus`, `parseRetryAfter`, `problem`, `jobError`, `createJobUrl`, `jobStatusUrl`,
-`jobResultUrl`, `stellarAddressKind`, `USDC_ASSET`.
+`jobResultUrl`, `stellarAddressKind`, `validationRequestHash`, `validationRequestDataUri`, `USDC_ASSET`.
 
 **A real paid call on testnet** against a local provider, using the payment client CLI (see
 [packages/payment-client/README.md](../../packages/payment-client/README.md)):

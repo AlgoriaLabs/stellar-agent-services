@@ -11,7 +11,8 @@ Job Recovery, delivered and piloted within one 30-day Instaward sprint.
   and the payment client (core, `stellar-pay` CLI and a minimal web approval page) work end to end on testnet.
   Job Recovery is complete in code, reconciliation and the ledger clock included; the recorded testnet demo is
   still to do. The verifier is complete in code: checks C1–C7 with on-chain payment proofs, receipts, badges and
-  `validation_response`. `provider-kit request-validation` and a first testnet receipt are next.
+  `validation_response`, and `provider-kit request-validation` asks for it. A first testnet receipt and Validation
+  Registry record are next.
 
 ---
 
@@ -257,8 +258,9 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 | `http/node-server.ts` | `listen()`: Node's HTTP server for a provider, with `/healthz` and graceful close |
 | `manifest.ts` | Builds the manifest and checks it at startup with the JSON Schema and `checkManifestRules()` |
 | `registration.ts` | The 8004 registration file from the manifest [I1], and `checkRegistration()` (I1–I3, read-only) |
+| `validation-request.ts` | The validation request, checked before anything is signed (I1–I3, a signer the registry accepts, a validator that is not the provider itself) and sent as canonical JSON in a `data:` URI |
 | `testing.ts` | `signTestPayment()`: real x402 payments signed offline, for provider and client tests |
-| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `register`, `reconcile`; Week 3: `request-validation` |
+| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `register`, `request-validation`, `reconcile` |
 | `Dockerfile`, `schemas/gateway-config.schema.json` | The gateway image; the config file's JSON Schema |
 
 **Developer experience targets (W2 exit criteria):**
@@ -432,7 +434,8 @@ existing Python API becomes a paid service through gateway mode.
 - [ ] Validation Registry publishing: `request-validation` (provider) and `validation_response` (verifier) on testnet.
   - [x] `verifier publish`: `validation_response` through the Stellar CLI keychain, after checking the request, the
     receipt and the `response_uri`; the request document is defined in docs/verification.md.
-  - [ ] `provider-kit request-validation`.
+  - [x] `provider-kit request-validation`: the request document as a protocol type, JSON Schema and test vectors;
+    the command checks the registration, the signer and the validator, then signs through the Stellar CLI keychain.
   - [ ] Run both on testnet for the sample provider: the first receipt and Validation Registry record.
 - [ ] Discovery integration, option (a) from §5.7, in `stellar-agent-search`.
 - [ ] Pilot providers start integrating: send them the guide and template.
