@@ -10,14 +10,10 @@
 // [I3] holds at once. With another owner, set_agent_wallet needs both the owner's and the payTo
 // account's signatures, so the command is printed for a tool that can collect them.
 
-import { execFile } from "node:child_process";
 import { writeFile } from "node:fs/promises";
-import { promisify } from "node:util";
 import { registrationDataUri, registrationFile, registryConfig } from "../registration.js";
-import { UsageError, type CliFlags } from "./shared.js";
+import { findStellarCli, quote, UsageError, type CliFlags } from "./shared.js";
 import { loadTarget } from "./target.js";
-
-const run = promisify(execFile);
 
 export async function register(flags: CliFlags): Promise<number> {
   const source = flags.source;
@@ -45,8 +41,8 @@ export async function register(flags: CliFlags): Promise<number> {
   }
   console.log(`Registration file [I1]:\n${JSON.stringify(file, null, 2)}\n`);
 
-  const stellar = await stellarCli();
-  const owner = stellar ? (await run("stellar", ["keys", "address", source])).stdout.trim() : `$(stellar keys address ${source})`;
+  const stellar = await findStellarCli();
+  const owner = stellar ? (await stellar(["keys", "address", source])).trim() : `$(stellar keys address ${source})`;
   const contracts = registryConfig(network).contracts;
   const cliNetwork = flags.network ?? (network === "stellar:pubnet" ? "mainnet" : "testnet");
   const invoke = (fn: string, args: string[]) => ["contract", "invoke", "--id", contracts.identity, "--source-account", source, "--network", cliNetwork, "--", fn, ...args];
@@ -72,7 +68,7 @@ export async function register(flags: CliFlags): Promise<number> {
   }
 
   console.log(`Signing with "${source}" (${owner}) on ${cliNetwork}...`);
-  const { stdout } = await run("stellar", write, { timeout: 120_000, maxBuffer: 1024 * 1024 });
+  const stdout = await stellar(write);
   if (agentId === undefined) {
     const id = Number(stdout.trim().replace(/^"|"$/g, ""));
     if (!Number.isInteger(id)) throw new Error(`the registry answered "${stdout.trim()}", not an agent id`);
@@ -83,19 +79,4 @@ export async function register(flags: CliFlags): Promise<number> {
   }
   walletNote();
   return 0;
-}
-
-async function stellarCli(): Promise<boolean> {
-  try {
-    await run("stellar", ["--version"], { timeout: 10_000 });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Quotes an argument for copying into a shell. A $(...) placeholder stays a command substitution. */
-function quote(arg: string): string {
-  if (arg.startsWith("$(")) return `"${arg}"`;
-  return /^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", "'\\''")}'`;
 }

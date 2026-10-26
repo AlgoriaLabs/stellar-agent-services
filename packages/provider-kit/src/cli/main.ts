@@ -4,9 +4,8 @@
 //   init                   write a starter gateway config
 //   check                  self-check against Provider Standard v1 (no payment, no keys)
 //   register               register or update the 8004 identity (signs through the Stellar CLI keychain)
+//   request-validation     ask a verifier for validation in the 8004 Validation Registry (signs the same way)
 //   reconcile              decide payment_uncertain jobs from on-chain data (signs nothing)
-//
-// Planned (Week 3): request-validation (owner signs via the keychain).
 //
 // Keys are never read from env vars or files by this CLI; the Stellar CLI keychain does the signing.
 // `serve` is also shipped as a Docker image (packages/provider-kit/Dockerfile).
@@ -16,6 +15,7 @@ import { check } from "./check.js";
 import { init } from "./init.js";
 import { reconcile } from "./reconcile.js";
 import { register } from "./register.js";
+import { requestValidation } from "./request-validation.js";
 import { serve } from "./serve.js";
 import { OPTIONS, UsageError } from "./shared.js";
 
@@ -27,6 +27,9 @@ Usage:
   provider-kit check (--config <file> | --manifest <url>) [--dev]
   provider-kit register (--config <file> | --manifest <url>) --source <stellar-cli key>
                         [--agent-uri <https url>] [--network <stellar-cli network>] [--dry-run]
+  provider-kit request-validation (--config <file> | --manifest <url>) --validator <G...>
+                        --source <stellar-cli key> [--network <stellar-cli network>] [--rpc <url>]
+                        [--out <file>] [--dry-run]
   provider-kit reconcile (--config <file> | --store <file> --network <testnet|pubnet>)
                          [--rpc <url>] [--dry-run] [--dev]
 
@@ -37,6 +40,11 @@ check       Checks a provider without paying: config, manifest, facilitator, pay
             Stellar 8004 registration. Exits 1 if anything fails.
 register    Registers the provider in the Stellar 8004 identity registry, or updates its registration,
             signing with a key from the Stellar CLI keychain. --dry-run prints the commands instead.
+request-validation
+            Asks a verifier (--validator) to check the provider: validation_request in the Stellar 8004
+            Validation Registry, signed by the agent's owner with a key from the Stellar CLI keychain.
+            Prints the request hash for the verifier. --out writes the request document once sent;
+            --dry-run prints the command instead.
 reconcile   Decides payment_uncertain jobs from on-chain data: paid jobs run (or show their output),
             unpaid ones fail uncharged. A provider with a Soroban RPC does this by itself; --dry-run
             only reports. Exits 1 if any job is still undecided.
@@ -59,6 +67,8 @@ async function main(argv: string[]): Promise<number> {
       return check(values);
     case "register":
       return register(values);
+    case "request-validation":
+      return requestValidation(values);
     case "reconcile":
       return reconcile(values);
     default:

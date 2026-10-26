@@ -1,0 +1,98 @@
+{
+  "description": "Validation request documents (docs/verification.md). requestHash is the lowercase hex SHA-256 of the RFC 8785 canonical JSON of `document`, and requestUri is \"data:application/json;base64,\" followed by those same bytes in base64 (RFC 4648 §4, padded). `canonical` shows the bytes. Each `invalid` case applies `patch` (RFC 6902) to the first case's document, and fails the validation request JSON Schema.",
+  "cases": [
+    {
+      "name": "the example in verification.md",
+      "document": {
+        "standard": "stellar-agent-services/provider@1",
+        "type": "validation-request",
+        "agentId": 42,
+        "network": "stellar:testnet",
+        "manifest": { "url": "https://api.example.com/.well-known/stellar-agent-services.json" },
+        "validator": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
+        "requestedAt": "2026-10-26T10:00:00Z"
+      },
+      "canonical": "{\"agentId\":42,\"manifest\":{\"url\":\"https://api.example.com/.well-known/stellar-agent-services.json\"},\"network\":\"stellar:testnet\",\"requestedAt\":\"2026-10-26T10:00:00Z\",\"standard\":\"stellar-agent-services/provider@1\",\"type\":\"validation-request\",\"validator\":\"GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU\"}",
+      "requestHash": "da09f810e3a7d9a7d858f6ecc2848bc94352d248a4be859b37660d22f9415a23",
+      "requestUri": "data:application/json;base64,eyJhZ2VudElkIjo0MiwibWFuaWZlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZXhhbXBsZS5jb20vLndlbGwta25vd24vc3RlbGxhci1hZ2VudC1zZXJ2aWNlcy5qc29uIn0sIm5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJyZXF1ZXN0ZWRBdCI6IjIwMjYtMTAtMjZUMTA6MDA6MDBaIiwic3RhbmRhcmQiOiJzdGVsbGFyLWFnZW50LXNlcnZpY2VzL3Byb3ZpZGVyQDEiLCJ0eXBlIjoidmFsaWRhdGlvbi1yZXF1ZXN0IiwidmFsaWRhdG9yIjoiR0JaU0JBU0JGTVY1UkdLUFJJUENCNVFRVkFKMzVJWEtNVEYyQTI3NjZNT0E0WkhRN01MU0lQWFUifQ=="
+    },
+    {
+      "name": "key order does not matter",
+      "document": {
+        "requestedAt": "2026-10-26T10:00:00Z",
+        "validator": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
+        "manifest": { "url": "https://api.example.com/.well-known/stellar-agent-services.json" },
+        "network": "stellar:testnet",
+        "agentId": 42,
+        "type": "validation-request",
+        "standard": "stellar-agent-services/provider@1"
+      },
+      "canonical": "{\"agentId\":42,\"manifest\":{\"url\":\"https://api.example.com/.well-known/stellar-agent-services.json\"},\"network\":\"stellar:testnet\",\"requestedAt\":\"2026-10-26T10:00:00Z\",\"standard\":\"stellar-agent-services/provider@1\",\"type\":\"validation-request\",\"validator\":\"GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU\"}",
+      "requestHash": "da09f810e3a7d9a7d858f6ecc2848bc94352d248a4be859b37660d22f9415a23",
+      "requestUri": "data:application/json;base64,eyJhZ2VudElkIjo0MiwibWFuaWZlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZXhhbXBsZS5jb20vLndlbGwta25vd24vc3RlbGxhci1hZ2VudC1zZXJ2aWNlcy5qc29uIn0sIm5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJyZXF1ZXN0ZWRBdCI6IjIwMjYtMTAtMjZUMTA6MDA6MDBaIiwic3RhbmRhcmQiOiJzdGVsbGFyLWFnZW50LXNlcnZpY2VzL3Byb3ZpZGVyQDEiLCJ0eXBlIjoidmFsaWRhdGlvbi1yZXF1ZXN0IiwidmFsaWRhdG9yIjoiR0JaU0JBU0JGTVY1UkdLUFJJUENCNVFRVkFKMzVJWEtNVEYyQTI3NjZNT0E0WkhRN01MU0lQWFUifQ=="
+    },
+    {
+      "name": "the same instant with milliseconds is another request: hash the document as sent",
+      "document": {
+        "standard": "stellar-agent-services/provider@1",
+        "type": "validation-request",
+        "agentId": 42,
+        "network": "stellar:testnet",
+        "manifest": { "url": "https://api.example.com/.well-known/stellar-agent-services.json" },
+        "validator": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
+        "requestedAt": "2026-10-26T10:00:00.000Z"
+      },
+      "canonical": "{\"agentId\":42,\"manifest\":{\"url\":\"https://api.example.com/.well-known/stellar-agent-services.json\"},\"network\":\"stellar:testnet\",\"requestedAt\":\"2026-10-26T10:00:00.000Z\",\"standard\":\"stellar-agent-services/provider@1\",\"type\":\"validation-request\",\"validator\":\"GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU\"}",
+      "requestHash": "e907d58e3935ea1ee06632896f141c3bfd6c82f95d81a4392bacf44a77923ea4",
+      "requestUri": "data:application/json;base64,eyJhZ2VudElkIjo0MiwibWFuaWZlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZXhhbXBsZS5jb20vLndlbGwta25vd24vc3RlbGxhci1hZ2VudC1zZXJ2aWNlcy5qc29uIn0sIm5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJyZXF1ZXN0ZWRBdCI6IjIwMjYtMTAtMjZUMTA6MDA6MDAuMDAwWiIsInN0YW5kYXJkIjoic3RlbGxhci1hZ2VudC1zZXJ2aWNlcy9wcm92aWRlckAxIiwidHlwZSI6InZhbGlkYXRpb24tcmVxdWVzdCIsInZhbGlkYXRvciI6IkdCWlNCQVNCRk1WNVJHS1BSSVBDQjVRUVZBSjM1SVhLTVRGMkEyNzY2TU9BNFpIUTdNTFNJUFhVIn0="
+    },
+    {
+      "name": "a request on pubnet, for a manifest at a path of its own",
+      "document": {
+        "standard": "stellar-agent-services/provider@1",
+        "type": "validation-request",
+        "agentId": 7,
+        "network": "stellar:pubnet",
+        "manifest": { "url": "https://agents.example.org/translate/manifest.json" },
+        "validator": "GBH3JLK366N4L5XCLJRCYLE6K6K3PUWBBEOLNBJMLORSKUNR5WY2IRKZ",
+        "requestedAt": "2026-11-02T08:30:15.250+03:00"
+      },
+      "canonical": "{\"agentId\":7,\"manifest\":{\"url\":\"https://agents.example.org/translate/manifest.json\"},\"network\":\"stellar:pubnet\",\"requestedAt\":\"2026-11-02T08:30:15.250+03:00\",\"standard\":\"stellar-agent-services/provider@1\",\"type\":\"validation-request\",\"validator\":\"GBH3JLK366N4L5XCLJRCYLE6K6K3PUWBBEOLNBJMLORSKUNR5WY2IRKZ\"}",
+      "requestHash": "80ff768c544ccf2fca83c1d7ddd12fa7b2f1956841b792e508e5e3d9c7076da0",
+      "requestUri": "data:application/json;base64,eyJhZ2VudElkIjo3LCJtYW5pZmVzdCI6eyJ1cmwiOiJodHRwczovL2FnZW50cy5leGFtcGxlLm9yZy90cmFuc2xhdGUvbWFuaWZlc3QuanNvbiJ9LCJuZXR3b3JrIjoic3RlbGxhcjpwdWJuZXQiLCJyZXF1ZXN0ZWRBdCI6IjIwMjYtMTEtMDJUMDg6MzA6MTUuMjUwKzAzOjAwIiwic3RhbmRhcmQiOiJzdGVsbGFyLWFnZW50LXNlcnZpY2VzL3Byb3ZpZGVyQDEiLCJ0eXBlIjoidmFsaWRhdGlvbi1yZXF1ZXN0IiwidmFsaWRhdG9yIjoiR0JIM0pMSzM2Nk40TDVYQ0xKUkNZTEU2SzZLM1BVV0JCRU9MTkJKTUxPUlNLVU5SNVdZMklSS1oifQ=="
+    },
+    {
+      "name": "unknown fields are hashed too, as UTF-8",
+      "document": {
+        "standard": "stellar-agent-services/provider@1",
+        "type": "validation-request",
+        "agentId": 42,
+        "network": "stellar:testnet",
+        "manifest": { "url": "https://api.example.com/.well-known/stellar-agent-services.json" },
+        "validator": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
+        "requestedAt": "2026-10-26T10:00:00Z",
+        "note": "Doğrulama isteği 🌍"
+      },
+      "canonical": "{\"agentId\":42,\"manifest\":{\"url\":\"https://api.example.com/.well-known/stellar-agent-services.json\"},\"network\":\"stellar:testnet\",\"note\":\"Doğrulama isteği 🌍\",\"requestedAt\":\"2026-10-26T10:00:00Z\",\"standard\":\"stellar-agent-services/provider@1\",\"type\":\"validation-request\",\"validator\":\"GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU\"}",
+      "requestHash": "393342c8c2e18374ce458f4ea5eeeba82014e912652a52ed2ab6101d96774b41",
+      "requestUri": "data:application/json;base64,eyJhZ2VudElkIjo0MiwibWFuaWZlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZXhhbXBsZS5jb20vLndlbGwta25vd24vc3RlbGxhci1hZ2VudC1zZXJ2aWNlcy5qc29uIn0sIm5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJub3RlIjoiRG/En3J1bGFtYSBpc3RlxJ9pIPCfjI0iLCJyZXF1ZXN0ZWRBdCI6IjIwMjYtMTAtMjZUMTA6MDA6MDBaIiwic3RhbmRhcmQiOiJzdGVsbGFyLWFnZW50LXNlcnZpY2VzL3Byb3ZpZGVyQDEiLCJ0eXBlIjoidmFsaWRhdGlvbi1yZXF1ZXN0IiwidmFsaWRhdG9yIjoiR0JaU0JBU0JGTVY1UkdLUFJJUENCNVFRVkFKMzVJWEtNVEYyQTI3NjZNT0E0WkhRN01MU0lQWFUifQ=="
+    }
+  ],
+  "invalid": [
+    { "name": "no type", "patch": [{ "op": "remove", "path": "/type" }] },
+    { "name": "another type", "patch": [{ "op": "replace", "path": "/type", "value": "verification-receipt" }] },
+    { "name": "another major version", "patch": [{ "op": "replace", "path": "/standard", "value": "stellar-agent-services/provider@2" }] },
+    { "name": "an agent id above u32", "patch": [{ "op": "replace", "path": "/agentId", "value": 4294967296 }] },
+    { "name": "a negative agent id", "patch": [{ "op": "replace", "path": "/agentId", "value": -1 }] },
+    { "name": "an agent id as a string", "patch": [{ "op": "replace", "path": "/agentId", "value": "42" }] },
+    { "name": "a network the standard does not name", "patch": [{ "op": "replace", "path": "/network", "value": "stellar:futurenet" }] },
+    { "name": "the manifest as a bare URL", "patch": [{ "op": "replace", "path": "/manifest", "value": "https://api.example.com/.well-known/stellar-agent-services.json" }] },
+    { "name": "a manifest without a URL", "patch": [{ "op": "replace", "path": "/manifest", "value": {} }] },
+    { "name": "a manifest served over http://", "patch": [{ "op": "replace", "path": "/manifest/url", "value": "http://api.example.com/.well-known/stellar-agent-services.json" }] },
+    { "name": "a manifest URL with a space", "patch": [{ "op": "replace", "path": "/manifest/url", "value": "https://api.example.com/my manifest.json" }] },
+    { "name": "a validator that is a contract", "patch": [{ "op": "replace", "path": "/validator", "value": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA" }] },
+    { "name": "no validator", "patch": [{ "op": "remove", "path": "/validator" }] },
+    { "name": "a time that is not RFC 3339", "patch": [{ "op": "replace", "path": "/requestedAt", "value": "26.10.2026 10:00" }] },
+    { "name": "no requestedAt", "patch": [{ "op": "remove", "path": "/requestedAt" }] }
+  ]
+}

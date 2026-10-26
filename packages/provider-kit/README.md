@@ -121,9 +121,8 @@ mount the config at `/config/provider.config.json` and a volume at `/data` (set 
 | `provider-kit init [--upstream <url>]` | Writes a starter gateway config. |
 | `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. |
 | `provider-kit register (--config \| --manifest) --source <key>` | Registers in the Stellar 8004 identity registry, or updates the registration, signing with the [Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain. `--dry-run` prints the commands. |
+| `provider-kit request-validation (--config \| --manifest) --validator <G…> --source <key>` | Asks a verifier for validation in the Stellar 8004 Validation Registry. Checks first that a verifier can validate the provider ([I1]–[I3]), that the key may ask for the agent, and that the validator is not the provider itself. Puts the request document on chain as a `data:` URI, signs with the Stellar CLI keychain and prints the request hash for the verifier. `--dry-run` prints the command; `--out` writes the request document. |
 | `provider-kit reconcile (--config <file> \| --store <file> --network <net>)` | Decides `payment_uncertain` jobs from on-chain data [J13]. `--dry-run` only reports; `--rpc <url>` picks the Soroban RPC. It reads the chain, writes only the job store and signs nothing, so it is safe next to a running provider. Exits 1 while a job is undecided. |
-
-`request-validation` comes in Week 3.
 
 ## Payment safety
 
