@@ -26,15 +26,38 @@ export interface PaymentReceipt {
 export const VALIDATION_TAG = "provider-standard-v1";
 
 export type CheckId = "C1" | "C2" | "C3" | "C4" | "C5" | "C6" | "C7";
+export const CHECK_IDS: readonly CheckId[] = ["C1", "C2", "C3", "C4", "C5", "C6", "C7"];
+
+/**
+ * A rule a check cites: a rule id such as "P4", or a section such as "§5.5" for a requirement the
+ * standard states without an id.
+ */
+export const RULE_REFERENCE_PATTERN = /^(?:[A-Z][0-9]{1,2}|§[0-9]{1,2}(?:\.[0-9]{1,2})?)$/;
+
+/** One thing a check found: the rule, and what the verifier observed. */
+export interface CheckFinding {
+  rule: string;
+  /** "fail" breaks the check. "warn" is a SHOULD rule that was not met. */
+  severity: "fail" | "warn";
+  /** In the verifier's own words: never a secret, and never text copied from the provider. */
+  message: string;
+}
 
 export interface CheckResult {
   check: CheckId;
-  /** "skipped" when the check was not run, e.g. C4 without a test payer. */
+  /**
+   * "skipped" when the check was not run, e.g. C4 without a test payer, or could not finish, e.g. the
+   * chain could not be read. A skipped check earns nothing.
+   */
   status: "passed" | "failed" | "skipped";
-  /** Ids of the rules that failed, such as "P4". Empty unless failed. */
+  /** The rules that failed, such as "P4". Empty unless failed. */
   failedRules: string[];
-  /** Ids of SHOULD rules that were not met. They never fail the check. */
+  /** SHOULD rules that were not met. They never fail the check. */
   warnings?: string[];
+  /** Why the check was skipped. */
+  reason?: string;
+  /** What failed or was warned about, with the verifier's explanation. */
+  findings?: CheckFinding[];
   /** What the verifier observed: hashes, the decoded challenge, transaction hashes. Never a secret. */
   evidence?: JsonObject;
 }
@@ -68,7 +91,8 @@ export function conformanceLevel(results: readonly CheckResult[]): ConformanceLe
 
 /**
  * What the verifier issues and anchors in the Stellar 8004 Validation Registry. Published as canonical
- * JSON; canonicalSha256(receipt) is the on-chain `response_hash`.
+ * JSON; canonicalSha256(receipt) is the on-chain `response_hash`. schemas/verification-receipt.schema.json
+ * describes it.
  *
  * `standard`, `agentId`, `network`, `validator`, `checkedAt`, `score`, `scoreDirection` and `results`
  * are the envelope shared with Stellar ERC-8126 records (erc-compatibility.md, T2).
@@ -87,10 +111,19 @@ export interface VerificationReceipt {
   score: number;
   scoreDirection: "higher-is-better";
   level: ConformanceLevel;
-  /** The manifest that was checked; sha256 is canonicalSha256 of the parsed manifest. */
-  manifest: { url: string; sha256: string };
-  /** One entry per check, C1 to C7, including skipped ones. */
+  /**
+   * The manifest that was checked. sha256 is canonicalSha256 of the parsed manifest, absent when the
+   * manifest could not be read as JSON.
+   */
+  manifest: { url: string; sha256?: string };
+  /** One entry per check, in order from C1 to C7, including skipped ones. */
   results: CheckResult[];
   /** The receipt of the C4 paid call, after the verifier confirmed it on chain. */
   payment?: PaymentReceipt;
+  /** The software that issued the receipt, so receipts from a faulty version can be found. */
+  tool?: { name: string; version: string };
 }
+
+/** `$id` of schemas/verification-receipt.schema.json. */
+export const VERIFICATION_RECEIPT_SCHEMA_ID =
+  "https://algorialabs.github.io/stellar-agent-services/schemas/provider/1/verification-receipt.schema.json";

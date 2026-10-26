@@ -20,8 +20,7 @@ pays one) that follows Provider Standard v1.
 4. Treat every money path as fail-closed. When you can't tell whether a payment settled, the job is
    `payment_uncertain`, never `failed` and never retried with a new charge `[J13]`.
 5. Validate your work with the JSON Schema and test vectors in §13 before you call it done.
-6. Some tools are planned but not built yet: the `verifier` CLI, the `provider-kit` CLI and gateway mode. Don't
-   tell the user to run them.
+6. One tool is planned but not built yet: `provider-kit request-validation`. Don't tell the user to run it.
 
 ## 1. Choose a path
 
@@ -438,7 +437,9 @@ npx stellar-pay pay http://localhost:8787/.well-known/stellar-agent-services.jso
 - **3 Recoverable:** + C5 recovery.
 - Independent of the levels: **Registered** (C2 identity + a Validation Registry record) and **Load-safe** (C7
   load).
-- The checks are defined in [verification.md](../verification.md). The verifier CLI is not built yet.
+- The checks are defined in [verification.md](../verification.md). Run them with
+  `node packages/verifier/dist/cli/index.js check <manifest-url>` (`--dev` for `http://localhost`): every check that
+  needs no payment. Exit code 0 means every check that ran passed; each failure names its rule id.
 
 ## 14. Client rules (agents, wallets, apps)
 

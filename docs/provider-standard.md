@@ -601,8 +601,8 @@ Verification results are published to the Stellar 8004 Validation Registry. See
 | – | Load-safe | C7 load: a burst of requests is answered with `402`, `429` or `503`, never an error (§5.8) | Load-safe |
 
 - Each level includes the one below. Registered and Load-safe are independent of the levels.
-- `verifier check <manifest-url>` runs C1, C3, C6 and C7 with no payment. In development mode it also accepts a local
-  `http://` server ([M6]).
+- `verifier check <manifest-url>` runs every check that needs no payment: C1, C2, C3, C6 and C7's burst. In
+  development mode it also accepts a local `http://` server ([M6]).
 - `verifier verify <manifest-url> --pay` runs every check with a funded testnet payer.
 
 The checks are listed in [verification.md](verification.md).

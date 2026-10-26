@@ -93,8 +93,10 @@ The quickest start is the [example service](../../examples/paid-service), built 
 ## Get verified
 
 A verifier tests a service and records the result on Stellar, in the 8004 Validation Registry. The badges are
-**Standard v1**, **Payment verified** and **Recovery verified**, plus **8004 validated** and **Load-safe**. The
-verifier is still being built.
+**Standard v1**, **Payment verified** and **Recovery verified**, plus **8004 validated** and **Load-safe**.
+
+Test your own service first, with no payment and no key: `verifier check <your manifest URL>`. See
+[verification.md](../verification.md).
 
 ## Learn more
 

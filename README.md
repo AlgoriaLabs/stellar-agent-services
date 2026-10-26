@@ -11,15 +11,16 @@ payment side:
 | [`packages/protocol`](packages/protocol) | Provider Standard v1 as code (manifest, jobs, receipts) |
 | [`packages/provider-kit`](packages/provider-kit) | Turn a function, or an existing API in any language (gateway mode), into a paid service: pricing, x402 USDC payments, Job Recovery, capacity and queuing |
 | [`packages/payment-client`](packages/payment-client) | Buyer side: approval, spending controls, payment, recovery (proof of concept) |
-| [`packages/verifier`](packages/verifier) | Provider checks, verification receipts, badges, Stellar 8004 Validation Registry |
+| [`packages/verifier`](packages/verifier) | Checks a provider against the standard (C1–C7), issues verification receipts and badges, publishes to the Stellar 8004 Validation Registry |
 | [`apps/wallet`](apps/wallet) | Web page where a person approves and pays a service (testnet) |
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
 | [`examples/python-upstream`](examples/python-upstream) | An existing Python API made a paid service with gateway mode |
 
 **Status:** Week 3 of the plan. A paid call works end to end, from a provider (library or gateway mode, with a
 durable job queue) to the payment client's CLI and web page. Job Recovery is complete in code: providers decide
-uncertain payments from on-chain data ([docs/job-recovery.md](docs/job-recovery.md)). The verifier is still a
-scaffold. The plan is in
+uncertain payments from on-chain data ([docs/job-recovery.md](docs/job-recovery.md)). The verifier runs every check
+(C1–C7), proves payments on chain, and issues receipts, badges and Validation Registry responses
+([docs/verification.md](docs/verification.md)). The plan is in
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development runs on Stellar **testnet**.
 
 To offer a service, follow the [provider setup guide](docs/provider-setup-guide.md).

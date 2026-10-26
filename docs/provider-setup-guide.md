@@ -133,6 +133,15 @@ provider-kit check --manifest http://localhost:8787/.well-known/stellar-agent-se
 testnet payments with sponsored fees, that `payTo` exists with a USDC trustline, and your 8004 registration once
 you have one. Until step 8 it reports that the agent id is missing; that is expected.
 
+Then check it from outside, the way a verifier will, with the [verifier](../packages/verifier). It calls your
+running service: invalid input, the `402` challenge, an oversized body, CORS, and a burst of 20 requests. Kit
+providers pass it; it matters most for native implementations.
+
+```bash
+alias verifier="node $PWD/packages/verifier/dist/cli/index.js"
+verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
+```
+
 ## 6. Make a paid testnet request
 
 Pay your own service with the payment client, from a separate payer wallet:
@@ -178,5 +187,13 @@ command prints as `"agentId"` under `provider` in your config (or `AGENT_ID` for
 ## 9. Get verified
 
 The verifier checks a provider from outside, issues a verification receipt and badges, and records the result in
-the Stellar 8004 Validation Registry (see [verification.md](verification.md)). `verifier check` and
-`provider-kit request-validation` arrive in Week 3 of the plan.
+the Stellar 8004 Validation Registry (see [verification.md](verification.md)).
+
+1. Once deployed, run `verifier check <your manifest URL>`: every check should pass, and C2 confirms your 8004
+   registration.
+2. Ask a verifier for validation: `validation_request` in the Validation Registry, naming the verifier's address
+   ([verification.md](verification.md#stellar-8004-validation-registry) shows the request document and the
+   command). `provider-kit request-validation` will do this in one step.
+3. The verifier runs every check, paying for a few jobs from its own test account, publishes the receipt and answers
+   your request on chain. Its receipt gives your badges: Standard v1, Payment verified, Recovery verified,
+   Load-safe and 8004 validated.
