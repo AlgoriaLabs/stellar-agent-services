@@ -25,7 +25,8 @@ PUBLIC_ORIGIN=http://localhost:8787 PAY_TO=G... \
   node packages/provider-kit/dist/cli/index.js serve --config examples/python-upstream/provider.config.json --dev
 ```
 
-`PAY_TO` is the public address that receives the USDC; it needs a USDC trustline (see the
+`PAY_TO` is the public address that receives the USDC, an account in your own wallet. It needs a USDC trustline:
+`provider-kit trustline --network testnet` adds one, approved in your wallet (see the
 [setup guide](../../docs/provider-setup-guide.md)). Then pay it from another terminal:
 
 ```bash

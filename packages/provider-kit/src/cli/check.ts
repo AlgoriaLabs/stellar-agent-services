@@ -58,11 +58,13 @@ async function checkPayTo(manifest: ProviderManifest): Promise<string> {
   // A contract holds SAC balances without a trustline.
   if (payTo.startsWith("C")) return `${payTo} is a contract: no trustline needed`;
   const response = await fetch(`${HORIZON_URL[network]}/accounts/${payTo}`, { signal: AbortSignal.timeout(15_000) });
-  if (response.status === 404) throw new Error(`${payTo} does not exist on ${network}: fund it first`);
+  if (response.status === 404) {
+    throw new Error(`${payTo} does not exist on ${network}: ${network === "stellar:testnet" ? "provider-kit trustline funds it and adds USDC" : "send it some XLM first"}`);
+  }
   if (!response.ok) throw new Error(`Horizon answered ${response.status}`);
   const account = (await response.json()) as { balances: { asset_code?: string; asset_issuer?: string }[] };
   const trusted = account.balances.some((balance) => balance.asset_code === "USDC" && balance.asset_issuer === USDC_ISSUER[network]);
-  if (!trusted) throw new Error(`${payTo} has no USDC trustline, so it can't be paid [P2]`);
+  if (!trusted) throw new Error(`${payTo} has no USDC trustline, so it can't be paid [P2]: add one with provider-kit trustline`);
   return `${payTo} exists and has a USDC trustline`;
 }
 

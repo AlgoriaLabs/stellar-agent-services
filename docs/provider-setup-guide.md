@@ -5,8 +5,10 @@ pay in USDC and recover jobs from, following [Provider Standard v1](provider-sta
 **testnet** throughout.
 
 You never give the provider a Stellar secret key. It knows only the public address it is paid to (`payTo`); an
-x402 facilitator verifies and settles payments. The only signing step, registering your identity, runs from your
-own machine through the Stellar CLI keychain.
+x402 facilitator verifies and settles payments. Your own wallet is the payout account. The few owner steps (a USDC
+trustline, registering your identity, asking for validation) are approved in that wallet, on a page `provider-kit`
+opens on your computer. No key is ever exported, imported or stored by the kit, and the income lands in the wallet
+you already use.
 
 ## 1. Pick a path
 
@@ -31,17 +33,39 @@ capacity limits and a job store that survives restarts.
   alias provider-kit="node $PWD/packages/provider-kit/dist/cli/index.js"
   ```
 
-- **A `payTo` account on testnet with a USDC trustline** [P2]. With the
-  [Stellar CLI](https://developers.stellar.org/docs/tools/cli), which you also need for registration (step 8):
+- **A Stellar wallet**, the one you already use: Freighter, LOBSTR, xBull, Albedo, Rabet, Hana, a Ledger, or any
+  other wallet [Stellar Wallets Kit](https://stellarwalletskit.dev) supports. Its account is your payout account,
+  `payTo`. Tip: add a second account in the same wallet just for the service.
+- **A USDC trustline on that account** [P2], so it can be paid:
 
   ```bash
-  stellar keys generate payto --network testnet --fund
-  stellar tx new change-trust --source-account payto --network testnet \
-    --line USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
-  export PAY_TO=$(stellar keys address payto)
+  provider-kit trustline --network testnet
   ```
 
-  The key stays in the Stellar CLI keychain. The provider only ever sees `PAY_TO`, the public address.
+  A page opens in your browser. Connect your wallet and approve the trustline there. A new testnet account gets
+  test XLM from Friendbot first. The command prints the account to use:
+
+  ```bash
+  export PAY_TO=G...        # what provider-kit trustline printed
+  ```
+
+  The provider only ever sees `PAY_TO`, the public address. If your wallet already holds USDC, nothing is signed.
+
+<details>
+<summary>Scripts and CI: sign with the Stellar CLI instead</summary>
+
+Every owner command takes `--source <key>` to sign with a key from the
+[Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain instead of a wallet. Keep that key in your
+operating system's secure store:
+
+```bash
+stellar keys generate payto --network testnet --fund --secure-store
+stellar tx new change-trust --source-account payto --network testnet \
+  --line USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+export PAY_TO=$(stellar keys address payto)
+```
+
+</details>
 
 ## 3a. Gateway: an existing API
 
@@ -176,13 +200,21 @@ Your 8004 registration is your on-chain identity. It names your manifest, and it
 so a client can check it is paying the right provider [I1]–[I3].
 
 ```bash
-provider-kit register --config provider.config.json --source payto --dry-run   # review
-provider-kit register --config provider.config.json --source payto
+provider-kit register --config provider.config.json
 ```
 
-Registering with your `payTo` key as `--source` makes it the agent's wallet at once. Then add the agent id the
-command prints as `"agentId"` under `provider` in your config (or `AGENT_ID` for the example), restart, and run
-`provider-kit check` again: every line should pass.
+A page opens in your browser. Connect the wallet that holds `payTo`, review the registration and approve it. The
+registry makes the account that registers the agent's owner and its wallet, so registering from `payTo` passes
+[I3] at once. A `payTo` still missing its USDC trustline gets one first, in the same page.
+
+The command saves the new agent id as `"agentId"` under `provider` in your config. A library provider (or the
+example's `AGENT_ID`) sets it by hand: the command prints it. Restart the provider and run `provider-kit check`
+again: every line should pass. Run `register` again after moving the manifest: it updates the registration,
+signed by the agent's owner.
+
+On a computer without a browser, such as over SSH, add `--no-open` and open the printed link wherever your wallet
+is: the link reaches only this computer, so forward its port (`ssh -L 8790:localhost:8790`). For scripts and CI,
+`--source <key>` signs with the Stellar CLI keychain instead, and `--dry-run` prints the Stellar CLI command.
 
 ## 9. Get verified
 
@@ -191,16 +223,17 @@ the Stellar 8004 Validation Registry (see [verification.md](verification.md)).
 
 1. Once deployed, run `verifier check <your manifest URL>`: every check should pass, and C2 confirms your 8004
    registration.
-2. Ask a verifier for validation, naming its address. Sign with the key you registered with:
+2. Ask a verifier for validation, naming its address:
 
    ```bash
-   provider-kit request-validation --config provider.config.json --validator <verifier G…> --source payto --dry-run   # review
-   provider-kit request-validation --config provider.config.json --validator <verifier G…> --source payto
+   provider-kit request-validation --config provider.config.json --validator <verifier G…>
    ```
 
-   It checks your registration first, records the request in the Validation Registry and prints its hash. Send the
-   verifier your manifest URL and that hash. [verification.md](verification.md#stellar-8004-validation-registry)
-   describes the request.
+   It checks your registration first and prints the request and its hash. Approve the request in the wallet you
+   registered with, on the page that opens. It is recorded in the Validation Registry, and the command confirms it
+   there. Send the verifier your manifest URL and that hash.
+   [verification.md](verification.md#stellar-8004-validation-registry) describes the request. With `--source <key>`,
+   the Stellar CLI keychain signs instead.
 3. The verifier runs every check, paying for a few jobs from its own test account, publishes the receipt and answers
    your request on chain. Its receipt gives your badges: Standard v1, Payment verified, Recovery verified,
    Load-safe and 8004 validated.

@@ -63,14 +63,18 @@ PAY_TO=G... PUBLIC_ORIGIN=http://localhost:8787 provider-kit serve --config prov
 verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
 ```
 
-`PAY_TO` is a public testnet address with a USDC trustline (`docs/provider-setup-guide.md` §2). Before 8004
-registration, `check` reports a missing agent id. That is expected. For a paid test call, ask the user first, then
-use `stellar-pay` as in `docs/provider-setup-guide.md` §6.
+`PAY_TO` is a public testnet address with a USDC trustline, an account in the user's own wallet:
+`provider-kit trustline --network testnet` sets it up and prints it (`docs/provider-setup-guide.md` §2). It opens a
+page in the user's browser and waits for them to approve in their wallet. Before 8004 registration, `check` reports
+a missing agent id. That is expected. For a paid test call, ask the user first, then use `stellar-pay` as in
+`docs/provider-setup-guide.md` §6.
 
 ## 5. Deploy and register
 
 `docs/provider-setup-guide.md` §7–§9: HTTPS `baseUrl`, the SQLite store on a persistent volume, `rpcUrl` for
-reconciliation, `provider-kit register --config provider.config.json --source <key>`, then the verify-provider skill.
+reconciliation, `provider-kit register --config provider.config.json`, approved by the user in their wallet from the
+`payTo` account (it saves the new `agentId` to the config), then the verify-provider skill. Never ask the user for a
+secret key. In CI, `--source <key>` signs with the Stellar CLI keychain instead.
 
 ## Done when
 

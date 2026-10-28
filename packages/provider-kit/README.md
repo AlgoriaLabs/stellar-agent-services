@@ -18,7 +18,8 @@ gateway:  provider-kit serve --config <file>  ->  forwards paid jobs to your exi
 ```
 
 - The provider runtime holds **no Stellar secret keys**; it only knows its `payTo` public address.
-- Owner operations (8004 registration) run from the CLI and sign through the Stellar CLI keychain.
+- Owner operations (the USDC trustline, 8004 registration, validation requests) run from the CLI and are
+  approved in your own wallet, on a page the CLI opens on your computer. See [Approving in your wallet](#approving-in-your-wallet).
 
 The step-by-step guide is [docs/provider-setup-guide.md](../../docs/provider-setup-guide.md).
 
@@ -120,8 +121,40 @@ mount the config at `/config/provider.config.json` and a volume at `/data` (set 
 | `provider-kit serve --config <file>` | Gateway mode. Graceful shutdown on SIGTERM. `--no-workers` for HTTP-only processes. |
 | `provider-kit init [--upstream <url>]` | Writes a starter gateway config. |
 | `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. |
-| `provider-kit register (--config \| --manifest) --source <key>` | Registers in the Stellar 8004 identity registry, or updates the registration, signing with the [Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain. `--dry-run` prints the commands. |
-| `provider-kit request-validation (--config \| --manifest) --validator <G…> --source <key>` | Asks a verifier for validation in the Stellar 8004 Validation Registry. Checks first that a verifier can validate the provider ([I1]–[I3]), that the key may ask for the agent, and that the validator is not the provider itself. Puts the request document on chain as a `data:` URI, signs with the Stellar CLI keychain and prints the request hash for the verifier. `--dry-run` prints the command; `--out` writes the request document. |
+| `provider-kit trustline [--config \| --manifest \| --network <testnet\|mainnet>]` | Adds a USDC trustline to `payTo` [P2], approved in its wallet. A new testnet account gets test XLM from Friendbot first. Without `--config` or `--manifest`, it sets up the account the wallet connects and prints it as `PAY_TO`. Signs nothing when the trustline exists. |
+| `provider-kit register (--config \| --manifest)` | Registers in the Stellar 8004 identity registry from the `payTo` account, or updates the registration from the agent's owner, approved in the wallet. Adds the USDC trustline first when it is missing, and saves the new `agentId` to `--config` [I2]. |
+| `provider-kit request-validation (--config \| --manifest) --validator <G…>` | Asks a verifier for validation in the Stellar 8004 Validation Registry. Checks first that a verifier can validate the provider ([I1]–[I3]), that the connected account may ask for the agent, and that the validator is not the provider itself. Puts the request document on chain as a `data:` URI, has the owner's wallet sign it and prints the request hash for the verifier. `--out` writes the request document. |
+
+`trustline`, `register` and `request-validation` take `--source <key>` to sign with the
+[Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain instead of a wallet, for scripts and CI. With
+`--source`, `--dry-run` prints the Stellar CLI command. `--rpc <url>` picks the Soroban RPC.
+
+### Approving in your wallet
+
+Without `--source`, an owner command opens a page on this computer, `http://localhost:8790` (or any free port),
+where you connect the wallet you already use and approve each transaction:
+
+1. **Connect.** Any wallet [Stellar Wallets Kit](https://stellarwalletskit.dev) supports: Freighter, LOBSTR, xBull,
+   Albedo, Rabet, Hana, Ledger and more. The page names the account the command needs, such as `payTo`, and refuses
+   another one before anything is built.
+2. **Review.** Each transaction in plain words: what it does, every argument, the network, the most it can cost in
+   fees and how long it stays valid. The raw hash and XDR are there to compare with what the wallet shows.
+3. **Approve** in the wallet. The CLI checks that what came back is that very transaction, signed by the connected
+   account for this network, then sends it and waits for the ledger. Your terminal shows each step as it lands.
+
+How it stays safe:
+
+- **No key in the kit.** The wallet signs. The CLI builds, checks and sends, and never sees a key.
+- **The page answers only you.** It listens on 127.0.0.1 only. Its API needs a one-time token that reaches the page
+  in the link's fragment, and refuses other `Host` and `Origin` headers, so no website and no DNS rebinding can drive
+  it. The page runs only its own bundled scripts under a strict Content Security Policy.
+- **Nothing is sent twice.** Each transaction is built when it is due. A refused one can be prepared again. One whose
+  fate is unknown stops the session with its hash, to look up before trying again.
+- **Ctrl+C cancels**, after the step under way finishes. Over SSH, `--no-open` prints the link without opening a
+  browser: forward its port. `--port <n>` picks the port.
+
+The page's source is in `approve/` (Svelte), built into `dist/approve` by `npm run build`. `npm run dev:approve`
+serves it alone for design work.
 | `provider-kit reconcile (--config <file> \| --store <file> --network <net>)` | Decides `payment_uncertain` jobs from on-chain data [J13]. `--dry-run` only reports; `--rpc <url>` picks the Soroban RPC. It reads the chain, writes only the job store and signs nothing, so it is safe next to a running provider. Exits 1 while a job is undecided. |
 
 ## Payment safety
@@ -234,7 +267,12 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/jobs/reconcile.ts` | Decides `payment_uncertain` jobs from on-chain data |
 | `src/jobs/memory-store.ts`, `src/jobs/sqlite-store.ts` | Job stores |
 | `src/gateway/config.ts`, `src/gateway/upstream.ts` | Gateway mode |
-| `src/registration.ts` | 8004 registration file and the I1–I3 check |
+| `src/registration.ts` | 8004 registration file, the I1–I3 check, and who may act for an agent |
 | `src/cli/` | The `provider-kit` command |
+| `src/cli/approval.ts` | Approving in a wallet: the session (steps, checks, sending) and the local page's server and API |
+| `src/cli/approval-view.ts` | What the page shows: the session as JSON, shared with the page |
+| `src/cli/owner-chain.ts` | The owner's transactions: built, checked once signed, sent and followed into a ledger |
+| `src/cli/owner-steps.ts` | Test XLM, the USDC trustline, registration and the validation request, as approval steps |
+| `approve/` | The approval page (Svelte, Stellar Wallets Kit), built into `dist/approve` |
 | `schemas/gateway-config.schema.json` | The gateway config file's JSON Schema |
 | `Dockerfile` | The gateway image |

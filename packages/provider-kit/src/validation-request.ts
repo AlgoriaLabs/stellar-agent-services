@@ -11,7 +11,7 @@
 //   provider name itself, but such an answer would prove nothing.
 // The request document is RFC 8785 canonical JSON. request_hash is its SHA-256, and request_uri a data: URI
 // holding exactly those bytes, so the request lives on chain and needs no hosting. Nothing here signs: the
-// CLI hands the invocation to the Stellar CLI keychain.
+// CLI has the owner's wallet sign the invocation, or hands it to the Stellar CLI keychain (--source).
 
 import {
   PROVIDER_STANDARD,
@@ -22,7 +22,7 @@ import {
   type ProviderManifest,
   type ValidationRequest,
 } from "@stellar-agent-services/protocol";
-import { checkRegistration, type RegistryReader } from "./registration.js";
+import { checkRegistration, mayActFor, type RegistryReader } from "./registration.js";
 
 /** One validation_request, checked and ready to sign. */
 export interface PreparedValidationRequest {
@@ -77,7 +77,7 @@ export async function prepareValidationRequest(
     if ([owner, payTo, signer].includes(validator)) {
       problems.push("the validator is the provider itself (its owner, its wallet or the signing key): name an independent verifier's account");
     }
-    if (owner !== undefined && signer !== undefined && !(await mayAsk(registry, agentId, owner, signer))) {
+    if (owner !== undefined && signer !== undefined && !(await mayActFor(registry, agentId, owner, signer))) {
       problems.push(`${signer} may not ask for agent ${agentId}'s validation: only its owner ${owner}, the address approved for the agent, or an operator of the owner's may`);
     }
   } catch (error) {
@@ -126,11 +126,4 @@ export function validationRequestArguments(prepared: PreparedValidationRequest, 
     "--request_hash",
     prepared.requestHash,
   ];
-}
-
-/** The registry's rule for who may ask: the agent's owner, the address approved for the agent, or an operator of the owner's. */
-async function mayAsk(registry: RegistryReader, agentId: number, owner: string, signer: string): Promise<boolean> {
-  if (signer === owner) return true;
-  if ((await registry.agentApproved(agentId)) === signer) return true;
-  return registry.isOperator(owner, signer);
 }

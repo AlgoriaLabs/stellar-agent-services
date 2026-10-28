@@ -38,15 +38,17 @@ config problem. Fix the config, not the kit.
 
 ## 2. Register on Stellar 8004 (the provider's owner does this)
 
-Ask before running anything that signs. It signs with the Stellar CLI keychain, never a key in the environment.
+Ask before running anything that signs. The owner signs in their own wallet, never with a key you handle:
 
 ```bash
-provider-kit register --config provider.config.json --source <key> --dry-run    # review the commands
-provider-kit register --config provider.config.json --source <key>
+provider-kit register --config provider.config.json --dry-run    # what it would sign
+provider-kit register --config provider.config.json
 ```
 
-Use `--manifest <url>` for a library or native provider. Put the printed agent id in the manifest as
-`provider.agentId`, redeploy, and run step 1 again: C2 must pass.
+It opens a page in the user's browser and waits. Tell the user to connect the wallet that holds `payTo` and approve
+there. Use `--manifest <url>` for a library or native provider. With `--config` the command saves the new agent id;
+otherwise put the printed id in the manifest as `provider.agentId`. Redeploy, and run step 1 again: C2 must pass.
+In CI, `--source <key>` signs with the Stellar CLI keychain instead.
 
 ## 3. Paid checks and a receipt (a verifier does this)
 
@@ -63,8 +65,8 @@ The payer spends at most 0.10 USDC a job and 1.00 USDC a run by default, and nev
 `--allow-pubnet`. Receipts are never issued in `--dev` mode.
 
 The provider asks for validation with
-`provider-kit request-validation --config provider.config.json --validator <verifier G...> --source <key>`, and
-sends the verifier the manifest URL and the printed request hash.
+`provider-kit request-validation --config provider.config.json --validator <verifier G...>`, approved in the owner's
+wallet like the registration, and sends the verifier the manifest URL and the printed request hash.
 
 ## Levels
 

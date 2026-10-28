@@ -2,8 +2,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { canonicalJson, PROVIDER_STANDARD, sha256Hex, type ProviderManifest } from "@stellar-agent-services/protocol";
-import { Keypair } from "@stellar/stellar-sdk";
+import { Keypair, scValToNative } from "@stellar/stellar-sdk";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ApprovalOutcome, ApprovalPlan } from "../src/cli/approval.js";
+import type { OwnerChain } from "../src/cli/owner-chain.js";
 import { requestValidation, type RequestValidationIo } from "../src/cli/request-validation.js";
 import { UsageError, type CliFlags, type StellarCli } from "../src/cli/shared.js";
 import {
@@ -22,13 +24,15 @@ import {
   type ValidationRequestOptions,
 } from "../src/index.js";
 import { fakeFacilitator } from "./support/harness.js";
+import { fakeChain, walletApproves } from "./support/owner.js";
 
 // Asking a verifier for validation: nothing is signed for a provider a verifier couldn't validate, a key
 // that may not ask for the agent, or a validator that is the provider itself.
 
 const AGENT_ID = 42;
-// Registered with payTo as --source, as the setup guide recommends: the owner is the wallet.
-const owner = Keypair.random().publicKey();
+// Registered from the payTo account, as the setup guide recommends: the owner is the wallet.
+const ownerKeys = Keypair.random();
+const owner = ownerKeys.publicKey();
 const verifier = Keypair.random().publicKey();
 const stranger = Keypair.random().publicKey();
 const NOW = new Date("2026-10-26T10:00:00Z");
@@ -217,27 +221,50 @@ describe("provider-kit request-validation", () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  /** The command with a fake Stellar CLI, whose keychain holds `signer` and whose invocations the registry records. */
-  function cli(options: { stellar?: StellarCli | undefined; signer?: string } = {}) {
+  /** A request in the Validation Registry, as validation_request leaves it. */
+  const pending = (validator: string, agentId: number): ValidationRecord => ({
+    validator,
+    agentId,
+    hasResponse: false,
+    response: 0,
+    responseHash: "0".repeat(64),
+    tag: "",
+    lastUpdate: 1,
+  });
+
+  /**
+   * The command with a fake Stellar CLI, whose keychain holds `signer` and whose invocations the registry records,
+   * and a fake chain whose landed validation_request calls it records too. `approve` stands for the person on the
+   * approval page; without it, opening the page fails the test.
+   */
+  function cli(options: { stellar?: StellarCli | undefined; signer?: string; approve?: (plan: ApprovalPlan, chain: OwnerChain) => Promise<ApprovalOutcome> } = {}) {
     const { world } = setup();
     const calls: string[][] = [];
     const stellar: StellarCli = async (args) => {
       calls.push(args);
       if (args[0] === "keys") return `${options.signer ?? owner}\n`;
       const value = (flag: string) => args[args.indexOf(flag) + 1]!;
-      world.validations.set(value("--request_hash"), {
-        validator: value("--validator_address"),
-        agentId: Number(value("--agent_id")),
-        hasResponse: false,
-        response: 0,
-        responseHash: "0".repeat(64),
-        tag: "",
-        lastUpdate: 1,
-      });
+      world.validations.set(value("--request_hash"), pending(value("--validator_address"), Number(value("--agent_id"))));
       return "";
     };
-    const io: RequestValidationIo = { stellar: async () => ("stellar" in options ? options.stellar : stellar), registry: () => world.registry, now: () => NOW };
-    return { world, calls, run: (flags: CliFlags) => requestValidation(flags, io) };
+    const chain = fakeChain();
+    chain.accounts.set(owner, { usdcTrustline: true });
+    chain.onLanded = (call) => {
+      const [, validator, agentId, , requestHash] = call.args.map((arg) => scValToNative(arg) as unknown);
+      world.validations.set((requestHash as Buffer).toString("hex"), pending(validator as string, agentId as number));
+    };
+    const io: RequestValidationIo = {
+      stellar: async () => ("stellar" in options ? options.stellar : stellar),
+      registry: () => world.registry,
+      chain: () => chain,
+      approve:
+        options.approve ??
+        (async () => {
+          throw new Error("the approval page was opened, but this test signs with --source");
+        }),
+      now: () => NOW,
+    };
+    return { world, calls, chain, run: (flags: CliFlags) => requestValidation(flags, io) };
   }
 
   it("checks everything, then prints the command on a dry run and signs nothing", async () => {
@@ -291,13 +318,52 @@ describe("provider-kit request-validation", () => {
     expect(calls.some((call) => call.includes("validation_request"))).toBe(false);
   });
 
-  it("needs --validator, as an account, and --source", async () => {
+  it("needs --validator, as an account", async () => {
     const { run } = cli();
     await expect(run({ config: gateway(), source: "owner" })).rejects.toThrow(UsageError);
-    await expect(run({ config: gateway(), validator: verifier })).rejects.toThrow(UsageError);
+    await expect(run({ config: gateway() })).rejects.toThrow(UsageError);
     await expect(run({ config: gateway(), validator: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", source: "owner" })).rejects.toThrow(
       /--validator must be a G\.\.\. account/,
     );
+  });
+
+  it("without --source, has the agent owner's wallet sign the very request it printed, and confirms it on chain", async () => {
+    const wallet = walletApproves(ownerKeys, { wallet: "Freighter" });
+    const { world, calls, chain, run } = cli({ approve: wallet.approve });
+    const out = join(directory, "wallet-request.json");
+    expect(await run({ config: gateway(), validator: verifier, out })).toBe(0);
+
+    // The Stellar CLI isn't involved: the owner's own wallet signed validation_request.
+    expect(calls).toEqual([]);
+    expect(chain.sent.map((transaction) => [transaction.source, transaction.operations[0]!.type])).toEqual([[owner, "invokeHostFunction"]]);
+    const [{ call }] = chain.invoked as [(typeof chain.invoked)[0]];
+    expect(call.method).toBe("validation_request");
+    const [caller, validator, agentId, requestUri, requestHash] = call.args.map((arg) => scValToNative(arg) as unknown);
+    expect([caller, validator, agentId]).toEqual([owner, verifier, AGENT_ID]);
+    // The bytes on chain are the request printed before the wallet connected, and the file written after.
+    const bytes = readFileSync(out);
+    expect(Buffer.from((requestUri as string).split(",")[1]!, "base64").equals(bytes)).toBe(true);
+    expect((requestHash as Buffer).toString("hex")).toBe(await sha256Hex(bytes));
+    expect(output.join("\n")).toContain(`request_hash  ${(requestHash as Buffer).toString("hex")}`);
+    expect([...world.validations.keys()]).toEqual([(requestHash as Buffer).toString("hex")]);
+    expect(wallet.views[0]).toMatchObject({ state: "done", result: { title: "Validation requested" } });
+    expect(output.join("\n")).toContain(`Requested: agent 42 asks ${verifier} for validation on stellar:testnet.`);
+  });
+
+  it("without --source, takes the request only from an account that may ask for the agent", async () => {
+    const wallet = walletApproves(Keypair.random());
+    const { world, chain, run } = cli({ approve: wallet.approve });
+    expect(await run({ config: gateway(), validator: verifier })).toBe(1);
+    expect(wallet.views[0]).toMatchObject({ state: "connect", error: { title: "This account can't ask for validation", message: expect.stringMatching(/may not ask for agent 42/) } });
+    expect(chain.invoked).toEqual([]);
+    expect(world.validations.size).toBe(0);
+  });
+
+  it("without --source, prints the request on a dry run and opens nothing", async () => {
+    const { chain, run } = cli();
+    expect(await run({ config: gateway(), validator: verifier, "dry-run": true })).toBe(0);
+    expect(output.join("\n")).toContain("Dry run. Without --dry-run, a page opens where the agent owner's wallet signs validation_request on stellar:testnet.");
+    expect(chain.invoked).toEqual([]);
   });
 
   it("says so when the registry does not show the request it sent", async () => {

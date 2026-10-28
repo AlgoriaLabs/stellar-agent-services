@@ -81,8 +81,10 @@ $REPO/packages/dev-mcp/dist/index.js`. Without either, the skills are plain Mark
 These come from the spec and [SECURITY.md](SECURITY.md). Breaking one loses or double-charges real money.
 
 1. **No secret keys in a provider.** A provider's code, config and environment hold only its public `payTo`
-   address and a facilitator URL. Owner actions (8004 registration, validation requests) sign through the
-   Stellar CLI keychain (`--source <key name>`).
+   address and a facilitator URL. Owner actions (the USDC trustline, 8004 registration, validation requests) are
+   signed in the owner's own wallet: `provider-kit trustline`, `register` and `request-validation` open a local
+   approval page for it. In scripts and CI, `--source <key name>` signs through the Stellar CLI keychain. Never
+   ask the user for a secret key or seed phrase, and never write one to a file.
 2. **Never charge twice.** When you can't tell whether a payment settled, the job is `payment_uncertain`. It is
    never `failed` and never charged again. It is decided from the chain `[J13]`. Check-status and get-result
    never charge `[J11]`.

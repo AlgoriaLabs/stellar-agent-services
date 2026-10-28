@@ -20,3 +20,5 @@ jobs:
       - run: npm run llms:check
       - run: npm run check --workspace @stellar-agent-services/wallet
       - run: npm run build --workspace @stellar-agent-services/wallet
+      - run: npm run check --workspace @stellar-agent-services/provider-kit
+      - run: npm run build:approve --workspace @stellar-agent-services/provider-kit

@@ -5,7 +5,9 @@
 // - checkRegistration(): reads the registry (no key needed) and checks I1–I3: the registration names
 //   this manifest, the manifest names the agent, and the agent's wallet is the manifest's payTo.
 // - rpcRegistry(): the identity and validation registry reads, which tests replace with a fake.
-// Nothing here signs. Registering is an owner action, and the CLI hands it to the Stellar CLI keychain.
+// - mayActFor(): who may change an agent's registration or ask for its validation.
+// Nothing here signs. Registering is an owner action: the CLI has the owner's wallet sign it on a local
+// approval page, or hands it to the Stellar CLI keychain (--source).
 
 import type { ProviderManifest, StellarNetwork } from "@stellar-agent-services/protocol";
 import { buildMetadataJson, IdentityClient, MAINNET_CONFIG, TESTNET_CONFIG, toDataUri, ValidationClient, type StellarConfig } from "@trionlabs/stellar8004";
@@ -118,6 +120,16 @@ export function rpcRegistry(network: StellarNetwork, rpcUrl?: string): RegistryR
       };
     },
   };
+}
+
+/**
+ * The registries' rule for who may act for an agent, by changing its registration (set_agent_uri) or asking
+ * for its validation (validation_request): its owner, the address approved for it, or an operator of the owner's.
+ */
+export async function mayActFor(registry: RegistryReader, agentId: number, owner: string, address: string): Promise<boolean> {
+  if (address === owner) return true;
+  if ((await registry.agentApproved(agentId)) === address) return true;
+  return registry.isOperator(owner, address);
 }
 
 export interface RegistrationFinding {

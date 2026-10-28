@@ -52,8 +52,9 @@ The SOW gives different numbers in different sections. We plan against the readi
 1. **Discovery holds no keys.** `stellar-agent-search` stays read-only and keyless. Nothing in this repo is
    imported into it except read-only types or schemas.
 2. **The provider runtime holds no keys.** A provider server only knows its `payTo` public address. The
-   facilitator verifies and settles, and the provider owner key is used only offline (registration, validation
-   requests) through the Stellar CLI keychain.
+   facilitator verifies and settles. The owner's transactions (USDC trustline, registration, validation requests)
+   are signed only in the owner's own wallet, on a local approval page the CLI opens, or with `--source` through
+   the Stellar CLI keychain. The CLI never holds a key.
 3. **Signing happens only in the payment client.** The approved payment is signed exactly once, and only after
    the user approves the exact price, recipient, asset and network, or when the payment fits a budget the user
    explicitly granted.
@@ -107,7 +108,7 @@ The SOW gives different numbers in different sections. We plan against the readi
 | --- | --- | --- |
 | `stellar-agent-search` (discovery) | nothing | any secret |
 | Provider server (`provider-kit` runtime, library or gateway mode) | `payTo` **public** address, facilitator URL; in gateway mode, the upstream API's own credential if it has one | any Stellar secret key |
-| Provider operator (`provider-kit` CLI) | owner key, in the Stellar CLI keychain, used for registration and `validation_request` | payer or verifier keys |
+| Provider operator (`provider-kit` CLI) | no key: the owner's own wallet signs the USDC trustline, registration and `validation_request` on the local approval page; `--source` uses a Stellar CLI keychain key instead | payer or verifier keys |
 | `payment-client` | the payer's key or wallet connection (§5.6) | provider or verifier keys |
 | `verifier` | verifier key (`validation_response`), plus a dedicated testnet test-payer key for the paid-call check | provider owner keys |
 
@@ -401,7 +402,10 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
     from the `/data` volume after a container restart.
 - [ ] Manifest builder and 8004 registration (`provider-kit register`) on testnet.
   - [x] Manifest builder with startup checks; `register` and `check` (reads I1–I3 from the testnet registry).
-  - [ ] Run `provider-kit register` for the sample provider on testnet (needs the owner key in the Stellar CLI).
+  - [ ] Run `provider-kit register` for the sample provider on testnet, approved in the owner's wallet.
+  - [x] Approving in a wallet: `trustline`, `register` and `request-validation` open a local page (Stellar Wallets
+    Kit) where the owner's own wallet signs; `--source` keeps the Stellar CLI keychain for CI. `register` saves the
+    new `agentId` to the config. Tested on testnet end to end with `trustline`.
 - [x] `examples/paid-service` with both services, on the SQLite store.
 - [ ] Setup guide (`docs/provider-setup-guide.md`), tested on a clean machine.
   - [x] Written for both paths.
@@ -435,7 +439,8 @@ existing Python API becomes a paid service through gateway mode.
   - [x] `verifier publish`: `validation_response` through the Stellar CLI keychain, after checking the request, the
     receipt and the `response_uri`; the request document is defined in docs/verification.md.
   - [x] `provider-kit request-validation`: the request document as a protocol type, JSON Schema and test vectors;
-    the command checks the registration, the signer and the validator, then signs through the Stellar CLI keychain.
+    the command checks the registration, the signer and the validator, then the owner's wallet signs it (or the
+    Stellar CLI keychain, with `--source`).
   - [ ] Run both on testnet for the sample provider: the first receipt and Validation Registry record.
 - [ ] Discovery integration, option (a) from §5.7, in `stellar-agent-search`.
 - [ ] Pilot providers start integrating: send them the guide and template.
@@ -518,7 +523,8 @@ everywhere.
 | No testnet 8004 indexer | Discovery step of the pilot flow doesn't work on testnet | Direct-registry testnet mode in `stellar-agent-search` (§5.7) |
 | Testnet facilitator unavailable or unsupported | No settlement | Probe on day 1. If needed, look for another facilitator or self-host a settlement path. |
 | Independent providers late or unresponsive | D3 missed | Start outreach in W1, use the template repo, offer incentives (SOW), keep a backup provider |
-| `validation_request` must be signed by the provider owner | Friction for independent providers | One-command `provider-kit request-validation` using the Stellar CLI keychain |
+| `validation_request` must be signed by the provider owner | Friction for independent providers | One-command `provider-kit request-validation`, approved in the owner's own wallet |
+| A CLI key for `payTo`, then importing it into a browser wallet to use the income | Friction and a secret key on disk | The owner's existing wallet is `payTo` and signs every owner step on a local approval page (`trustline`, `register`, `request-validation`) |
 | `stellar8004` declares stellar-sdk `^15`; x402 needs `^16.3` | Duplicate SDK copies, XDR type mismatch | Root `overrides`, plus a test that only one copy is installed |
 | Reviewers expect mainnet evidence (Phase 1 was mainnet) | Evidence questioned | Agree on testnet with the Ambassador Chapter Lead up front; mainnet is optional follow-up |
 | Users need testnet USDC | Pilot friction | Pre-fund pilot wallets from the team test account |
