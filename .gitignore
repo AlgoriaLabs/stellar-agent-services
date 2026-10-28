@@ -13,3 +13,7 @@ coverage/
 *.journal.jsonl
 
 .DS_Store
+
+# Python bytecode (examples/python-upstream)
+__pycache__/
+*.pyc

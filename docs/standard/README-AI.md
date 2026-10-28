@@ -26,12 +26,13 @@ pays one) that follows Provider Standard v1.
 | Situation | Path | Start from |
 | --- | --- | --- |
 | New service in TypeScript (Node, Workers, Deno, Bun) | **Kit**: `@stellar-agent-services/provider-kit` | §2, [examples/paid-service](../../examples/paid-service) |
-| Existing HTTP API in any language | **Gateway**: not built yet. Use Native, or wrap the API with the Kit. | §3–§12 |
+| Existing HTTP API in any language | **Gateway**: `provider-kit serve --config <file>`, or the Docker image. You write a JSON config, no code. | [provider-setup-guide.md §3a](../provider-setup-guide.md#3a-gateway-an-existing-api), [examples/python-upstream](../../examples/python-upstream) |
 | Any other language or stack | **Native**: implement §3–§12 | §3–§12, §13 |
 | Agent, wallet or app that pays providers | **Client** | §14, [packages/payment-client](../../packages/payment-client) |
 
-The packages are npm workspaces in this repository and are not yet published to npm. Build inside the repo, or
-copy `examples/paid-service`.
+The packages are npm workspaces in this repository and are not yet published to npm. Clone the repository and
+run `npm install && npm run build`. Then build inside it, copy `examples/paid-service`, or link a package into
+another project with `npm install <repo>/packages/provider-kit`.
 
 ## 2. Kit path (TypeScript)
 
@@ -68,7 +69,10 @@ The kit implements §3–§12: the manifest, the challenge, the processing order
 receives only the parsed input and an `AbortSignal`, never payment data. Throw to fail the job. Error messages are
 not passed on to the client `[E2]`.
 
-Known gaps: the job store is in memory, so jobs are lost on restart. Queues are per process.
+Pass `store: sqliteStore(path)` in production. The default `memoryStore()` loses jobs on restart. With SQLite,
+paid jobs survive restarts, and processes on one machine share one queue
+([kit README](../../packages/provider-kit/README.md#restarts-several-processes-separate-workers)). For an existing
+API, gateway mode (`provider-kit serve --config <file>`) does all of this from a JSON config.
 
 ## 3. Constants
 

@@ -15,8 +15,8 @@ Use this file to build, review or submit one of three things:
   package rules. They are integration rules, not part of Provider Standard v1. Spec rules keep their own ids
   (`[P7]`, `[J16]`).
 - **Human summary:** [README.md](README.md).
-- **State (2026-10-25):** only the built-ins exist (`localKeySigner`, `x402ExactStellar`). 66 payment-client tests
-  pass. No third-party adapter exists yet. The package is `private`, version `0.0.0`, not on npm.
+- **State (2026-10-25):** only the built-ins exist (`localKeySigner`, `x402ExactStellar`). No third-party adapter exists
+  yet. The package is `private`, version `0.0.0`, not on npm.
 
 ## 0. Rules for the agent using this file
 
