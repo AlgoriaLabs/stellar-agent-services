@@ -1,12 +1,50 @@
-// The developer's own wallet, through Stellar Wallets Kit (https://stellarwalletskit.dev): every wallet the kit
-// supports without extra setup (Freighter, LOBSTR, xBull, Albedo, Rabet, Hana and more), plus Ledger over USB.
+// The developer's own wallet, through Stellar Wallets Kit (https://stellarwalletskit.dev): Freighter, xBull,
+// Albedo, Rabet, Hana, MetaMask and the kit's other wallets that need no extra setup, plus Ledger over USB.
 // The page asks the wallet for two things only: the connected account, and a signature on the transaction the
 // terminal built. The terminal checks that signature before it sends anything.
+//
+// The modules are imported one by one, without LOBSTR's: its connector, @lobstrco/signer-extension-api, is
+// GPL-3.0, and this page ships in provider-kit's MIT package. The kit's defaultModules() would bundle it even when
+// filtered out, so don't use it. vite.config.ts fails the build if copyleft code would be bundled.
 
+import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
+import { BitgetModule } from "@creit.tech/stellar-wallets-kit/modules/bitget";
+import { CactusLinkModule } from "@creit.tech/stellar-wallets-kit/modules/cactuslink";
+import { DcentModule } from "@creit.tech/stellar-wallets-kit/modules/dcent";
+import { FordefiModule } from "@creit.tech/stellar-wallets-kit/modules/fordefi";
+import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
+import { GhostsigModule } from "@creit.tech/stellar-wallets-kit/modules/ghostsig";
+import { HanaModule } from "@creit.tech/stellar-wallets-kit/modules/hana";
+import { KleverModule } from "@creit.tech/stellar-wallets-kit/modules/klever";
 import { LedgerModule } from "@creit.tech/stellar-wallets-kit/modules/ledger";
-import { defaultModules } from "@creit.tech/stellar-wallets-kit/modules/utils";
+import { MetaMaskModule } from "@creit.tech/stellar-wallets-kit/modules/metamask";
+import { OneKeyModule } from "@creit.tech/stellar-wallets-kit/modules/onekey";
+import { RabetModule } from "@creit.tech/stellar-wallets-kit/modules/rabet";
+import { ScopulyModule } from "@creit.tech/stellar-wallets-kit/modules/scopuly";
+import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
 import { parseError, StellarWalletsKit } from "@creit.tech/stellar-wallets-kit/sdk";
-import type { Networks, SwkAppTheme } from "@creit.tech/stellar-wallets-kit/types";
+import type { ModuleInterface, Networks, SwkAppTheme } from "@creit.tech/stellar-wallets-kit/types";
+
+/** The wallets the picker offers. It lists the installed ones first, in this order. */
+function walletModules(): ModuleInterface[] {
+  return [
+    new FreighterModule(),
+    new xBullModule(),
+    new AlbedoModule(),
+    new RabetModule(),
+    new HanaModule(),
+    new MetaMaskModule(),
+    new KleverModule(),
+    new OneKeyModule(),
+    new BitgetModule(),
+    new FordefiModule(),
+    new CactusLinkModule(),
+    new DcentModule(),
+    new ScopulyModule(),
+    new GhostsigModule(),
+    new LedgerModule(),
+  ];
+}
 
 /**
  * The kit's wallet picker in the page's own colors. The kit sets these as CSS variables, so the page's tokens
@@ -38,7 +76,7 @@ export function startWallets(networkPassphrase: string): void {
   if (started) return;
   started = true;
   StellarWalletsKit.init({
-    modules: [...defaultModules(), new LedgerModule()],
+    modules: walletModules(),
     network: networkPassphrase as Networks,
     theme: THEME,
     authModal: { showInstallLabel: true, hideUnsupportedWallets: false },

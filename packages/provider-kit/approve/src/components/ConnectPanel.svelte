@@ -54,7 +54,7 @@
         <Icon name="wallet" size={18} /> Connect wallet
       {/if}
     </button>
-    <p class="wallets">Freighter, LOBSTR, xBull, Albedo, Rabet, Hana, Ledger and more.</p>
+    <p class="wallets">Freighter, xBull, Albedo, Rabet, Hana, MetaMask, Ledger and more.</p>
     <button type="button" class="link-button cancel" onclick={oncancel} disabled={connecting}>Cancel and return to the terminal</button>
   </div>
 </div>

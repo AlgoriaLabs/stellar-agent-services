@@ -59,7 +59,7 @@ reconcile   Decides payment_uncertain jobs from on-chain data: paid jobs run (or
             only reports. Exits 1 if any job is still undecided.
 
 Approving in your wallet: trustline, register and request-validation open a page on this computer
-where you connect the wallet you already use (Freighter, LOBSTR, xBull, Albedo, Ledger and more),
+where you connect the wallet you already use (Freighter, xBull, Albedo, Hana, Ledger and more),
 review each transaction and approve it there. provider-kit never sees a key. --port <n> picks the
 page's port (default 8790); --no-open prints its link without opening a browser, as over SSH.
 --source <key> signs with the Stellar CLI keychain instead, for scripts and CI; with it, --dry-run

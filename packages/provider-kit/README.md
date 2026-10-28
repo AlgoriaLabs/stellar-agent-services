@@ -134,9 +134,10 @@ mount the config at `/config/provider.config.json` and a volume at `/data` (set 
 Without `--source`, an owner command opens a page on this computer, `http://localhost:8790` (or any free port),
 where you connect the wallet you already use and approve each transaction:
 
-1. **Connect.** Any wallet [Stellar Wallets Kit](https://stellarwalletskit.dev) supports: Freighter, LOBSTR, xBull,
-   Albedo, Rabet, Hana, Ledger and more. The page names the account the command needs, such as `payTo`, and refuses
-   another one before anything is built.
+1. **Connect.** Freighter, xBull, Albedo, Rabet, Hana, MetaMask, Ledger and the other wallets
+   [Stellar Wallets Kit](https://stellarwalletskit.dev) supports without extra setup, except LOBSTR: its connector
+   is GPL-3.0, and the page ships in this MIT package. The page names the account the command needs, such as
+   `payTo`, and refuses another one before anything is built.
 2. **Review.** Each transaction in plain words: what it does, every argument, the network, the most it can cost in
    fees and how long it stays valid. The raw hash and XDR are there to compare with what the wallet shows.
 3. **Approve** in the wallet. The CLI checks that what came back is that very transaction, signed by the connected

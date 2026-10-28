@@ -1,8 +1,8 @@
 // Approving the owner's transactions in a browser wallet: how `provider-kit trustline`, `register` and
-// `request-validation` sign without --source. The developer connects the wallet they already use (any wallet
-// Stellar Wallets Kit supports: Freighter, LOBSTR, xBull, Albedo, Ledger and more) on a page provider-kit
-// serves on this computer, reviews each transaction there and approves it in the wallet. No key reaches
-// provider-kit, and the Stellar CLI isn't needed.
+// `request-validation` sign without --source. The developer connects the wallet they already use (through
+// Stellar Wallets Kit: Freighter, xBull, Albedo, Ledger and more) on a page provider-kit serves on this
+// computer, reviews each transaction there and approves it in the wallet. No key reaches provider-kit, and the
+// Stellar CLI isn't needed.
 //
 // - ApprovalSession runs one command's steps in order. It builds each transaction only when it is due (a
 //   fresh sequence number and simulation), sends only what verifySigned() accepts, and stops for good when

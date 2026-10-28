@@ -33,9 +33,9 @@ capacity limits and a job store that survives restarts.
   alias provider-kit="node $PWD/packages/provider-kit/dist/cli/index.js"
   ```
 
-- **A Stellar wallet**, the one you already use: Freighter, LOBSTR, xBull, Albedo, Rabet, Hana, a Ledger, or any
-  other wallet [Stellar Wallets Kit](https://stellarwalletskit.dev) supports. Its account is your payout account,
-  `payTo`. Tip: add a second account in the same wallet just for the service.
+- **A Stellar wallet**, the one you already use: Freighter, xBull, Albedo, Rabet, Hana, MetaMask, a Ledger, or
+  another wallet the approval page lists (it uses [Stellar Wallets Kit](https://stellarwalletskit.dev)). Its
+  account is your payout account, `payTo`. Tip: add a second account in the same wallet just for the service.
 - **A USDC trustline on that account** [P2], so it can be paid:
 
   ```bash
