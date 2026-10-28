@@ -26,8 +26,12 @@ In the user's project: `npm install "$REPO/packages/provider-kit"`. CLIs:
 `alias provider-kit="node $REPO/packages/provider-kit/dist/cli/index.js"` and
 `alias verifier="node $REPO/packages/verifier/dist/cli/index.js"`. Node 22.13 or later.
 
-`$REPO/examples/paid-service` is the template: a Node server with two services, SQLite jobs and `.env.example`.
-Copying it is the fastest start.
+For a new project, the fastest start is the scaffolder:
+`node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind typescript --description "<one sentence>"
+--no-wallet`. It writes `src/server.ts`, an example service to replace (`src/services/summarize.ts`), `.env`, a
+Dockerfile and npm scripts (`dev`, `try`, `check`), packs the kit from the clone into `vendor/` and installs it.
+Ask the user before `--wallet` instead of `--no-wallet`: it opens the trustline approval page in their browser.
+`$REPO/examples/paid-service` is a fuller template: two services, SQLite jobs and `.env.example`.
 
 ## 2. Write each service
 
@@ -82,21 +86,26 @@ config. Don't work around the check.
 1. `provider-kit check --manifest http://localhost:8787/.well-known/stellar-agent-services.json --dev`. Before
    8004 registration it reports a missing agent id. That is expected.
 2. `verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev`. C1, C3, C6 and C7 must pass.
-3. Ask before spending testnet funds, then make a paid call from a separate payer wallet:
-   `alias stellar-pay="node $REPO/packages/payment-client/dist/cli.js"`, `stellar-pay wallet create`,
-   `stellar-pay wallet fund --usdc 2`, then `stellar-pay pay <manifest-url> translate '{"text":"Hello"}' --dev`.
+3. Ask the user before paying: it spends test money only, but it is a payment. Once they agree, run
+   `provider-kit try translate '{"text":"Hello"}' --manifest http://localhost:8787/.well-known/stellar-agent-services.json --yes`.
+   It pays from a throwaway testnet account it funds itself, so the user needs no payer wallet, and shows the result
+   and the transfer on chain. Without `--yes` it asks in the terminal, which you can't answer.
 
-The user needs a testnet `payTo` account with a USDC trustline. `docs/provider-setup-guide.md` §2 shows the Stellar
-CLI commands. The key stays in the Stellar CLI keychain.
+The user needs a testnet `payTo` account with a USDC trustline: an account in the wallet they already use.
+`provider-kit trustline --network testnet` sets it up (`docs/provider-setup-guide.md` §2). It opens a page in the
+user's browser and waits: tell the user to connect their wallet and approve there, then use the printed `PAY_TO`.
 
 ## 5. Deploy and register
 
 Follow `docs/provider-setup-guide.md` §7–§9: HTTPS `baseUrl`, a persistent SQLite file, a Soroban RPC for
-reconciliation, 8004 registration with `provider-kit register --source <key>`, then the verify-provider skill.
+reconciliation, then `provider-kit register --config provider.config.json` (or `--manifest <url>`). It opens the same
+approval page, where the user approves from the `payTo` account, and saves the new `agentId` to `--config`. Then the
+verify-provider skill. In CI, `--source <key>` signs with the Stellar CLI keychain instead.
 
 ## Never
 
 - Put a Stellar secret key in code, config or environment. The provider knows only `payTo`.
+- Ask the user for a secret key or seed phrase. Their wallet signs, on the page `provider-kit` opens.
 - Add manifest fields, headers or error codes. Extra data goes in `extensions` with reverse-DNS keys `[X1]`.
 - Hand-write job, payment or recovery logic next to the kit.
 - Mark an uncertain payment `failed`, or charge again `[J13]`.

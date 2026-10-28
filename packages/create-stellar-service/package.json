@@ -1,0 +1,21 @@
+{
+  "name": "create-stellar-service",
+  "version": "0.0.0",
+  "private": true,
+  "description": "npm create stellar-service: a new paid AI service on Stellar, or an existing API made one, ready to run, try and deploy (Provider Standard v1, x402 USDC).",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "bin": {
+    "create-stellar-service": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  }
+}

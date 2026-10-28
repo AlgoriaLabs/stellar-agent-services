@@ -375,9 +375,11 @@ Every error other than `402` is RFC 9457, sent as `Content-Type: application/pro
   also list `{ "name": "web", "endpoint": "<baseUrl>" }` and set the `x402` flag.
 - `[I2]` `provider.agentId` in the manifest is that registration's id.
 - `[I3]` The manifest's `payTo` equals `get_agent_wallet(agentId)` on chain.
-- Registration and validation requests are owner actions. They run offline and sign through the Stellar CLI
-  keychain, never in the provider runtime: `provider-kit register`, then `provider-kit request-validation
-  --validator <verifier G…> --source <key>`, which works for any provider with `--manifest <url>`.
+- Registration and validation requests are owner actions, never done in the provider runtime. The owner approves
+  them in their own wallet, on a local page the CLI opens: `provider-kit register`, then `provider-kit
+  request-validation --validator <verifier G…>`, which work for any provider with `--manifest <url>`. Register from
+  the `payTo` account, so the agent wallet is `payTo` at once [I3]. In scripts and CI, `--source <key>` signs
+  through the Stellar CLI keychain instead.
 - A validation request's `request_hash` is the SHA-256 of its document's canonical JSON, and its `request_uri` holds
   exactly those bytes ([verification.md](../verification.md#stellar-8004-validation-registry)). The validator is never
   the agent's owner or wallet.
@@ -416,7 +418,15 @@ itself in its `description`.
 `chargedFor`, `jobViewHttpStatus`, `parseRetryAfter`, `problem`, `jobError`, `createJobUrl`, `jobStatusUrl`,
 `jobResultUrl`, `stellarAddressKind`, `validationRequestHash`, `validationRequestDataUri`, `USDC_ASSET`.
 
-**A real paid call on testnet** against a local provider, using the payment client CLI (see
+**A real paid call on testnet** against a local provider, in any language. `provider-kit try` pays once from a
+throwaway testnet account it funds itself, then confirms the transfer on chain. It shows the payment and asks
+first; `--yes` skips the question:
+
+```bash
+npx provider-kit try text-stats '{"text":"Hello agents."}' --manifest http://localhost:8787/.well-known/stellar-agent-services.json
+```
+
+Or pay from a payer wallet of your own with the payment client CLI (see
 [packages/payment-client/README.md](../../packages/payment-client/README.md)):
 
 ```bash

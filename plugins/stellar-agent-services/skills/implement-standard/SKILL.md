@@ -50,8 +50,9 @@ Persist every state change before the next step. Keep the job store durable.
 - The verifier from a clone (`npm install && npm run build`):
   `node packages/verifier/dist/cli/index.js check http://localhost:<port>/.well-known/stellar-agent-services.json --dev`.
   Each failure names a rule id. Look it up with the MCP tool `get_spec_rule` if available, or in the spec.
-- A paid testnet call with `stellar-pay` (README-AI §13), after asking the user, then the verify-provider skill for
-  C4 and C5.
+- A paid testnet call, after asking the user: `node packages/provider-kit/dist/cli/index.js try <service> --manifest
+  http://localhost:<port>/.well-known/stellar-agent-services.json --yes` pays once from a throwaway testnet account
+  (README-AI §13). Then the verify-provider skill for C4 and C5.
 
 ## Never
 

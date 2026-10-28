@@ -12,7 +12,9 @@ Jobs are kept in SQLite (`JOB_DB_PATH`, default `./jobs.sqlite`), so a paid job 
 server while a report is queued, start it again, and the report runs.
 
 Run it with `PAY_TO=G... npm start` in this directory, after `npm install && npm run build` at the repository
-root. `.env.example` lists the settings; they are public values only. See
+root. `.env.example` lists the settings; they are public values only. Then `npx provider-kit try text-stats`, from
+another terminal, pays for one job on testnet from a throwaway account and shows the result (`try delayed-report`
+shows a job that answers 202 and is polled). See
 [packages/payment-client](../../packages/payment-client/README.md) for a full testnet walkthrough, and the
 [setup guide](../../docs/provider-setup-guide.md) for building your own provider from this template.
 

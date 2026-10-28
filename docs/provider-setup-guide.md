@@ -5,8 +5,10 @@ pay in USDC and recover jobs from, following [Provider Standard v1](provider-sta
 **testnet** throughout.
 
 You never give the provider a Stellar secret key. It knows only the public address it is paid to (`payTo`); an
-x402 facilitator verifies and settles payments. The only signing step, registering your identity, runs from your
-own machine through the Stellar CLI keychain.
+x402 facilitator verifies and settles payments. Your own wallet is the payout account. The few owner steps (a USDC
+trustline, registering your identity, asking for validation) are approved in that wallet, on a page `provider-kit`
+opens on your computer. No key is ever exported, imported or stored by the kit, and the income lands in the wallet
+you already use.
 
 ## 1. Pick a path
 
@@ -18,6 +20,12 @@ own machine through the Stellar CLI keychain.
 
 Both kit paths give you the same things: the manifest, the `402` challenge, payment checks, job recovery,
 capacity limits and a job store that survives restarts.
+
+**Fastest start:** `npm create stellar-service` makes a project for either kit path, or a new Python service behind
+the gateway. It sets up your payout account in your wallet and leaves the project ready to run, try and deploy
+([create-stellar-service](../packages/create-stellar-service)). Until the packages are on npm, run it from the clone
+(§2): `node packages/create-stellar-service/dist/index.js my-service`. The steps below are what it does for you,
+and what comes after.
 
 ## 2. Prerequisites
 
@@ -31,22 +39,59 @@ capacity limits and a job store that survives restarts.
   alias provider-kit="node $PWD/packages/provider-kit/dist/cli/index.js"
   ```
 
-- **A `payTo` account on testnet with a USDC trustline** [P2]. With the
-  [Stellar CLI](https://developers.stellar.org/docs/tools/cli), which you also need for registration (step 8):
+- **A Stellar wallet**, the one you already use: Freighter, xBull, Albedo, Rabet, Hana, MetaMask, a Ledger, or
+  another wallet the approval page lists (it uses [Stellar Wallets Kit](https://stellarwalletskit.dev)). Its
+  account is your payout account, `payTo`. Tip: add a second account in the same wallet just for the service.
+- **A USDC trustline on that account** [P2], so it can be paid:
 
   ```bash
-  stellar keys generate payto --network testnet --fund
-  stellar tx new change-trust --source-account payto --network testnet \
-    --line USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
-  export PAY_TO=$(stellar keys address payto)
+  provider-kit trustline --network testnet
   ```
 
-  The key stays in the Stellar CLI keychain. The provider only ever sees `PAY_TO`, the public address.
+  A page opens in your browser. Connect your wallet and approve the trustline there. A new testnet account gets
+  test XLM from Friendbot first. The command prints the account to use:
+
+  ```bash
+  export PAY_TO=G...        # what provider-kit trustline printed
+  ```
+
+  The provider only ever sees `PAY_TO`, the public address. If your wallet already holds USDC, nothing is signed.
+
+<details>
+<summary>Scripts and CI: sign with the Stellar CLI instead</summary>
+
+Every owner command takes `--source <key>` to sign with a key from the
+[Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain instead of a wallet. Keep that key in your
+operating system's secure store:
+
+```bash
+stellar keys generate payto --network testnet --fund --secure-store
+stellar tx new change-trust --source-account payto --network testnet \
+  --line USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+export PAY_TO=$(stellar keys address payto)
+```
+
+</details>
 
 ## 3a. Gateway: an existing API
 
 Your API needs one endpoint per service that takes the input as a JSON body (`POST`) and answers with a JSON
 object. It needs to know nothing about payments.
+
+**If your API has an OpenAPI document**, start from it. FastAPI serves one at `/openapi.json`; Django
+(drf-spectacular), Spring, NestJS and most frameworks can write one:
+
+```bash
+provider-kit init --openapi http://127.0.0.1:8000/openapi.json     # or a .json or .yaml file, with --upstream <url>
+```
+
+This writes `provider.config.json` with a service for each `POST` endpoint the gateway can call: its schemas
+(converted to JSON Schema 2020-12), title, description, tags and example come from the document. It lists every
+other operation with the reason it was skipped, such as a path parameter or a file upload, and checks the config as
+`serve` would. If the API needs its own key, it is sent from an environment variable that `init` names. Then
+review the guesses below, starting with the price.
+
+**Otherwise**, start from one service and write its schemas yourself:
 
 ```bash
 provider-kit init --upstream http://127.0.0.1:5000/run
@@ -133,6 +178,11 @@ provider-kit check --manifest http://localhost:8787/.well-known/stellar-agent-se
 testnet payments with sponsored fees, that `payTo` exists with a USDC trustline, and your 8004 registration once
 you have one. Until step 8 it reports that the agent id is missing; that is expected.
 
+It ends with how agents see you. Search matches only your provider's name and description, so it lists the words
+from your services' names, titles and tags that a search for them wouldn't find there. It also flags services
+whose description is too thin to choose by [§3.4], or that have no example
+([details](../packages/provider-kit/README.md#how-agents-see-you)). These hints never fail the check.
+
 Then check it from outside, the way a verifier will, with the [verifier](../packages/verifier). It calls your
 running service: invalid input, the `402` challenge, an oversized body, CORS, and a burst of 20 requests. Kit
 providers pass it; it matters most for native implementations.
@@ -144,18 +194,35 @@ verifier check http://localhost:8787/.well-known/stellar-agent-services.json --d
 
 ## 6. Make a paid testnet request
 
-Pay your own service with the payment client, from a separate payer wallet:
+Pay your own service once, the way any client will:
+
+```bash
+provider-kit try <service>                    # with the service's example input
+provider-kit try <service> '<input JSON>'     # or your own input, or @input.json
+```
+
+It shows the exact payment and asks first. Then it pays from a throwaway testnet account it makes for this call,
+with test XLM from Friendbot and the price in test USDC from the testnet DEX, and shows the result and the
+`transfer` on chain. You need no payer wallet, and the throwaway key is never written anywhere. A gateway is found
+from `provider.config.json`, any other provider with `--manifest <url>`, and without either it tries
+`http://localhost:8787`.
+
+<details>
+<summary>Pay from your own test wallet instead</summary>
+
+The payment client's CLI keeps a payer wallet, a spending policy and a journal, as a real client does, and can
+recover a job after a lost response ([job-recovery.md](job-recovery.md)):
 
 ```bash
 npx stellar-pay wallet create
 npx stellar-pay wallet fund --usdc 2
 MANIFEST=http://localhost:8787/.well-known/stellar-agent-services.json
-npx stellar-pay services $MANIFEST --dev
 npx stellar-pay pay $MANIFEST <service> '<input JSON>' --dev
 ```
 
-You see the approval prompt, the payment settles on testnet, and the client confirms the `transfer` on chain. The
-web page in [apps/wallet](../apps/wallet) does the same in a browser.
+The web page in [apps/wallet](../apps/wallet) does the same in a browser.
+
+</details>
 
 ## 7. Deploy on HTTPS
 
@@ -176,13 +243,24 @@ Your 8004 registration is your on-chain identity. It names your manifest, and it
 so a client can check it is paying the right provider [I1]–[I3].
 
 ```bash
-provider-kit register --config provider.config.json --source payto --dry-run   # review
-provider-kit register --config provider.config.json --source payto
+provider-kit register --config provider.config.json
 ```
 
-Registering with your `payTo` key as `--source` makes it the agent's wallet at once. Then add the agent id the
-command prints as `"agentId"` under `provider` in your config (or `AGENT_ID` for the example), restart, and run
-`provider-kit check` again: every line should pass.
+A page opens in your browser. Connect the wallet that holds `payTo`, review the registration and approve it. The
+registry makes the account that registers the agent's owner and its wallet, so registering from `payTo` passes
+[I3] at once. A `payTo` still missing its USDC trustline gets one first, in the same page.
+
+The registration publishes `provider.name` and `provider.description`: they are the only text search matches, so
+make them the words buyers type before you register (`provider-kit check` shows how agents see them).
+
+The command saves the new agent id as `"agentId"` under `provider` in your config. A library provider (or the
+example's `AGENT_ID`) sets it by hand: the command prints it. Restart the provider and run `provider-kit check`
+again: every line should pass. Run `register` again after moving the manifest: it updates the registration,
+signed by the agent's owner.
+
+On a computer without a browser, such as over SSH, add `--no-open` and open the printed link wherever your wallet
+is: the link reaches only this computer, so forward its port (`ssh -L 8790:localhost:8790`). For scripts and CI,
+`--source <key>` signs with the Stellar CLI keychain instead, and `--dry-run` prints the Stellar CLI command.
 
 ## 9. Get verified
 
@@ -191,16 +269,17 @@ the Stellar 8004 Validation Registry (see [verification.md](verification.md)).
 
 1. Once deployed, run `verifier check <your manifest URL>`: every check should pass, and C2 confirms your 8004
    registration.
-2. Ask a verifier for validation, naming its address. Sign with the key you registered with:
+2. Ask a verifier for validation, naming its address:
 
    ```bash
-   provider-kit request-validation --config provider.config.json --validator <verifier G…> --source payto --dry-run   # review
-   provider-kit request-validation --config provider.config.json --validator <verifier G…> --source payto
+   provider-kit request-validation --config provider.config.json --validator <verifier G…>
    ```
 
-   It checks your registration first, records the request in the Validation Registry and prints its hash. Send the
-   verifier your manifest URL and that hash. [verification.md](verification.md#stellar-8004-validation-registry)
-   describes the request.
+   It checks your registration first and prints the request and its hash. Approve the request in the wallet you
+   registered with, on the page that opens. It is recorded in the Validation Registry, and the command confirms it
+   there. Send the verifier your manifest URL and that hash.
+   [verification.md](verification.md#stellar-8004-validation-registry) describes the request. With `--source <key>`,
+   the Stellar CLI keychain signs instead.
 3. The verifier runs every check, paying for a few jobs from its own test account, publishes the receipt and answers
    your request on chain. Its receipt gives your badges: Standard v1, Payment verified, Recovery verified,
    Load-safe and 8004 validated.

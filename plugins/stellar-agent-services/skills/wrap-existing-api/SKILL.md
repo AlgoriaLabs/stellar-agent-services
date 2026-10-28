@@ -1,6 +1,6 @@
 ---
 name: wrap-existing-api
-description: Put an existing HTTP API, in any language (Python, Go, Rust, Java, Ruby, PHP, TypeScript), behind per-call USDC payments on Stellar without changing its code, using the Provider Kit's gateway mode and a JSON config (Provider Standard v1, x402). Use when the user wants to monetize, sell or charge agents for an API, model server or endpoint they already run. For a new TypeScript service, use build-paid-service.
+description: Put an existing HTTP API, in any language (Python, Go, Rust, Java, Ruby, PHP, TypeScript), behind per-call USDC payments on Stellar without changing its code, using the Provider Kit's gateway mode and a JSON config, generated from the API's OpenAPI document when it has one, such as FastAPI's /openapi.json (Provider Standard v1, x402). Use when the user wants to monetize, sell or charge agents for an API, model server or endpoint they already run. For a new TypeScript service, use build-paid-service.
 ---
 
 # Make an existing API paid with the gateway
@@ -33,10 +33,25 @@ alias verifier="node $REPO/packages/verifier/dist/cli/index.js"
 
 Docker works too: `docker build -f packages/provider-kit/Dockerfile -t provider-kit .` from the clone.
 
+For a new project around the API, the scaffolder does §3 and more:
+`node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind wrap --openapi <document> --no-wallet`
+(or `--upstream <url>` without a document). It runs `provider-kit init`, makes the config read `PUBLIC_ORIGIN`,
+`PAY_TO` and `JOB_DB_PATH` from `.env`, and writes a Dockerfile and npm scripts (`dev`, `try`, `check`,
+`register`). Read its output to the user, then review the config as §3 says. Ask the user before `--wallet`: it
+opens the trustline approval page in their browser.
+
 ## 3. Write the config
 
-`provider-kit init --upstream http://127.0.0.1:5000/run` writes a starter `provider.config.json`. Its JSON Schema
-is `packages/provider-kit/schemas/gateway-config.schema.json`. For each service, set:
+If the API has an OpenAPI 3 document (FastAPI serves one at `/openapi.json`; look for `openapi.json`,
+`openapi.yaml` or `/v3/api-docs`), generate the config from it:
+`provider-kit init --openapi http://127.0.0.1:8000/openapi.json`, or a file path with `--upstream <the API's base
+URL>`. It writes a service for each `POST` endpoint the gateway can call, with schemas, descriptions and examples
+from the document. It prints every skipped operation with the reason, and checks the config as `serve` does. Read
+that output to the user. Then review the result against the list below. The price, charge and duration are guesses.
+Descriptions it couldn't find are listed, so write those. Any `env:` header it adds must be set before `serve`.
+
+Without a document, `provider-kit init --upstream http://127.0.0.1:5000/run` writes a starter `provider.config.json`.
+Its JSON Schema is `packages/provider-kit/schemas/gateway-config.schema.json`. For each service, set:
 
 - `name` (`^[a-z0-9][a-z0-9_-]{0,63}$`), `title`, and a `description` for an agent deciding whether to call it:
   what it does, when to use it, its limits. No price or URLs in it.
@@ -63,14 +78,23 @@ PAY_TO=G... PUBLIC_ORIGIN=http://localhost:8787 provider-kit serve --config prov
 verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
 ```
 
-`PAY_TO` is a public testnet address with a USDC trustline (`docs/provider-setup-guide.md` §2). Before 8004
-registration, `check` reports a missing agent id. That is expected. For a paid test call, ask the user first, then
-use `stellar-pay` as in `docs/provider-setup-guide.md` §6.
+`PAY_TO` is a public testnet address with a USDC trustline, an account in the user's own wallet:
+`provider-kit trustline --network testnet` sets it up and prints it (`docs/provider-setup-guide.md` §2). It opens a
+page in the user's browser and waits for them to approve in their wallet. Before 8004 registration, `check` reports
+a missing agent id. That is expected.
+
+For a paid test call, ask the user first: it spends test money only, but it is a payment. Once they agree, run
+`provider-kit try <service> --manifest http://localhost:8787/.well-known/stellar-agent-services.json --yes`. It pays
+from a throwaway testnet account it funds itself, so the user needs no payer wallet, and it shows the result and the
+transfer on chain (`docs/provider-setup-guide.md` §6). Without `--yes` it asks in the terminal, which you can't
+answer.
 
 ## 5. Deploy and register
 
 `docs/provider-setup-guide.md` §7–§9: HTTPS `baseUrl`, the SQLite store on a persistent volume, `rpcUrl` for
-reconciliation, `provider-kit register --config provider.config.json --source <key>`, then the verify-provider skill.
+reconciliation, `provider-kit register --config provider.config.json`, approved by the user in their wallet from the
+`payTo` account (it saves the new `agentId` to the config), then the verify-provider skill. Never ask the user for a
+secret key. In CI, `--source <key>` signs with the Stellar CLI keychain instead.
 
 ## Done when
 

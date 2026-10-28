@@ -25,13 +25,16 @@ PUBLIC_ORIGIN=http://localhost:8787 PAY_TO=G... \
   node packages/provider-kit/dist/cli/index.js serve --config examples/python-upstream/provider.config.json --dev
 ```
 
-`PAY_TO` is the public address that receives the USDC; it needs a USDC trustline (see the
-[setup guide](../../docs/provider-setup-guide.md)). Then pay it from another terminal:
+`PAY_TO` is the public address that receives the USDC, an account in your own wallet. It needs a USDC trustline:
+`provider-kit trustline --network testnet` adds one, approved in your wallet (see the
+[setup guide](../../docs/provider-setup-guide.md)). Then pay it once from another terminal, with its example input:
 
 ```bash
-MANIFEST=http://localhost:8787/.well-known/stellar-agent-services.json
-npx stellar-pay pay $MANIFEST summarize '{"text":"Stellar settles in seconds. Fees are tiny.","sentences":1}' --dev
+node packages/provider-kit/dist/cli/index.js try summarize --manifest http://localhost:8787/.well-known/stellar-agent-services.json
 ```
+
+It pays from a throwaway testnet account it funds itself, after you approve the exact payment, and shows the summary
+and the transfer on chain.
 
 `packages/provider-kit/test/gateway.test.ts` runs this example end to end, with a stand-in facilitator.
 

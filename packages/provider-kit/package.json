@@ -20,17 +20,30 @@
     "schemas"
   ],
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b && npm run build:approve",
+    "build:approve": "vite build --config approve/vite.config.ts",
+    "dev:approve": "vite --config approve/vite.config.ts",
+    "check": "svelte-check --workspace ./approve --tsconfig ./tsconfig.json --fail-on-warnings"
   },
   "dependencies": {
+    "@stellar-agent-services/payment-client": "0.0.0",
     "@stellar-agent-services/protocol": "0.0.0",
     "@stellar/stellar-sdk": "16.3.1",
     "@trionlabs/stellar8004": "0.0.11",
     "@x402/core": "2.28.0",
     "@x402/stellar": "2.28.0",
-    "ajv": "8.20.0"
+    "ajv": "8.20.0",
+    "yaml": "2.9.1"
   },
   "bin": {
     "provider-kit": "./dist/cli/index.js"
+  },
+  "devDependencies": {
+    "@creit.tech/stellar-wallets-kit": "2.7.1",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "buffer": "6.0.3",
+    "svelte": "5.57.2",
+    "svelte-check": "4.7.6",
+    "vite": "8.3.4"
   }
 }

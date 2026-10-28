@@ -335,11 +335,13 @@ The request document names what is to be verified (`ValidationRequest` in
   the answer can never earn "8004 validated".
 
 `provider-kit request-validation` checks all of this before anything is signed, puts the document on chain as a
-`data:` URI, signs through the Stellar CLI keychain and reads the registry back:
+`data:` URI and reads the registry back. The owner approves the request in their own wallet, on a page the command
+opens, and the account the wallet connects is checked as the one asking. With `--source <key>`, the Stellar CLI
+keychain signs instead, for scripts and CI:
 
 ```bash
+provider-kit request-validation --config provider.config.json --validator <verifier G…> --out request.json
 provider-kit request-validation --config provider.config.json --validator <verifier G…> --source owner --dry-run
-provider-kit request-validation --config provider.config.json --validator <verifier G…> --source owner --out request.json
 ```
 
 It prints the request hash, which the provider sends the verifier with its manifest URL. `--manifest <url>` instead of

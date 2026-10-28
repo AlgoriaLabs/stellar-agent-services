@@ -4,8 +4,11 @@
 //   @trionlabs/stellar8004 helpers. `provider-kit register` puts it on chain.
 // - checkRegistration(): reads the registry (no key needed) and checks I1–I3: the registration names
 //   this manifest, the manifest names the agent, and the agent's wallet is the manifest's payTo.
+//   inspectRegistration() also returns the registration file it read, which is what search shows.
 // - rpcRegistry(): the identity and validation registry reads, which tests replace with a fake.
-// Nothing here signs. Registering is an owner action, and the CLI hands it to the Stellar CLI keychain.
+// - mayActFor(): who may change an agent's registration or ask for its validation.
+// Nothing here signs. Registering is an owner action: the CLI has the owner's wallet sign it on a local
+// approval page, or hands it to the Stellar CLI keychain (--source).
 
 import type { ProviderManifest, StellarNetwork } from "@stellar-agent-services/protocol";
 import { buildMetadataJson, IdentityClient, MAINNET_CONFIG, TESTNET_CONFIG, toDataUri, ValidationClient, type StellarConfig } from "@trionlabs/stellar8004";
@@ -120,6 +123,16 @@ export function rpcRegistry(network: StellarNetwork, rpcUrl?: string): RegistryR
   };
 }
 
+/**
+ * The registries' rule for who may act for an agent, by changing its registration (set_agent_uri) or asking
+ * for its validation (validation_request): its owner, the address approved for it, or an operator of the owner's.
+ */
+export async function mayActFor(registry: RegistryReader, agentId: number, owner: string, address: string): Promise<boolean> {
+  if (address === owner) return true;
+  if ((await registry.agentApproved(agentId)) === address) return true;
+  return registry.isOperator(owner, address);
+}
+
 export interface RegistrationFinding {
   rule: "I1" | "I2" | "I3";
   ok: boolean;
@@ -135,15 +148,24 @@ export async function checkRegistration(
   manifestUrl: string,
   options: { rpcUrl?: string; fetch?: typeof fetch; registry?: RegistryReader } = {},
 ): Promise<RegistrationFinding[]> {
+  return (await inspectRegistration(manifest, manifestUrl, options)).findings;
+}
+
+/** checkRegistration(), and the registration file it read: undefined when there is none, or it can't be read. */
+export async function inspectRegistration(
+  manifest: ProviderManifest,
+  manifestUrl: string,
+  options: { rpcUrl?: string; fetch?: typeof fetch; registry?: RegistryReader } = {},
+): Promise<{ findings: RegistrationFinding[]; file?: Record<string, unknown> }> {
   const agentId = manifest.provider.agentId;
   if (agentId === undefined) {
-    return [{ rule: "I2", ok: false, message: "provider.agentId is not set: run `provider-kit register`, then add the agent id to the config" }];
+    return { findings: [{ rule: "I2", ok: false, message: "provider.agentId is not set: run `provider-kit register`, then add the agent id to the config" }] };
   }
   const network = manifest.payment.accepts[0].network;
   const registry = options.registry ?? rpcRegistry(network, options.rpcUrl);
 
   const uri = await registry.agentUri(agentId);
-  if (uri === undefined) return [{ rule: "I2", ok: false, message: `agent ${agentId} does not exist in the ${network} identity registry` }];
+  if (uri === undefined) return { findings: [{ rule: "I2", ok: false, message: `agent ${agentId} does not exist in the ${network} identity registry` }] };
   const findings: RegistrationFinding[] = [{ rule: "I2", ok: true, message: `agent ${agentId} is registered on ${network}` }];
 
   const file = await readRegistration(uri, options.fetch ?? fetch);
@@ -164,7 +186,7 @@ export async function checkRegistration(
       ? { rule: "I3", ok: true, message: "the agent wallet is the manifest's payTo" }
       : { rule: "I3", ok: false, message: `the agent wallet is ${wallet ?? "not set"}, but payTo is ${payTo}` },
   );
-  return findings;
+  return file === undefined ? { findings } : { findings, file };
 }
 
 /** A registration file from a data: or https: agent URI. Undefined if it can't be read. */

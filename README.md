@@ -13,6 +13,7 @@ payment side:
 | [`packages/payment-client`](packages/payment-client) | Buyer side: approval, spending controls, payment, recovery (proof of concept) |
 | [`packages/verifier`](packages/verifier) | Checks a provider against the standard (C1–C7), issues verification receipts and badges, publishes to the Stellar 8004 Validation Registry |
 | [`packages/dev-mcp`](packages/dev-mcp) | MCP server for coding agents: spec rules, docs, manifest validation, unpaid provider checks. It never pays. |
+| [`packages/create-stellar-service`](packages/create-stellar-service) | `npm create stellar-service`: a new project (an existing API, a TypeScript or a Python service), ready to run, try and deploy |
 | [`apps/wallet`](apps/wallet) | Web page where a person approves and pays a service (testnet) |
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
 | [`examples/python-upstream`](examples/python-upstream) | An existing Python API made a paid service with gateway mode |
@@ -24,7 +25,8 @@ uncertain payments from on-chain data ([docs/job-recovery.md](docs/job-recovery.
 ([docs/verification.md](docs/verification.md)). The plan is in
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development runs on Stellar **testnet**.
 
-To offer a service, follow the [provider setup guide](docs/provider-setup-guide.md).
+To offer a service, follow the [provider setup guide](docs/provider-setup-guide.md), or start with
+[`npm create stellar-service`](packages/create-stellar-service), run from a clone until the packages are on npm.
 
 **The standard in short:** [for people](docs/standard/README.md) and [for AI coding agents](docs/standard/README-AI.md).
 The full text is [docs/provider-standard.md](docs/provider-standard.md).

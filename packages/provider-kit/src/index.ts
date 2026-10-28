@@ -6,8 +6,9 @@
 //   gateway:  provider-kit serve --config <file> -> forwards paid jobs to the upstream API
 //
 // Security rule: the provider runtime holds NO Stellar secret keys. It knows only its `payTo` public
-// address, and the x402 facilitator verifies and settles. Owner-key operations (8004 registration,
-// validation requests) run only from the CLI, which signs through the Stellar CLI keychain.
+// address, and the x402 facilitator verifies and settles. Owner operations (the USDC trustline, 8004
+// registration, validation requests) run only from the CLI, signed in the owner's own wallet on a local
+// approval page, or by the Stellar CLI keychain with --source. The CLI never holds a key either.
 
 export * from "./define-service.js";
 export * from "./provider.js";
