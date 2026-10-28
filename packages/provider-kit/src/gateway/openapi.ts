@@ -34,6 +34,8 @@ export const FIRST_GUESS = {
 
 /** The description a service gets when the document has none, as in `provider-kit init`'s starter config. */
 export const DESCRIPTION_TO_WRITE = "What it does, when to use it, and its limits (input size, languages, what it won't do).";
+/** The provider description init writes when it has none. */
+export const PROVIDER_DESCRIPTION_TO_WRITE = "What you offer, in a sentence or two.";
 
 /** The most a document read from a URL may be. */
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;

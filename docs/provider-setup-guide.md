@@ -21,6 +21,12 @@ you already use.
 Both kit paths give you the same things: the manifest, the `402` challenge, payment checks, job recovery,
 capacity limits and a job store that survives restarts.
 
+**Fastest start:** `npm create stellar-service` makes a project for either kit path, or a new Python service behind
+the gateway. It sets up your payout account in your wallet and leaves the project ready to run, try and deploy
+([create-stellar-service](../packages/create-stellar-service)). Until the packages are on npm, run it from the clone
+(§2): `node packages/create-stellar-service/dist/index.js my-service`. The steps below are what it does for you,
+and what comes after.
+
 ## 2. Prerequisites
 
 - **Node.js 22.13 or later** for the library and the CLI, or **Docker** for the gateway.
@@ -172,6 +178,11 @@ provider-kit check --manifest http://localhost:8787/.well-known/stellar-agent-se
 testnet payments with sponsored fees, that `payTo` exists with a USDC trustline, and your 8004 registration once
 you have one. Until step 8 it reports that the agent id is missing; that is expected.
 
+It ends with how agents see you. Search matches only your provider's name and description, so it lists the words
+from your services' names, titles and tags that a search for them wouldn't find there. It also flags services
+whose description is too thin to choose by [§3.4], or that have no example
+([details](../packages/provider-kit/README.md#how-agents-see-you)). These hints never fail the check.
+
 Then check it from outside, the way a verifier will, with the [verifier](../packages/verifier). It calls your
 running service: invalid input, the `402` challenge, an oversized body, CORS, and a burst of 20 requests. Kit
 providers pass it; it matters most for native implementations.
@@ -238,6 +249,9 @@ provider-kit register --config provider.config.json
 A page opens in your browser. Connect the wallet that holds `payTo`, review the registration and approve it. The
 registry makes the account that registers the agent's owner and its wallet, so registering from `payTo` passes
 [I3] at once. A `payTo` still missing its USDC trustline gets one first, in the same page.
+
+The registration publishes `provider.name` and `provider.description`: they are the only text search matches, so
+make them the words buyers type before you register (`provider-kit check` shows how agents see them).
 
 The command saves the new agent id as `"agentId"` under `provider` in your config. A library provider (or the
 example's `AGENT_ID`) sets it by hand: the command prints it. Restart the provider and run `provider-kit check`

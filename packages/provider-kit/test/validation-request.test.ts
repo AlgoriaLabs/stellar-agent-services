@@ -12,6 +12,7 @@ import {
   checkRegistration,
   createProvider,
   defineService,
+  inspectRegistration,
   prepareValidationRequest,
   registrationDataUri,
   registrationFile,
@@ -186,6 +187,16 @@ describe("checkRegistration", () => {
     const { provider, world } = setup();
     const findings = await checkRegistration(provider.manifest, provider.manifestUrl, { registry: world.registry });
     expect(findings.map(({ rule, ok }) => [rule, ok])).toEqual([["I2", true], ["I1", true], ["I3", true]]);
+  });
+
+  it("hands back the registration file it read, whose name and description search shows", async () => {
+    const { provider, world } = setup();
+    const { findings, file } = await inspectRegistration(provider.manifest, provider.manifestUrl, { registry: world.registry });
+    expect(findings.every((finding) => finding.ok)).toBe(true);
+    expect(file).toMatchObject({ name: provider.manifest.provider.name, services: expect.arrayContaining([{ name: "stellar-agent-services", endpoint: MANIFEST_URL, version: "1" }]) });
+    expect(await inspectRegistration({ ...provider.manifest, provider: { name: "Unregistered" } }, provider.manifestUrl, { registry: world.registry })).toEqual({
+      findings: [expect.objectContaining({ rule: "I2", ok: false })],
+    });
   });
 });
 

@@ -4,11 +4,13 @@
 //   facilitator   settles x402 `exact` on the network, with sponsored fees (gateway configs)
 //   payTo         the account exists and has a USDC trustline [P2]
 //   8004          the registration names the manifest, the agent and payTo match [I1]–[I3]
+// Then how agents see the provider (discovery.ts): what search matches, and hints that never fail the check.
 // `verifier check` goes further, calling create-job without paying (C3, C6, C7).
 
 import { HORIZON_URL, USDC_ISSUER, type ProviderManifest } from "@stellar-agent-services/protocol";
 import { checkFacilitator } from "../payments/facilitator.js";
-import { checkRegistration } from "../registration.js";
+import { inspectRegistration } from "../registration.js";
+import { howAgentsSeeYou } from "./discovery.js";
 import type { CliFlags } from "./shared.js";
 import { loadTarget } from "./target.js";
 
@@ -39,8 +41,11 @@ export async function check(flags: CliFlags): Promise<number> {
     );
   }
   lines.push(await attempt("payTo", () => checkPayTo(manifest)));
+  let registered: Record<string, unknown> | undefined;
   try {
-    for (const finding of await checkRegistration(manifest, manifestUrl)) {
+    const registration = await inspectRegistration(manifest, manifestUrl);
+    registered = registration.file;
+    for (const finding of registration.findings) {
       lines.push({ status: finding.ok ? "ok" : "fail", text: `8004 [${finding.rule}]: ${finding.message}` });
     }
   } catch (error) {
@@ -48,6 +53,7 @@ export async function check(flags: CliFlags): Promise<number> {
   }
 
   lines.forEach(print);
+  console.log(`\n${howAgentsSeeYou(manifest, registered).join("\n")}\n`);
   const failed = lines.filter((line) => line.status === "fail").length;
   console.log(failed === 0 ? "All checks passed." : `${failed} check(s) failed.`);
   return failed === 0 ? 0 : 1;

@@ -11,12 +11,11 @@ import { writeFile } from "node:fs/promises";
 import type { JsonObject } from "@stellar-agent-services/protocol";
 import { Keypair } from "@stellar/stellar-sdk";
 import { loadGatewayConfig, type GatewayService } from "../gateway/config.js";
-import { DESCRIPTION_TO_WRITE, FIRST_GUESS, gatewayFromOpenApi, readOpenApi, type SkippedOperation } from "../gateway/openapi.js";
+import { DESCRIPTION_TO_WRITE, FIRST_GUESS, gatewayFromOpenApi, PROVIDER_DESCRIPTION_TO_WRITE, readOpenApi, type SkippedOperation } from "../gateway/openapi.js";
 import { createProvider } from "../provider.js";
 import { quote, type CliFlags } from "./shared.js";
 
 const DEFAULT_OUT = "provider.config.json";
-const PROVIDER_DESCRIPTION_TO_WRITE = "What you offer, in a sentence or two.";
 /** Skipped operations listed, before "and N more". */
 const SKIPPED_SHOWN = 15;
 

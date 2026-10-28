@@ -123,6 +123,9 @@ packages/
                    manifest + 8004 registration, operator CLI.
   payment-client/  Buyer side: policy, journal, payment, recovery (§5.6).
   verifier/        Provider checks → verification receipt → badges → Validation Registry response.
+  create-stellar-service/
+                   npm create stellar-service: a new provider project (gateway, library or Python), ready to
+                   run, try and deploy.
 apps/
   wallet/          Web approval page: static, no backend, the payment-client core in the browser (§5.6).
 examples/
@@ -259,10 +262,10 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 | `http/rate-limit.ts` | Optional per-caller limit on create-job: `429` with `Retry-After` |
 | `http/node-server.ts` | `listen()`: Node's HTTP server for a provider, with `/healthz` and graceful close |
 | `manifest.ts` | Builds the manifest and checks it at startup with the JSON Schema and `checkManifestRules()` |
-| `registration.ts` | The 8004 registration file from the manifest [I1], and `checkRegistration()` (I1–I3, read-only) |
+| `registration.ts` | The 8004 registration file from the manifest [I1], and `checkRegistration()` (I1–I3, read-only), with `inspectRegistration()` also returning the file it read |
 | `validation-request.ts` | The validation request, checked before anything is signed (I1–I3, a signer the registry accepts, a validator that is not the provider itself) and sent as canonical JSON in a `data:` URI |
 | `testing.ts` | `signTestPayment()`: real x402 payments signed offline, for provider and client tests |
-| `cli/` | `serve --config` (gateway mode), `init` (a starter config, or `--openapi` from an OpenAPI document), `check` (self-check), `try` (one paid testnet call from a throwaway payer), `trustline`, `register`, `request-validation`, `reconcile` |
+| `cli/` | `serve --config` (gateway mode), `init` (a starter config, or `--openapi` from an OpenAPI document), `check` (self-check, then how agents see the provider: `cli/discovery.ts`), `try` (one paid testnet call from a throwaway payer), `trustline`, `register`, `request-validation`, `reconcile` |
 | `Dockerfile`, `schemas/gateway-config.schema.json` | The gateway image; the config file's JSON Schema |
 
 **Developer experience targets (W2 exit criteria):**

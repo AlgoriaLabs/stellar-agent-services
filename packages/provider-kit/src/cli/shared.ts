@@ -53,6 +53,15 @@ export async function findStellarCli(): Promise<StellarCli | undefined> {
   return async (args) => (await run("stellar", args, { timeout: 120_000, maxBuffer: 1024 * 1024 })).stdout;
 }
 
+/**
+ * Provider text on one terminal line: no control characters or direction overrides, which could rewrite what the
+ * terminal shows, and at most `max` characters.
+ */
+export function plain(text: string, max = 80): string {
+  const line = text.replace(/[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]+/g, " ").trim();
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
 /** Quotes an argument for copying into a shell. A $(...) placeholder stays a command substitution. */
 export function quote(arg: string): string {
   if (arg.startsWith("$(")) return `"${arg}"`;

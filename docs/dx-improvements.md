@@ -6,8 +6,8 @@ repository, why, and how it was checked. A phase is added here when it lands.
 | Phase | Change | Status |
 | --- | --- | --- |
 | 1 | [`provider-kit try`](#phase-1-provider-kit-try): the first paid call in one command | Done |
-| 2 | [`provider-kit init --openapi`](#phase-2-provider-kit-init---openapi): the gateway config from an OpenAPI document | Done, in review |
-| 3 | `npm create stellar-service`, and showing a provider how agents see it | Planned |
+| 2 | [`provider-kit init --openapi`](#phase-2-provider-kit-init---openapi): the gateway config from an OpenAPI document | Done |
+| 3 | [`npm create stellar-service`, and how agents see you](#phase-3-npm-create-stellar-service-and-how-agents-see-you): a ready project in one command, and what search sees | Done, in review |
 
 Before these phases, the owner's transactions (the USDC trustline, 8004 registration, validation requests) moved
 from a key in the CLI to the developer's own wallet, approved on a page the CLI opens
@@ -249,3 +249,171 @@ nothing.
   small JSON route in front of it, as the wrap-existing-api skill says.
 - A `readOnly` or `writeOnly` property is found when it is marked on the property itself, not inside a referenced
   component.
+
+## Phase 3: `npm create stellar-service`, and how agents see you
+
+### Why
+
+Starting a provider took a clone, a build, an alias, `init`, a config edited by hand, an exported `PAY_TO`, and a
+Dockerfile of your own. Now it is one command:
+
+```bash
+npm create stellar-service        # from a clone until the packages are on npm:
+                                  # node packages/create-stellar-service/dist/index.js
+```
+
+And a provider could describe every service well and still not be found. Search (stellar-agent-search's
+`find_agent`, and 8004 explorers) matches a query against the registered name and description only, never the
+manifest's services, and nothing said so. `provider-kit check` now shows it.
+
+### `npm create stellar-service`
+
+1. **Asks at most four questions:** the folder; what to make (wrap an API you run, a new TypeScript service, or a
+   new Python service); for an API, its OpenAPI document or the URL a paid call goes to; and one sentence on what
+   it offers, the words search matches. Flags answer all of them, for scripts and coding agents. Without a terminal
+   it asks nothing.
+2. **Reads the OpenAPI document first,** so a mistyped URL or a stopped API is caught before anything is written. On
+   a terminal it asks again.
+3. **Gets the kit:** from a clone, it packs the three packages into the project's `vendor/` folder, so the project
+   installs and builds by itself, in Docker too. Once published, the project depends on the released version. Either
+   way the project gets the repository's npm `overrides`, which keep one copy of the Stellar SDK.
+4. **Makes the kind asked for:**
+   - **wrap:** `provider-kit init --openapi` (or the starter config, for one URL). Then the config reads
+     `PUBLIC_ORIGIN`, `PAY_TO` and `JOB_DB_PATH` from `.env`, so the same file runs on a laptop and in a container.
+     An API key init found goes in `.env`, empty, for you to fill.
+   - **typescript:** `src/server.ts` and an example service to replace, `src/services/summarize.ts`.
+   - **python:** a FastAPI app, `app.py`, with a gateway config that matches its models, and one container that
+     runs both (`start.sh`).
+5. **Writes the rest:** `.env` and `.env.example`, a `Dockerfile` with the job database on a volume at `/data`, a
+   README, and scripts: `dev`, `try`, `check`, `wallet`, `start`, and `register` for gateways.
+6. **Sets up the account clients pay,** if you say yes: `provider-kit trustline` opens its approval page, your wallet
+   adds the USDC trustline, and the address goes in `.env` as `PAY_TO`.
+
+```text
+Creating text-tools: a gateway in front of your API, paid in USDC on Stellar testnet
+
+  ✓ Packed the Provider Kit from your clone into vendor/
+  ✓ Installed packages (npm install)
+
+    Read Text Tools API 1.4.0 (OpenAPI 3.1.0) from http://127.0.0.1:8000/openapi.json
+
+    Wrote provider.config.json with 4 services:
+      summarize      POST http://127.0.0.1:8000/summarize
+      translate      POST http://127.0.0.1:8000/v1/translate  with X-API-Key
+      classify-tree  POST http://127.0.0.1:8000/classify/tree
+      random-fact    POST http://127.0.0.1:8000/random-fact
+
+    Skipped 7 operations:
+      GET   /health                             the gateway calls the API with POST
+      …
+
+    ✓ The config passes Provider Standard v1, checked as provider-kit serve checks it.
+
+  ✓ Wrote provider.config.json, .env, a Dockerfile and a README
+
+✓ Created text-tools in /home/you/text-tools
+
+Next:
+  cd text-tools
+  npm run wallet     sets up the account clients pay: put the address it prints in .env as PAY_TO
+  set UPSTREAM_X_API_KEY in .env   the gateway sends it to your API
+  npm run dev        starts the gateway at http://localhost:8787
+  npm run try        pays for one call with test money, from another terminal
+  npm run check      checks it, and shows how agents see it
+```
+
+### How agents see you (`provider-kit check`)
+
+`check` now ends with the provider as agents meet it. These hints never fail the check:
+
+```text
+How agents see you
+  Search matches only this name and description, which provider-kit register publishes:
+    Text Tools API
+    Summaries, translations and labels for English text.
+  ! Search reads no service names, titles or tags, so agents searching for "summarize", "translate",
+    "classify", "tree", "random" or "fact" won't find you. Put those words in provider.description.
+  ! translate: a 7-word description, no example
+  ! classify-tree: a 3-word description, no example
+  ! random-fact: a 9-word description
+    An agent picks a service by its description: what it does, when to use it, its limits, with no price or
+    URL [§3.4]. An example shows it what to send, and provider-kit try pays with it.
+  · Ranking counts reviews from distinct paying clients only. Until the first, search lists you as new and
+    unrated.
+  · Not registered yet: provider-kit register publishes this name and description.
+```
+
+- **Matching** is stellar-agent-search 0.1.0's own: accents and case folded, its stopwords dropped, its crude
+  stem, then a substring test on the name and description. A word from a service's name, title or tags that this
+  misses is listed. So "summarize" is flagged when the description only says "Summaries", as a real search would
+  miss it.
+- **Once registered,** it shows the name and description the registry has (what search shows today), says when
+  they are older than the manifest, and prints the stellar-agent-search command that shows the live profile.
+- **Each service:** the init placeholder, a description under 12 words, a price or URL in it [§3.4], or no example.
+
+### How it stays safe
+
+- **No secret key, anywhere.** The scaffolder never asks for one, makes one or writes one ([AGENTS.md](../AGENTS.md)
+  rule 1). The payout account is set up in the developer's own wallet, on `provider-kit trustline`'s approval page,
+  and only its public address is saved. `.env` is kept out of git.
+- **It never pays.** `npm run try` pays later, when the developer runs it, from a throwaway account with test money.
+- **Testnet only** (rule 6). Every project starts on `stellar:testnet`.
+- **Nothing is overwritten.** It refuses a folder with files in it. A cancelled question writes nothing.
+- **Provider text stays text.** The registered name and description are shown without control characters or
+  direction overrides, as `try` shows provider text.
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `packages/create-stellar-service/` | New package: `src/main.ts` (questions, flags, the run), `src/files.ts` (what each kind writes), `src/kit.ts` (clone or npm), `templates/`, README |
+| `packages/create-stellar-service/test/create.test.ts` | New: 24 tests |
+| `packages/provider-kit/src/cli/discovery.ts` | New: how agents see you |
+| `packages/provider-kit/src/cli/check.ts` | Prints it, with the registration file it read |
+| `packages/provider-kit/src/registration.ts` | `inspectRegistration()`: `checkRegistration()` and the file it read. `checkRegistration()` is unchanged. |
+| `packages/provider-kit/src/cli/shared.ts`, `try.ts` | `plain()` moved to `shared.ts`, for both |
+| `packages/provider-kit/src/gateway/openapi.ts`, `cli/init.ts` | The provider description placeholder is exported, so `check` can spot it |
+| `packages/provider-kit/test/discovery.test.ts`, `test/validation-request.test.ts` | New: 8 tests, and 1 for `inspectRegistration()` |
+| `package.json`, `tsconfig.json`, `package-lock.json` | The new workspace. The lockfile adds its two entries only. |
+| Docs | [Setup guide](provider-setup-guide.md) §1, §5 and §8, [provider-kit README](../packages/provider-kit/README.md#how-agents-see-you), [AGENTS.md](../AGENTS.md) §1–§3 and §5, the root README, both build skills, the implementation plan, `llms.txt`, `llms-full.txt` |
+
+### How it was checked
+
+- **Tests:** `npm run typecheck` and `npm test` pass: 935 tests, 33 of them new. The scaffolder's run every kind
+  with npm and provider-kit replaced: the files, packing and installing, init's output cut before its own next
+  steps, the config made to read `.env`, the fallback starter, the payout account set up or left for later, every
+  refused call, the questions on a terminal, a document that can't be read, and cancelling. Two tests tie the
+  scaffolder to the kit: one compiles the TypeScript template against the Provider Kit's types, and one checks
+  that the real `provider-kit init` still ends its report where the scaffolder cuts it.
+- **Live, from a clone, each kind on testnet:** scaffold, `npm run dev`, `npm run check`, `npm run try`:
+  - typescript: [settlement](https://stellar.expert/explorer/testnet/tx/c76aa0500d929685d3fb3e1a1a1ccb22feb1c68bb18a1ea351aa93d956687ba5)
+  - python, the generated FastAPI app under uvicorn:
+    [settlement](https://stellar.expert/explorer/testnet/tx/b656271975e2ee0394f54efa909388a8b13b88bfd64fc03479a0860a6c223170).
+    Its config matches what `init --openapi` reads from the app's own document, with `additionalProperties: false`
+    added.
+  - wrap, the Phase 2 FastAPI fixture: `translate` passed the API's key check with the key from `.env`:
+    [settlement](https://stellar.expert/explorer/testnet/tx/2b184ace578e7ca752810e8447cbc83d639af1c09ffc9e453c0788c75a9a07f3)
+  - The questions, answered in a real terminal (a pseudo-terminal).
+- **Docker:** the daemon wasn't available, so each Dockerfile's steps ran by hand in an empty folder. `npm ci`
+  installs from the lockfile and `vendor/`, and each image's command serves with an HTTPS origin and the job
+  database in `data/`. For the Python image, `start.sh` stops the gateway and exits 1 when the API dies, and stops
+  both and exits 0 on a stop signal.
+- **Found and fixed on the way:** the TypeScript template didn't compile (an `interface` isn't a JSON object type),
+  which the compile test now catches. A venv made by the scaffolder got x86_64 packages when Node ran under Rosetta,
+  so the Python packages are now installed in the developer's own shell. macOS's bash 3.2 has no `wait -n`, so
+  `start.sh` is plain POSIX `sh`.
+- `npm run build`, both Svelte checks and `npm run llms:check` pass.
+
+### Limits
+
+- **Until the npm publish,** it runs from a clone, and `vendor/` holds the kit as it was then: a `git pull` in the
+  clone doesn't update it. The npm path (`npm create stellar-service`) is written but untested until then. Projects
+  made any other way need the same `overrides` once the kit is published, or they install two Stellar SDKs.
+- **Setting up the payout account** needs a person and a browser wallet. A coding agent passes `--no-wallet`, or
+  asks first.
+- **wrap in Docker:** 127.0.0.1 is the container, so each `upstream.url` must point at an address it reaches.
+- **python:** the scaffolder doesn't make `.venv`. The next steps give the two commands.
+- **How agents see you** follows stellar-agent-search 0.1.0's matching. If search changes, the hints may drift.
+  It doesn't read reviews: it states the ranking policy, and the live command shows the real profile.
+- **Not done:** stellar-agent-search's provider guide (`build-a-discoverable-agent.md`) still tells providers to
+  register with their own key script. That change belongs to that repository.

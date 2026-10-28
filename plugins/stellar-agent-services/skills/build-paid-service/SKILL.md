@@ -26,8 +26,12 @@ In the user's project: `npm install "$REPO/packages/provider-kit"`. CLIs:
 `alias provider-kit="node $REPO/packages/provider-kit/dist/cli/index.js"` and
 `alias verifier="node $REPO/packages/verifier/dist/cli/index.js"`. Node 22.13 or later.
 
-`$REPO/examples/paid-service` is the template: a Node server with two services, SQLite jobs and `.env.example`.
-Copying it is the fastest start.
+For a new project, the fastest start is the scaffolder:
+`node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind typescript --description "<one sentence>"
+--no-wallet`. It writes `src/server.ts`, an example service to replace (`src/services/summarize.ts`), `.env`, a
+Dockerfile and npm scripts (`dev`, `try`, `check`), packs the kit from the clone into `vendor/` and installs it.
+Ask the user before `--wallet` instead of `--no-wallet`: it opens the trustline approval page in their browser.
+`$REPO/examples/paid-service` is a fuller template: two services, SQLite jobs and `.env.example`.
 
 ## 2. Write each service
 

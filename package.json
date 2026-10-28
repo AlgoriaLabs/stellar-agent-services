@@ -14,6 +14,7 @@
     "packages/payment-client",
     "packages/verifier",
     "packages/dev-mcp",
+    "packages/create-stellar-service",
     "examples/paid-service",
     "apps/wallet"
   ],

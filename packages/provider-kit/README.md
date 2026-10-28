@@ -159,7 +159,7 @@ Price (`0.01`), charge (`upfront`), duration and capacity are first guesses: set
 | --- | --- |
 | `provider-kit serve --config <file>` | Gateway mode. Graceful shutdown on SIGTERM. `--no-workers` for HTTP-only processes. |
 | `provider-kit init [--upstream <url>] [--openapi <file \| url>]` | Writes a starter gateway config. With `--openapi`, writes one from an OpenAPI 3 document: see [From an OpenAPI document](#from-an-openapi-document). |
-| `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. |
+| `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. Then shows [how agents see you](#how-agents-see-you). |
 | `provider-kit try [<service>] ['<input JSON>' \| @<file>]` | One paid call on testnet, the way any client makes it. See [Trying a paid call](#trying-a-paid-call). |
 | `provider-kit trustline [--config \| --manifest \| --network <testnet\|mainnet>]` | Adds a USDC trustline to `payTo` [P2], approved in its wallet. A new testnet account gets test XLM from Friendbot first. Without `--config` or `--manifest`, it sets up the account the wallet connects and prints it as `PAY_TO`. Signs nothing when the trustline exists. |
 | `provider-kit register (--config \| --manifest)` | Registers in the Stellar 8004 identity registry from the `payTo` account, or updates the registration from the agent's owner, approved in the wallet. Adds the USDC trustline first when it is missing, and saves the new `agentId` to `--config` [I2]. |
@@ -209,6 +209,35 @@ It exits 0 only when the job succeeded and its payment is confirmed. If the answ
 says the payment may have gone through and never calls it unpaid: your provider decides it from the chain
 [J13]. If the testnet DEX has no USDC for sale, nothing is paid: try again later, or pay with `stellar-pay` from a
 test wallet of your own, funded at [faucet.circle.com](https://faucet.circle.com) (setup guide §6).
+
+### How agents see you
+
+`provider-kit check` ends with the provider as agents meet it, and hints that never fail the check:
+
+```text
+How agents see you
+  Search matches only this name and description, which provider-kit register publishes:
+    Text Tools API
+    Summaries, translations and labels for English text.
+  ! Search reads no service names, titles or tags, so agents searching for "summarize", "translate",
+    "classify", "tree", "random" or "fact" won't find you. Put those words in provider.description.
+  ! translate: a 7-word description, no example
+  ! classify-tree: a 3-word description, no example
+    An agent picks a service by its description: what it does, when to use it, its limits, with no price or
+    URL [§3.4]. An example shows it what to send, and provider-kit try pays with it.
+  · Ranking counts reviews from distinct paying clients only. Until the first, search lists you as new and
+    unrated.
+  · Not registered yet: provider-kit register publishes this name and description.
+```
+
+- **Search** (stellar-agent-search's `find_agent`, and 8004 explorers) matches a query against the registration's
+  name and description only: `provider.name` and `provider.description`, as `register` publishes them. Words are
+  matched the way stellar-agent-search 0.1.0 matches them: folded, its stopwords dropped, a crude stem, then a
+  substring test. A word from a service's name, title or tags that this test misses is listed.
+- **Once registered,** it shows the name and description the registry has, says when they are older than the
+  manifest (`register` updates them), and prints the stellar-agent-search command that shows the live profile.
+- **Each service:** a description too short to say what it does, when to use it and its limits, a price or URL
+  in it [§3.4], or no example.
 
 ### Approving in your wallet
 
@@ -349,13 +378,14 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/jobs/memory-store.ts`, `src/jobs/sqlite-store.ts` | Job stores |
 | `src/gateway/config.ts`, `src/gateway/upstream.ts` | Gateway mode |
 | `src/gateway/openapi.ts` | Gateway services from an OpenAPI document, for `provider-kit init --openapi` |
-| `src/registration.ts` | 8004 registration file, the I1–I3 check, and who may act for an agent |
+| `src/registration.ts` | 8004 registration file, the I1–I3 check (with the file it read), and who may act for an agent |
 | `src/cli/` | The `provider-kit` command |
 | `src/cli/approval.ts` | Approving in a wallet: the session (steps, checks, sending) and the local page's server and API |
 | `src/cli/approval-view.ts` | What the page shows: the session as JSON, shared with the page |
 | `src/cli/owner-chain.ts` | The owner's transactions: built, checked once signed, sent and followed into a ledger |
 | `src/cli/owner-steps.ts` | Test XLM, the USDC trustline, registration and the validation request, as approval steps |
 | `src/cli/try.ts` | `provider-kit try`: one paid testnet call through the payment client, from a throwaway payer |
+| `src/cli/discovery.ts` | How agents see you, for `provider-kit check`: search text matched as stellar-agent-search matches it, and hints |
 | `approve/` | The approval page (Svelte, Stellar Wallets Kit), built into `dist/approve` |
 | `schemas/gateway-config.schema.json` | The gateway config file's JSON Schema |
 | `Dockerfile` | The gateway image |

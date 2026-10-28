@@ -37,7 +37,7 @@ import { DEFAULT_MANIFEST_PATH, type JsonObject, type ProviderManifest, type Ser
 import { Keypair } from "@stellar/stellar-sdk";
 import { DEFAULT_PORT, gatewayManifestUrl } from "../gateway/config.js";
 import { ApprovalError, explorerUrl, formatUsdc, networkName, rpcOwnerChain, shortAddress, type OwnerChain } from "./owner-chain.js";
-import { quote as shellQuote, UsageError, type CliFlags } from "./shared.js";
+import { plain, quote as shellQuote, UsageError, type CliFlags } from "./shared.js";
 
 /** The config file read when neither --config nor --manifest is given: the one `provider-kit init` writes. */
 const DEFAULT_CONFIG = "provider.config.json";
@@ -360,15 +360,6 @@ function problem(error: unknown): string {
 /** fetch() found nothing listening, or no such host. */
 function unreachable(error: unknown): boolean {
   return error instanceof TypeError && error.message === "fetch failed";
-}
-
-/**
- * Provider text on one terminal line: no control characters or direction overrides, which could rewrite what the
- * terminal shows, and at most `max` characters.
- */
-function plain(text: string, max = 80): string {
-  const line = text.replace(/[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]+/g, " ").trim();
-  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
 }
 
 /** A job's output for the terminal: indented JSON, clipped when it is long. */

@@ -6,6 +6,7 @@
     { "path": "packages/payment-client" },
     { "path": "packages/verifier" },
     { "path": "packages/dev-mcp" },
+    { "path": "packages/create-stellar-service" },
     { "path": "examples/paid-service" }
   ]
 }

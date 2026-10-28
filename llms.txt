@@ -25,6 +25,7 @@
 
 - [Provider setup guide](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/provider-setup-guide.md): Step by step, from an idea or an existing API to a registered, verified paid service on testnet
 - [Provider Kit](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/provider-kit/README.md): The library (`defineService`, `createProvider`), gateway mode, the `provider-kit` CLI, payment safety, capacity
+- [create-stellar-service](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/create-stellar-service/README.md): `npm create stellar-service`: a new project around an existing API, a TypeScript service or a Python service, ready to run, try and deploy
 - [Example paid service](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/examples/paid-service/README.md): The template for a new TypeScript provider
 - [Example Python API behind the gateway](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/examples/python-upstream/README.md): An existing API made a paid service with only a config file
 

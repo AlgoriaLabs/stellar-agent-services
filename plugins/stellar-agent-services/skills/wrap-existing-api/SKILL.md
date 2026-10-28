@@ -33,6 +33,13 @@ alias verifier="node $REPO/packages/verifier/dist/cli/index.js"
 
 Docker works too: `docker build -f packages/provider-kit/Dockerfile -t provider-kit .` from the clone.
 
+For a new project around the API, the scaffolder does §3 and more:
+`node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind wrap --openapi <document> --no-wallet`
+(or `--upstream <url>` without a document). It runs `provider-kit init`, makes the config read `PUBLIC_ORIGIN`,
+`PAY_TO` and `JOB_DB_PATH` from `.env`, and writes a Dockerfile and npm scripts (`dev`, `try`, `check`,
+`register`). Read its output to the user, then review the config as §3 says. Ask the user before `--wallet`: it
+opens the trustline approval page in their browser.
+
 ## 3. Write the config
 
 If the API has an OpenAPI 3 document (FastAPI serves one at `/openapi.json`; look for `openapi.json`,

@@ -28,6 +28,7 @@ This repository holds the standard and everything needed to use it:
 | Payment client | [packages/payment-client](packages/payment-client) | Buyer side: approval, spending policy, journal, payment, recovery. `stellar-pay` CLI. |
 | Verifier | [packages/verifier](packages/verifier) | Checks a provider against the standard (C1–C7), issues receipts and badges |
 | MCP server | [packages/dev-mcp](packages/dev-mcp) | Spec rules, docs, manifest validation and provider checks as MCP tools. It never pays. |
+| Scaffolder | [packages/create-stellar-service](packages/create-stellar-service) | `npm create stellar-service`: a new project around an existing API, a TypeScript service or a Python service, ready to run, try and deploy |
 | Agent Wallet | [apps/wallet](apps/wallet) | Web page where a person approves and pays |
 | Examples | [examples/paid-service](examples/paid-service), [examples/python-upstream](examples/python-upstream) | A TypeScript provider, and a Python API behind the gateway |
 
@@ -45,8 +46,8 @@ Facts to get right:
 
 | You want to… | Path | Read | Done when |
 | --- | --- | --- | --- |
-| Build a **new paid service** in TypeScript (Node, Workers, Deno, Bun) | Kit library | [docs/standard/README-AI.md §2](docs/standard/README-AI.md#2-kit-path-typescript), [provider-setup-guide.md §3b](docs/provider-setup-guide.md#3b-typescript-library-a-new-service), template [examples/paid-service](examples/paid-service) | `provider-kit check --manifest <url> --dev` and `verifier check <url> --dev` pass |
-| Make an **existing HTTP API** paid, in any language | Gateway: a JSON config, no code. `provider-kit init --openapi <url>` writes it from the API's OpenAPI document. | [provider-setup-guide.md §3a](docs/provider-setup-guide.md#3a-gateway-an-existing-api), [packages/provider-kit](packages/provider-kit#gateway-mode), [examples/python-upstream](examples/python-upstream) | `provider-kit check --config provider.config.json` passes and the gateway starts |
+| Build a **new paid service** in TypeScript (Node, Workers, Deno, Bun) | Kit library. `create-stellar-service --kind typescript` makes the project. | [docs/standard/README-AI.md §2](docs/standard/README-AI.md#2-kit-path-typescript), [provider-setup-guide.md §3b](docs/provider-setup-guide.md#3b-typescript-library-a-new-service), template [examples/paid-service](examples/paid-service) | `provider-kit check --manifest <url> --dev` and `verifier check <url> --dev` pass |
+| Make an **existing HTTP API** paid, in any language | Gateway: a JSON config, no code. `provider-kit init --openapi <url>` writes it from the API's OpenAPI document; `create-stellar-service --kind wrap` makes a whole project around it. | [provider-setup-guide.md §3a](docs/provider-setup-guide.md#3a-gateway-an-existing-api), [packages/provider-kit](packages/provider-kit#gateway-mode), [examples/python-upstream](examples/python-upstream) | `provider-kit check --config provider.config.json` passes and the gateway starts |
 | Implement the standard in **another language** | Native | [docs/standard/README-AI.md §3–§13](docs/standard/README-AI.md), the [spec](docs/provider-standard.md), the [test vectors](packages/protocol/test-vectors) | Every test vector passes, and `verifier check <url>` passes |
 | Build an **agent, wallet or app that pays** providers | Client: an adapter for `payment-client`, or your own client | [docs/client-integration/README-AI.md](docs/client-integration/README-AI.md), spec §14 rules in [docs/standard/README-AI.md](docs/standard/README-AI.md#14-client-rules-agents-wallets-apps) | The conformance checks in `@stellar-agent-services/payment-client/conformance` pass, or for a native client the client rules hold |
 | **Verify** a provider, or get one verified | Verifier | [docs/verification.md](docs/verification.md), [packages/verifier](packages/verifier), [provider-setup-guide.md §8–§9](docs/provider-setup-guide.md#8-register-on-stellar-8004) | `verifier check` passes; with a funded test payer, `verifier verify --pay` reaches the level you need |
@@ -71,7 +72,13 @@ npm install "$REPO/packages/provider-kit"      # a provider; or packages/payment
 alias provider-kit="node $REPO/packages/provider-kit/dist/cli/index.js"
 alias verifier="node $REPO/packages/verifier/dist/cli/index.js"
 alias stellar-pay="node $REPO/packages/payment-client/dist/cli.js"
+alias create-stellar-service="node $REPO/packages/create-stellar-service/dist/index.js"
 ```
+
+`create-stellar-service <folder> --kind wrap|typescript|python` makes a new project instead: it packs the kit from
+the clone into the project's `vendor/` folder, installs it, and writes `.env`, a Dockerfile and npm scripts (`dev`,
+`try`, `check`). Pass every answer as a flag (`--openapi`, `--upstream`, `--description`, `--no-wallet`): without a
+terminal it asks nothing. `--wallet` opens the trustline approval page in the user's browser, so ask the user first.
 
 `npm install <path>` links the package, so a later `git pull && npm run build` in the clone updates it. A native
 implementation needs no package: it needs the spec, `packages/protocol/schemas/manifest.schema.json` and the
@@ -111,8 +118,9 @@ These come from the spec and [SECURITY.md](SECURITY.md). Breaking one loses or d
 - **Provider:** the manifest passes the JSON Schema and `checkManifestRules` (or the MCP tool
   `validate_manifest`). `provider-kit check` and `verifier check` pass. A paid testnet call succeeds and the
   transfer is on chain: `provider-kit try <service> --manifest <url> --yes`, after the user agreed to pay, pays from
-  a throwaway testnet account (or `stellar-pay pay` from a payer wallet). The checklist is in
-  [docs/standard/README-AI.md §13](docs/standard/README-AI.md#13-testing-and-conformance).
+  a throwaway testnet account (or `stellar-pay pay` from a payer wallet). Go through the "How agents see you" hints
+  at the end of `provider-kit check` with the user: search matches only `provider.name` and `provider.description`.
+  The checklist is in [docs/standard/README-AI.md §13](docs/standard/README-AI.md#13-testing-and-conformance).
 - **Client or adapter:** the conformance checks pass, and tests use `Keypair.random()` and never the network.
 - **Any change here:** `npm run typecheck` and `npm test` pass. If you changed a document that
   [llms.txt](llms.txt) links to, run `npm run llms`.
@@ -159,6 +167,7 @@ payment side:
 | [`packages/payment-client`](packages/payment-client) | Buyer side: approval, spending controls, payment, recovery (proof of concept) |
 | [`packages/verifier`](packages/verifier) | Checks a provider against the standard (C1–C7), issues verification receipts and badges, publishes to the Stellar 8004 Validation Registry |
 | [`packages/dev-mcp`](packages/dev-mcp) | MCP server for coding agents: spec rules, docs, manifest validation, unpaid provider checks. It never pays. |
+| [`packages/create-stellar-service`](packages/create-stellar-service) | `npm create stellar-service`: a new project (an existing API, a TypeScript or a Python service), ready to run, try and deploy |
 | [`apps/wallet`](apps/wallet) | Web page where a person approves and pays a service (testnet) |
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
 | [`examples/python-upstream`](examples/python-upstream) | An existing Python API made a paid service with gateway mode |
@@ -170,7 +179,8 @@ uncertain payments from on-chain data ([docs/job-recovery.md](docs/job-recovery.
 ([docs/verification.md](docs/verification.md)). The plan is in
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development runs on Stellar **testnet**.
 
-To offer a service, follow the [provider setup guide](docs/provider-setup-guide.md).
+To offer a service, follow the [provider setup guide](docs/provider-setup-guide.md), or start with
+[`npm create stellar-service`](packages/create-stellar-service), run from a clone until the packages are on npm.
 
 **The standard in short:** [for people](docs/standard/README.md) and [for AI coding agents](docs/standard/README-AI.md).
 The full text is [docs/provider-standard.md](docs/provider-standard.md).
@@ -1765,6 +1775,12 @@ you already use.
 Both kit paths give you the same things: the manifest, the `402` challenge, payment checks, job recovery,
 capacity limits and a job store that survives restarts.
 
+**Fastest start:** `npm create stellar-service` makes a project for either kit path, or a new Python service behind
+the gateway. It sets up your payout account in your wallet and leaves the project ready to run, try and deploy
+([create-stellar-service](../packages/create-stellar-service)). Until the packages are on npm, run it from the clone
+(§2): `node packages/create-stellar-service/dist/index.js my-service`. The steps below are what it does for you,
+and what comes after.
+
 ## 2. Prerequisites
 
 - **Node.js 22.13 or later** for the library and the CLI, or **Docker** for the gateway.
@@ -1916,6 +1932,11 @@ provider-kit check --manifest http://localhost:8787/.well-known/stellar-agent-se
 testnet payments with sponsored fees, that `payTo` exists with a USDC trustline, and your 8004 registration once
 you have one. Until step 8 it reports that the agent id is missing; that is expected.
 
+It ends with how agents see you. Search matches only your provider's name and description, so it lists the words
+from your services' names, titles and tags that a search for them wouldn't find there. It also flags services
+whose description is too thin to choose by [§3.4], or that have no example
+([details](../packages/provider-kit/README.md#how-agents-see-you)). These hints never fail the check.
+
 Then check it from outside, the way a verifier will, with the [verifier](../packages/verifier). It calls your
 running service: invalid input, the `402` challenge, an oversized body, CORS, and a burst of 20 requests. Kit
 providers pass it; it matters most for native implementations.
@@ -1982,6 +2003,9 @@ provider-kit register --config provider.config.json
 A page opens in your browser. Connect the wallet that holds `payTo`, review the registration and approve it. The
 registry makes the account that registers the agent's owner and its wallet, so registering from `payTo` passes
 [I3] at once. A `payTo` still missing its USDC trustline gets one first, in the same page.
+
+The registration publishes `provider.name` and `provider.description`: they are the only text search matches, so
+make them the words buyers type before you register (`provider-kit check` shows how agents see them).
 
 The command saves the new agent id as `"agentId"` under `provider` in your config. A library provider (or the
 example's `AGENT_ID`) sets it by hand: the command prints it. Restart the provider and run `provider-kit check`
@@ -2178,7 +2202,7 @@ Price (`0.01`), charge (`upfront`), duration and capacity are first guesses: set
 | --- | --- |
 | `provider-kit serve --config <file>` | Gateway mode. Graceful shutdown on SIGTERM. `--no-workers` for HTTP-only processes. |
 | `provider-kit init [--upstream <url>] [--openapi <file \| url>]` | Writes a starter gateway config. With `--openapi`, writes one from an OpenAPI 3 document: see [From an OpenAPI document](#from-an-openapi-document). |
-| `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. |
+| `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. Then shows [how agents see you](#how-agents-see-you). |
 | `provider-kit try [<service>] ['<input JSON>' \| @<file>]` | One paid call on testnet, the way any client makes it. See [Trying a paid call](#trying-a-paid-call). |
 | `provider-kit trustline [--config \| --manifest \| --network <testnet\|mainnet>]` | Adds a USDC trustline to `payTo` [P2], approved in its wallet. A new testnet account gets test XLM from Friendbot first. Without `--config` or `--manifest`, it sets up the account the wallet connects and prints it as `PAY_TO`. Signs nothing when the trustline exists. |
 | `provider-kit register (--config \| --manifest)` | Registers in the Stellar 8004 identity registry from the `payTo` account, or updates the registration from the agent's owner, approved in the wallet. Adds the USDC trustline first when it is missing, and saves the new `agentId` to `--config` [I2]. |
@@ -2228,6 +2252,35 @@ It exits 0 only when the job succeeded and its payment is confirmed. If the answ
 says the payment may have gone through and never calls it unpaid: your provider decides it from the chain
 [J13]. If the testnet DEX has no USDC for sale, nothing is paid: try again later, or pay with `stellar-pay` from a
 test wallet of your own, funded at [faucet.circle.com](https://faucet.circle.com) (setup guide §6).
+
+### How agents see you
+
+`provider-kit check` ends with the provider as agents meet it, and hints that never fail the check:
+
+```text
+How agents see you
+  Search matches only this name and description, which provider-kit register publishes:
+    Text Tools API
+    Summaries, translations and labels for English text.
+  ! Search reads no service names, titles or tags, so agents searching for "summarize", "translate",
+    "classify", "tree", "random" or "fact" won't find you. Put those words in provider.description.
+  ! translate: a 7-word description, no example
+  ! classify-tree: a 3-word description, no example
+    An agent picks a service by its description: what it does, when to use it, its limits, with no price or
+    URL [§3.4]. An example shows it what to send, and provider-kit try pays with it.
+  · Ranking counts reviews from distinct paying clients only. Until the first, search lists you as new and
+    unrated.
+  · Not registered yet: provider-kit register publishes this name and description.
+```
+
+- **Search** (stellar-agent-search's `find_agent`, and 8004 explorers) matches a query against the registration's
+  name and description only: `provider.name` and `provider.description`, as `register` publishes them. Words are
+  matched the way stellar-agent-search 0.1.0 matches them: folded, its stopwords dropped, a crude stem, then a
+  substring test. A word from a service's name, title or tags that this test misses is listed.
+- **Once registered,** it shows the name and description the registry has, says when they are older than the
+  manifest (`register` updates them), and prints the stellar-agent-search command that shows the live profile.
+- **Each service:** a description too short to say what it does, when to use it and its limits, a price or URL
+  in it [§3.4], or no example.
 
 ### Approving in your wallet
 
@@ -2368,16 +2421,118 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/jobs/memory-store.ts`, `src/jobs/sqlite-store.ts` | Job stores |
 | `src/gateway/config.ts`, `src/gateway/upstream.ts` | Gateway mode |
 | `src/gateway/openapi.ts` | Gateway services from an OpenAPI document, for `provider-kit init --openapi` |
-| `src/registration.ts` | 8004 registration file, the I1–I3 check, and who may act for an agent |
+| `src/registration.ts` | 8004 registration file, the I1–I3 check (with the file it read), and who may act for an agent |
 | `src/cli/` | The `provider-kit` command |
 | `src/cli/approval.ts` | Approving in a wallet: the session (steps, checks, sending) and the local page's server and API |
 | `src/cli/approval-view.ts` | What the page shows: the session as JSON, shared with the page |
 | `src/cli/owner-chain.ts` | The owner's transactions: built, checked once signed, sent and followed into a ledger |
 | `src/cli/owner-steps.ts` | Test XLM, the USDC trustline, registration and the validation request, as approval steps |
 | `src/cli/try.ts` | `provider-kit try`: one paid testnet call through the payment client, from a throwaway payer |
+| `src/cli/discovery.ts` | How agents see you, for `provider-kit check`: search text matched as stellar-agent-search matches it, and hints |
 | `approve/` | The approval page (Svelte, Stellar Wallets Kit), built into `dist/approve` |
 | `schemas/gateway-config.schema.json` | The gateway config file's JSON Schema |
 | `Dockerfile` | The gateway image |
+
+
+<!-- ===== packages/create-stellar-service/README.md ===== -->
+
+# create-stellar-service
+
+`npm create stellar-service` makes a project that sells an AI service on Stellar: agents pay per call in USDC through
+x402, under [Provider Standard v1](../../docs/provider-standard.md). The project runs, takes a paid testnet call and
+builds a Docker image as it comes.
+
+```text
+$ npm create stellar-service
+
+Project folder [my-stellar-service]: captioner
+What are you making?
+  1. Wrap an API you already run, in any language (no code changes)
+  2. A new service in TypeScript
+  3. A new service in Python (FastAPI)
+Pick 1, 2 or 3 [1]: 1
+Your API's OpenAPI document, or the URL a paid call goes to [http://127.0.0.1:8000/openapi.json]:
+In one sentence, what does it offer? Agents search for it by these words and its name.
+[Enter: the document's]: Captions for product photos, in English and Turkish.
+Set up the account clients pay now? A page opens where your wallet approves a USDC trustline on testnet.
+[Y/n]:
+```
+
+Then it writes the project, installs it, and opens the approval page of `provider-kit trustline`, where your own
+wallet (Freighter, xBull, Albedo and others) adds a USDC trustline. The account's address goes in `.env` as `PAY_TO`.
+Next: `npm run dev`, then `npm run try` pays for one call with test money, and `npm run check` shows
+[how agents see you](../provider-kit/README.md#how-agents-see-you).
+
+**Until the packages are on npm,** run it from a clone, built once (`npm install && npm run build`):
+
+```bash
+node "$REPO/packages/create-stellar-service/dist/index.js" captioner
+```
+
+From a clone, it packs the Provider Kit into the project's `vendor/` folder, so the project installs and builds by
+itself, in Docker too. Once published, the project depends on the kit's released version instead.
+
+## What it makes
+
+| Kind | You get |
+| --- | --- |
+| `wrap` | The [gateway](../provider-kit/README.md#gateway-mode) in front of an API you already run, in any language, with no code changes. With an OpenAPI document (FastAPI serves `/openapi.json`), `provider-kit init --openapi` makes a service of each POST endpoint it can call; without one, a starter service calls the URL you give. |
+| `typescript` | A new service with the [Provider Kit library](../provider-kit/README.md#library-in-short): `src/server.ts` and an example service to replace, `src/services/summarize.ts`. |
+| `python` | A new FastAPI app, `app.py`, with the gateway in front of it, and one container that runs both. |
+
+Every project has `.env` (the settings, kept out of git) and `.env.example`, a `Dockerfile` that keeps the job
+database on a volume at `/data`, a `README.md`, and these scripts:
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Starts the service, or the gateway, at http://localhost:8787 |
+| `npm run try` | Pays for one call with test money, from a throwaway testnet account ([`provider-kit try`](../provider-kit/README.md#trying-a-paid-call)) |
+| `npm run check` | Checks the provider against the standard and shows how agents see it |
+| `npm run wallet` | Sets up the account clients pay, in your wallet |
+| `npm start` | Starts it for production: `PUBLIC_ORIGIN` must be your HTTPS origin |
+| `npm run register` | Registers it in the Stellar 8004 registry, once deployed (gateway kinds) |
+
+A gateway config reads `baseUrl`, `payTo` and `store` from `.env` (`env:PUBLIC_ORIGIN`, `env:PAY_TO`,
+`env:JOB_DB_PATH`), so the same file runs on a laptop and in a container.
+
+## For scripts and coding agents
+
+Flags answer every question. Without a terminal it asks nothing, and `--kind` is needed:
+
+```bash
+create-stellar-service captioner --kind wrap --openapi http://127.0.0.1:8000/openapi.json \
+  --description "Captions for product photos, in English and Turkish." --no-wallet
+```
+
+| Flag | Answers |
+| --- | --- |
+| `--kind wrap\|typescript\|python` | What to make |
+| `--openapi <file \| url>` | The API's OpenAPI document (`wrap`). It is read first, so nothing is written for an API that isn't running. With a file whose servers are relative, `--upstream` is the API's base URL. |
+| `--upstream <url>` | Without `--openapi`: the URL a paid call goes to (`wrap`) |
+| `--description <text>` | One sentence on what it offers: search matches it and the name |
+| `--name <text>` | The provider's name. Default: the folder's, or the document's title. |
+| `--wallet`, `--no-wallet`, `--pay-to <G…>` | Set up the payout account now in your wallet, later, or use an address you have |
+| `--yes` | Take the defaults for the questions no flag answers |
+
+`--wallet` opens a page in the user's browser, so a coding agent asks the user first. It signs nothing itself.
+
+## Safety
+
+- **No secret key, anywhere.** It never asks for one, makes one or writes one. The payout account is set up in the
+  developer's own wallet, on `provider-kit trustline`'s approval page, and only its public address is saved.
+- **It never pays.** `npm run try` pays later, when the developer runs it, from a throwaway account with test money.
+- **Testnet only.** Every project starts on `stellar:testnet`.
+- **Nothing is overwritten.** It refuses a folder that already has files in it.
+
+## Files
+
+| File | Contents |
+| --- | --- |
+| `src/main.ts` | The questions, the flags, and the run: write, install, the gateway config, the payout account |
+| `src/files.ts` | The files each kind writes: `package.json`, `.env`, the README, the Python kind's gateway config, and the templates filled in |
+| `src/kit.ts` | Where the Provider Kit comes from: a clone (packed into `vendor/`) or npm, and the npm overrides a project needs |
+| `src/index.ts` | The command |
+| `templates/` | The code and Dockerfiles each kind starts from |
 
 
 <!-- ===== examples/paid-service/README.md ===== -->
