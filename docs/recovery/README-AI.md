@@ -7,7 +7,7 @@ of `payment_uncertain` jobs, the ledger clock, and the payment client's recovery
   disagree, the spec wins. Cite rules by id (`[J13]`). v1 is frozen: additions must be optional fields or SHOULD
   rules.
 - **Explanatory doc:** [job-recovery.md](../job-recovery.md). **Human summary:** [README.md](README.md).
-- **State:** implemented and tested offline (491 tests passing). Checked read-only against the public testnet
+- **State:** implemented and tested offline (`npm test`). Checked read-only against the public testnet
   RPC. Not yet done: the recorded testnet demo (one interrupted job recovered with exactly one on-chain transfer).
 
 ## 0. Invariants: never break these
@@ -275,8 +275,6 @@ provider-kit reconcile (--config <file> | --store <file> --network <testnet|pubn
   store, usage errors, pubnet without RPC).
 - **Tests aren't typechecked:** `tsc -b` covers `src` only, and several existing tests have type errors (for
   example `payment-client/test/support/chain.ts`). The new test files typecheck cleanly.
-- **Stale doc:** [docs/standard/README-AI.md](../standard/README-AI.md) §0 rule 6 and §1 still say the
-  `provider-kit` CLI and gateway mode are not built. They are.
 - **Still to do:** the recorded testnet demo. Steps are in [job-recovery.md](../job-recovery.md#response-loss-drill).
 
 ## 11. When you change this code

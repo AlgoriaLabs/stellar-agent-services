@@ -84,7 +84,7 @@ Agents wait and send the same request again. Nothing breaks, and nobody is charg
 | Path | For | What you write |
 | --- | --- | --- |
 | TypeScript library | New services on Node, Workers, Deno or Bun | `defineService(...)` and a handler function |
-| Gateway *(coming soon)* | An existing API in any language | A config file |
+| Gateway | An existing API in any language | A config file |
 | Native | Any language | Your own implementation, checked against the JSON Schema and test vectors |
 
 The quickest start is the [example service](../../examples/paid-service), built with the

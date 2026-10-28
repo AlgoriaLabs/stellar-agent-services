@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security problem
+    url: https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/SECURITY.md
+    about: Report vulnerabilities privately, not in a public issue.
+  - name: Start here (people and AI agents)
+    url: https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/AGENTS.md
+    about: Which path to take, and where its reference is.

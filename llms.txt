@@ -1,0 +1,61 @@
+# Stellar Agent Services
+
+> Provider Standard v1 (`stellar-agent-services/provider@1`) and its tools: an open standard for paid AI services on Stellar. A provider publishes a manifest at `/.well-known/stellar-agent-services.json`, is paid per job in USDC through x402 v2 (`exact` scheme), and lets a client collect a paid job's result without paying again. This repository holds the spec, a TypeScript Provider Kit (a library, and a gateway that puts any existing HTTP API behind payments), a payment client, a verifier and an MCP server for coding agents. Development runs on Stellar testnet.
+
+- The spec is the source of truth. Cite its rules by id, such as `[J13]`.
+- A provider never holds a Stellar secret key: only its public `payTo` address and a facilitator URL.
+- The packages are not on npm yet. Clone the repository and run `npm install && npm run build`; AGENTS.md shows how to use them from another project.
+- Agents should start with AGENTS.md, which picks a path and points to the right reference.
+
+## Start here
+
+- [AGENTS.md](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/AGENTS.md): For AI coding agents: what this is, which path to take (new service, existing API, other language, paying client, verification, contributing), the rules that must not be broken, and when the work is done
+- [README.md](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/README.md): Project overview, packages and status
+- [SECURITY.md](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/SECURITY.md): Key boundaries every package keeps
+
+## Standard
+
+- [Provider Standard v1](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/provider-standard.md): The normative spec: manifest, services, payment, jobs, capacity, errors, identity, conformance levels. Rule ids M, S, P, J, Q, E, I, X
+- [Standard reference for AI coding agents](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/standard/README-AI.md): The spec as an implementation reference: paths, constants, the create-job algorithm, headers, states, a rule index, common mistakes
+- [Standard summary for people](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/standard/README.md): What the standard does and why, without the detail
+- [Test vectors](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/protocol/test-vectors/README.md): Known-answer tests for an implementation in any language: canonical JSON, binding hashes, headers, manifests, challenges, job states, errors
+- [Protocol package](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/protocol/README.md): The standard as dependency-free TypeScript: types, constants and rule checks
+
+## Build a provider
+
+- [Provider setup guide](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/provider-setup-guide.md): Step by step, from an idea or an existing API to a registered, verified paid service on testnet
+- [Provider Kit](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/provider-kit/README.md): The library (`defineService`, `createProvider`), gateway mode, the `provider-kit` CLI, payment safety, capacity
+- [Example paid service](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/examples/paid-service/README.md): The template for a new TypeScript provider
+- [Example Python API behind the gateway](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/examples/python-upstream/README.md): An existing API made a paid service with only a config file
+
+## Build a client
+
+- [Client integrations for AI coding agents](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/client-integration/README-AI.md): Signer adapters, payment method adapters, and native clients in any language, with their rules and conformance checks
+- [Client integrations summary](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/client-integration/README.md): The same, for people
+- [Payment client design](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/payment-client.md): Approval, spending policy, journal, payment and recovery
+- [Payment client package](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/payment-client/README.md): `PaymentClient`, the `stellar-pay` CLI and a testnet walkthrough
+- [Agent Wallet page](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/apps/wallet/README.md): The web page where a person approves and pays a service
+
+## Verify
+
+- [Verification](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/verification.md): Checks C1–C7, receipts, badges and the Stellar 8004 Validation Registry
+- [Verifier package](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/verifier/README.md): The `verifier` CLI and library
+
+## Job recovery
+
+- [Job recovery](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/job-recovery.md): How a lost response is recovered without paying twice, and how uncertain payments are decided on chain
+- [Job recovery for AI coding agents](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/recovery/README-AI.md): Invariants, file map and spec mapping for changing recovery code
+- [Job recovery summary](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/recovery/README.md): The same, for people
+
+## Tools for coding agents
+
+- [MCP server](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/dev-mcp/README.md): Spec rules, docs, manifest validation and provider checks as MCP tools. It never pays
+- [Claude Code plugin](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/plugins/stellar-agent-services/README.md): Skills for building providers and clients, and for verifying them
+
+## Optional
+
+- [Contributing](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/CONTRIBUTING.md): How changes are made: the spec first, then the kit, client and verifier
+- [ERC compatibility](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/erc-compatibility.md): How the standard lines up with ERC-8126 (agent verification) and ERC-8196 (agent authenticated wallet)
+- [Manifest JSON Schema](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/protocol/schemas/manifest.schema.json): The schema every manifest must pass [M9]
+- [Gateway config JSON Schema](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/provider-kit/schemas/gateway-config.schema.json): The schema of `provider.config.json`
+- [Implementation plan](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/IMPLEMENTATION_PLAN.md): The project plan and its weekly milestones

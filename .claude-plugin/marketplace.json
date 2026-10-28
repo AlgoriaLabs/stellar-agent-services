@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "stellar-agent-services",
+  "description": "Skills for building paid AI services and paying clients on Stellar with Provider Standard v1.",
+  "owner": {
+    "name": "AlgoriaLabs"
+  },
+  "plugins": [
+    {
+      "name": "stellar-agent-services",
+      "source": "./plugins/stellar-agent-services",
+      "description": "Build a paid AI service (new, or an existing API in any language), implement Provider Standard v1 natively, build an agent or wallet that pays providers, and verify a provider. x402 USDC payments on Stellar.",
+      "category": "development",
+      "homepage": "https://github.com/AlgoriaLabs/stellar-agent-services"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+name: Verification request
+description: Ask for a provider to be verified (checks C1–C7) and recorded in the Stellar 8004 Validation Registry.
+labels: [verification]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before asking: `verifier check <manifest-url>` passes, and the provider is registered on 8004 (`provider-kit register`). See [docs/provider-setup-guide.md §9](https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/docs/provider-setup-guide.md#9-get-verified).
+  - type: input
+    id: manifest
+    attributes:
+      label: Manifest URL
+      placeholder: https://api.example.com/.well-known/stellar-agent-services.json
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: 8004 agent id
+    validations:
+      required: true
+  - type: input
+    id: request-hash
+    attributes:
+      label: Validation request hash
+      description: Printed by `provider-kit request-validation`.
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      options:
+        - stellar:testnet
+        - stellar:pubnet
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: verifier check output
+      render: text
+    validations:
+      required: true
