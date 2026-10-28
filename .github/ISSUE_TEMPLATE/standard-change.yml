@@ -1,0 +1,37 @@
+name: Standard change proposal
+description: Propose a new rule, field, scheme, asset, network or payment protocol for Provider Standard.
+labels: [standard]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Changes start in the spec ([CONTRIBUTING.md](https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/CONTRIBUTING.md)). v1 only gains optional fields and SHOULD rules; anything breaking waits for v2. A new scheme, asset or network needs this before any adapter can use it [P1].
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't be done, or goes wrong, under the current rules? Cite rule ids.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed rule
+      description: The new or changed text, written as a rule (MUST, SHOULD, MAY), and where in docs/provider-standard.md it goes.
+    validations:
+      required: true
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: Compatibility
+      options:
+        - Optional field or SHOULD rule (fits v1)
+        - Breaking (v2)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: What changes in the Kit, the payment client and the verifier, and how it keeps "never charge twice".

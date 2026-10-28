@@ -12,6 +12,7 @@ payment side:
 | [`packages/provider-kit`](packages/provider-kit) | Turn a function, or an existing API in any language (gateway mode), into a paid service: pricing, x402 USDC payments, Job Recovery, capacity and queuing |
 | [`packages/payment-client`](packages/payment-client) | Buyer side: approval, spending controls, payment, recovery (proof of concept) |
 | [`packages/verifier`](packages/verifier) | Checks a provider against the standard (C1–C7), issues verification receipts and badges, publishes to the Stellar 8004 Validation Registry |
+| [`packages/dev-mcp`](packages/dev-mcp) | MCP server for coding agents: spec rules, docs, manifest validation, unpaid provider checks. It never pays. |
 | [`apps/wallet`](apps/wallet) | Web page where a person approves and pays a service (testnet) |
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
 | [`examples/python-upstream`](examples/python-upstream) | An existing Python API made a paid service with gateway mode |
@@ -27,6 +28,17 @@ To offer a service, follow the [provider setup guide](docs/provider-setup-guide.
 
 **The standard in short:** [for people](docs/standard/README.md) and [for AI coding agents](docs/standard/README-AI.md).
 The full text is [docs/provider-standard.md](docs/provider-standard.md).
+
+## For AI coding agents
+
+- [AGENTS.md](AGENTS.md) picks a path (new service, existing API, another language, paying client, verification,
+  contributing) and names its reference, rules and definition of done. `CLAUDE.md` points to it.
+- [llms.txt](llms.txt) indexes every document, and [llms-full.txt](llms-full.txt) holds them all in one file.
+- The [Claude Code plugin](plugins/stellar-agent-services) adds a skill for each path:
+  `/plugin marketplace add AlgoriaLabs/stellar-agent-services`.
+- The [MCP server](packages/dev-mcp) answers spec questions and checks manifests and providers.
+
+## Compatibility
 
 We stay compatible with ERC-8126 (agent verification) and ERC-8196 (agent authenticated wallet). See
 [docs/erc-compatibility.md](docs/erc-compatibility.md). Copies of both specs are in [docs/references/](docs/references).
