@@ -1,0 +1,32 @@
+{
+  "name": "@stellar-agent-services/dev-mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MCP server for coding agents building on Provider Standard v1: spec rules, docs, manifest validation and unpaid provider checks. It never pays.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "bin": {
+    "stellar-agent-services-mcp": "./dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@stellar-agent-services/protocol": "0.0.0",
+    "@stellar-agent-services/verifier": "0.0.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@stellar-agent-services/provider-kit": "0.0.0"
+  }
+}

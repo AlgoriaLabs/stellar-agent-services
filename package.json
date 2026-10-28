@@ -13,6 +13,7 @@
     "packages/provider-kit",
     "packages/payment-client",
     "packages/verifier",
+    "packages/dev-mcp",
     "examples/paid-service",
     "apps/wallet"
   ],
@@ -21,7 +22,9 @@
     "typecheck": "tsc -b",
     "clean": "tsc -b --clean",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "llms": "node scripts/llms-full.mjs",
+    "llms:check": "node scripts/llms-full.mjs --check"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

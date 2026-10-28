@@ -16,6 +16,7 @@ COPY packages/protocol/package.json packages/protocol/
 COPY packages/provider-kit/package.json packages/provider-kit/
 COPY packages/payment-client/package.json packages/payment-client/
 COPY packages/verifier/package.json packages/verifier/
+COPY packages/dev-mcp/package.json packages/dev-mcp/
 COPY examples/paid-service/package.json examples/paid-service/
 COPY apps/wallet/package.json apps/wallet/
 RUN npm ci --workspace @stellar-agent-services/provider-kit --include-workspace-root --ignore-scripts
@@ -31,6 +32,7 @@ COPY packages/protocol/package.json packages/protocol/
 COPY packages/provider-kit/package.json packages/provider-kit/
 COPY packages/payment-client/package.json packages/payment-client/
 COPY packages/verifier/package.json packages/verifier/
+COPY packages/dev-mcp/package.json packages/dev-mcp/
 COPY examples/paid-service/package.json examples/paid-service/
 COPY apps/wallet/package.json apps/wallet/
 RUN npm ci --omit=dev --workspace @stellar-agent-services/provider-kit --ignore-scripts && npm cache clean --force

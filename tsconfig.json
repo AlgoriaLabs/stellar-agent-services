@@ -5,6 +5,7 @@
     { "path": "packages/provider-kit" },
     { "path": "packages/payment-client" },
     { "path": "packages/verifier" },
+    { "path": "packages/dev-mcp" },
     { "path": "examples/paid-service" }
   ]
 }

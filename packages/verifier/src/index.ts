@@ -12,6 +12,7 @@
 // this process. Neither is ever shared with providers, discovery or the payment client.
 
 export * from "./verify.js";
+export * from "./manifest-document.js";
 export * from "./receipt.js";
 export * from "./badges.js";
 export * from "./publish.js";
