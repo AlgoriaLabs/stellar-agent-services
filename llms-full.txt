@@ -46,7 +46,7 @@ Facts to get right:
 | You want to… | Path | Read | Done when |
 | --- | --- | --- | --- |
 | Build a **new paid service** in TypeScript (Node, Workers, Deno, Bun) | Kit library | [docs/standard/README-AI.md §2](docs/standard/README-AI.md#2-kit-path-typescript), [provider-setup-guide.md §3b](docs/provider-setup-guide.md#3b-typescript-library-a-new-service), template [examples/paid-service](examples/paid-service) | `provider-kit check --manifest <url> --dev` and `verifier check <url> --dev` pass |
-| Make an **existing HTTP API** paid, in any language | Gateway: a JSON config, no code | [provider-setup-guide.md §3a](docs/provider-setup-guide.md#3a-gateway-an-existing-api), [packages/provider-kit](packages/provider-kit#gateway-mode), [examples/python-upstream](examples/python-upstream) | `provider-kit check --config provider.config.json` passes and the gateway starts |
+| Make an **existing HTTP API** paid, in any language | Gateway: a JSON config, no code. `provider-kit init --openapi <url>` writes it from the API's OpenAPI document. | [provider-setup-guide.md §3a](docs/provider-setup-guide.md#3a-gateway-an-existing-api), [packages/provider-kit](packages/provider-kit#gateway-mode), [examples/python-upstream](examples/python-upstream) | `provider-kit check --config provider.config.json` passes and the gateway starts |
 | Implement the standard in **another language** | Native | [docs/standard/README-AI.md §3–§13](docs/standard/README-AI.md), the [spec](docs/provider-standard.md), the [test vectors](packages/protocol/test-vectors) | Every test vector passes, and `verifier check <url>` passes |
 | Build an **agent, wallet or app that pays** providers | Client: an adapter for `payment-client`, or your own client | [docs/client-integration/README-AI.md](docs/client-integration/README-AI.md), spec §14 rules in [docs/standard/README-AI.md](docs/standard/README-AI.md#14-client-rules-agents-wallets-apps) | The conformance checks in `@stellar-agent-services/payment-client/conformance` pass, or for a native client the client rules hold |
 | **Verify** a provider, or get one verified | Verifier | [docs/verification.md](docs/verification.md), [packages/verifier](packages/verifier), [provider-setup-guide.md §8–§9](docs/provider-setup-guide.md#8-register-on-stellar-8004) | `verifier check` passes; with a funded test payer, `verifier verify --pay` reaches the level you need |
@@ -1816,6 +1816,21 @@ export PAY_TO=$(stellar keys address payto)
 Your API needs one endpoint per service that takes the input as a JSON body (`POST`) and answers with a JSON
 object. It needs to know nothing about payments.
 
+**If your API has an OpenAPI document**, start from it. FastAPI serves one at `/openapi.json`; Django
+(drf-spectacular), Spring, NestJS and most frameworks can write one:
+
+```bash
+provider-kit init --openapi http://127.0.0.1:8000/openapi.json     # or a .json or .yaml file, with --upstream <url>
+```
+
+This writes `provider.config.json` with a service for each `POST` endpoint the gateway can call: its schemas
+(converted to JSON Schema 2020-12), title, description, tags and example come from the document. It lists every
+other operation with the reason it was skipped, such as a path parameter or a file upload, and checks the config as
+`serve` would. If the API needs its own key, it is sent from an environment variable that `init` names. Then
+review the guesses below, starting with the price.
+
+**Otherwise**, start from one service and write its schemas yourself:
+
 ```bash
 provider-kit init --upstream http://127.0.0.1:5000/run
 ```
@@ -2118,12 +2133,51 @@ PAY_TO=G... provider-kit serve --config provider.config.json
 mount the config at `/config/provider.config.json` and a volume at `/data` (set `"store": "/data/jobs.sqlite"`).
 `GET /healthz` answers for health checks.
 
+### From an OpenAPI document
+
+An API with an OpenAPI 3.0, 3.1 or 3.2 document doesn't need its config written by hand:
+
+```bash
+provider-kit init --openapi http://127.0.0.1:8000/openapi.json    # FastAPI's; or a .json or .yaml file
+```
+
+```text
+Wrote provider.config.json with 4 services:
+  summarize      POST http://127.0.0.1:8000/summarize
+  translate      POST http://127.0.0.1:8000/v1/translate  with X-API-Key
+  …
+Skipped 7 operations:
+  GET   /health                             the gateway calls the API with POST
+  POST  /documents/{document_id}/summarize  it has a path parameter ({document_id}); the gateway calls one fixed URL
+  POST  /upload                             it takes multipart/form-data, not JSON
+  …
+✓ The config passes Provider Standard v1, checked as provider-kit serve checks it.
+```
+
+- **Which operations:** each `POST` that takes a JSON object (or no body) and answers `2xx` with a JSON object, and
+  has no path parameters and no required query, header or cookie parameters: what the gateway can call. Every other
+  operation is listed with the reason. A provider has at most 25 services.
+- **Schemas** become JSON Schema 2020-12 [S4]–[S6]: the body's own schema at the root, the components it uses under
+  `$defs`, recursion included. OpenAPI 3.0's `nullable`, `example` and boolean `exclusiveMinimum`/`exclusiveMaximum`
+  are rewritten, `readOnly` properties leave the input and `writeOnly` ones the output.
+- **From the document:** names from paths (`/v1/text/summarize` is `text-summarize`), titles from summaries,
+  descriptions from descriptions (`init` lists the services that have none), tags, and an example when the document
+  has a matching input and output.
+- **The API's address:** `--upstream`, else the document's server, else where the document was read from.
+- **The API's own credentials** (an API key header, bearer or basic) become an `upstream.headers` entry read from
+  the environment, such as `"X-API-Key": "env:UPSTREAM_X_API_KEY"`. Credentials that can't be a fixed header
+  (OAuth2, cookies) get a warning to set by hand.
+- **Checked as `serve` checks it:** a service the kit would refuse, such as a pattern JavaScript can't compile or a
+  schema over 32 KiB [S6], is skipped with the problem, so the config always loads.
+
+Price (`0.01`), charge (`upfront`), duration and capacity are first guesses: set them before you serve.
+
 ## CLI
 
 | Command | What it does |
 | --- | --- |
 | `provider-kit serve --config <file>` | Gateway mode. Graceful shutdown on SIGTERM. `--no-workers` for HTTP-only processes. |
-| `provider-kit init [--upstream <url>]` | Writes a starter gateway config. |
+| `provider-kit init [--upstream <url>] [--openapi <file \| url>]` | Writes a starter gateway config. With `--openapi`, writes one from an OpenAPI 3 document: see [From an OpenAPI document](#from-an-openapi-document). |
 | `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. |
 | `provider-kit try [<service>] ['<input JSON>' \| @<file>]` | One paid call on testnet, the way any client makes it. See [Trying a paid call](#trying-a-paid-call). |
 | `provider-kit trustline [--config \| --manifest \| --network <testnet\|mainnet>]` | Adds a USDC trustline to `payTo` [P2], approved in its wallet. A new testnet account gets test XLM from Friendbot first. Without `--config` or `--manifest`, it sets up the account the wallet connects and prints it as `PAY_TO`. Signs nothing when the trustline exists. |
@@ -2313,6 +2367,7 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/jobs/reconcile.ts` | Decides `payment_uncertain` jobs from on-chain data |
 | `src/jobs/memory-store.ts`, `src/jobs/sqlite-store.ts` | Job stores |
 | `src/gateway/config.ts`, `src/gateway/upstream.ts` | Gateway mode |
+| `src/gateway/openapi.ts` | Gateway services from an OpenAPI document, for `provider-kit init --openapi` |
 | `src/registration.ts` | 8004 registration file, the I1–I3 check, and who may act for an agent |
 | `src/cli/` | The `provider-kit` command |
 | `src/cli/approval.ts` | Approving in a wallet: the session (steps, checks, sending) and the local page's server and API |

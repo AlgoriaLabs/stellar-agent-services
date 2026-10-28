@@ -1,7 +1,7 @@
 // provider-kit CLI (operator side):
 //
 //   serve --config <file>  gateway mode: put an existing HTTP API behind payment and job recovery
-//   init                   write a starter gateway config
+//   init                   write a starter gateway config, or one from an OpenAPI document
 //   check                  self-check against Provider Standard v1 (no payment, no keys)
 //   try                    one paid testnet call, from a throwaway payer that only lives in memory
 //   trustline              let the payout account receive USDC (signed in the owner's wallet)
@@ -29,7 +29,7 @@ const USAGE = `provider-kit: run a paid AI service on Stellar (Provider Standard
 
 Usage:
   provider-kit serve --config <file> [--port <n>] [--dev] [--no-workers]
-  provider-kit init [--out <file>] [--upstream <url>]
+  provider-kit init [--out <file>] [--upstream <url>] [--openapi <file | url>]
   provider-kit check (--config <file> | --manifest <url>) [--dev]
   provider-kit try [<service>] ['<input JSON>' | @<file>] [--config <file> | --manifest <url>]
                    [--yes] [--rpc <url>]
@@ -46,7 +46,10 @@ Usage:
 
 serve       Puts the HTTP API named in the config behind the manifest, x402 payment, job recovery
             and capacity limits. Jobs are kept in SQLite, so paid jobs survive a restart.
-init        Writes a starter gateway config to edit.
+init        Writes a starter gateway config to edit. With --openapi, writes a service for each POST
+            endpoint of an OpenAPI 3 document (JSON or YAML, a file or a URL such as FastAPI's
+            /openapi.json), says why it skipped the others, and checks the config as serve would.
+            --upstream is then the API's address, when the document doesn't name a full one.
 check       Checks a provider without paying: config, manifest, facilitator, payTo trustline and the
             Stellar 8004 registration. Exits 1 if anything fails.
 try         Pays for one job on testnet, the way any client does, and shows the result and the

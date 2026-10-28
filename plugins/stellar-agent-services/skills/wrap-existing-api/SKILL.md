@@ -1,6 +1,6 @@
 ---
 name: wrap-existing-api
-description: Put an existing HTTP API, in any language (Python, Go, Rust, Java, Ruby, PHP, TypeScript), behind per-call USDC payments on Stellar without changing its code, using the Provider Kit's gateway mode and a JSON config (Provider Standard v1, x402). Use when the user wants to monetize, sell or charge agents for an API, model server or endpoint they already run. For a new TypeScript service, use build-paid-service.
+description: Put an existing HTTP API, in any language (Python, Go, Rust, Java, Ruby, PHP, TypeScript), behind per-call USDC payments on Stellar without changing its code, using the Provider Kit's gateway mode and a JSON config, generated from the API's OpenAPI document when it has one, such as FastAPI's /openapi.json (Provider Standard v1, x402). Use when the user wants to monetize, sell or charge agents for an API, model server or endpoint they already run. For a new TypeScript service, use build-paid-service.
 ---
 
 # Make an existing API paid with the gateway
@@ -35,8 +35,16 @@ Docker works too: `docker build -f packages/provider-kit/Dockerfile -t provider-
 
 ## 3. Write the config
 
-`provider-kit init --upstream http://127.0.0.1:5000/run` writes a starter `provider.config.json`. Its JSON Schema
-is `packages/provider-kit/schemas/gateway-config.schema.json`. For each service, set:
+If the API has an OpenAPI 3 document (FastAPI serves one at `/openapi.json`; look for `openapi.json`,
+`openapi.yaml` or `/v3/api-docs`), generate the config from it:
+`provider-kit init --openapi http://127.0.0.1:8000/openapi.json`, or a file path with `--upstream <the API's base
+URL>`. It writes a service for each `POST` endpoint the gateway can call, with schemas, descriptions and examples
+from the document. It prints every skipped operation with the reason, and checks the config as `serve` does. Read
+that output to the user. Then review the result against the list below. The price, charge and duration are guesses.
+Descriptions it couldn't find are listed, so write those. Any `env:` header it adds must be set before `serve`.
+
+Without a document, `provider-kit init --upstream http://127.0.0.1:5000/run` writes a starter `provider.config.json`.
+Its JSON Schema is `packages/provider-kit/schemas/gateway-config.schema.json`. For each service, set:
 
 - `name` (`^[a-z0-9][a-z0-9_-]{0,63}$`), `title`, and a `description` for an agent deciding whether to call it:
   what it does, when to use it, its limits. No price or URLs in it.

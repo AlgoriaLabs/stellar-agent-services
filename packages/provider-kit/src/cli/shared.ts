@@ -19,6 +19,7 @@ export const OPTIONS = {
   "no-open": { type: "boolean" },
   out: { type: "string", short: "o" },
   upstream: { type: "string" },
+  openapi: { type: "string" },
   source: { type: "string" },
   "agent-uri": { type: "string" },
   validator: { type: "string" },

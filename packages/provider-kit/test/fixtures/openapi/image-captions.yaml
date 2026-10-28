@@ -1,0 +1,129 @@
+# A fixture for `provider-kit init --openapi`: an OpenAPI 3.0 document in YAML, as Django REST Framework with
+# drf-spectacular writes one. It uses what 3.0 has and 2020-12 doesn't: nullable, boolean exclusive bounds, a single
+# `example`, readOnly and writeOnly properties, a server with variables, bearer and cookie credentials, a 201 answer
+# with a charset, and a form body.
+openapi: 3.0.3
+info:
+  title: Image Captions
+  version: 2.0.0
+  description: |
+    Captions and alt text for images.
+
+    Served by Django REST Framework.
+servers:
+  - url: https://{region}.captions.example.com/api
+    variables:
+      region:
+        default: eu
+        enum: [eu, us]
+paths:
+  /v2/captions/:
+    post:
+      operationId: captions_create
+      summary: Caption an image
+      description: >-
+        Writes a one-sentence caption for the image at a URL. Use it for alt text.
+        English only.
+      tags: [Captions, Vision AI]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptionRequest'
+            examples:
+              cat:
+                value:
+                  image_url: https://example.com/cat.png
+                  max_words: 12
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Caption'
+              example:
+                id: 7
+                caption: A cat asleep on a keyboard.
+                confidence: 0.92
+        '400':
+          description: Bad request
+  /v2/captions/{id}/:
+    get:
+      operationId: captions_retrieve
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+  /v2/alt-text/:
+    post:
+      operationId: alt_text_create
+      security:
+        - cookieAuth: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CaptionRequest'
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    CaptionRequest:
+      type: object
+      required: [image_url, id]
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image_url:
+          type: string
+          format: uri
+          example: https://example.com/cat.png
+        max_words:
+          type: integer
+          minimum: 1
+          maximum: 50
+          exclusiveMaximum: true
+          nullable: true
+        style:
+          type: string
+          enum: [plain, poetic]
+          nullable: true
+          x-display-name: Style
+    Caption:
+      type: object
+      required: [id, caption, confidence]
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        caption:
+          type: string
+          xml:
+            name: text
+        confidence:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 1
+        moderation_token:
+          type: string
+          writeOnly: true
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

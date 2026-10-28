@@ -5,8 +5,8 @@ repository, why, and how it was checked. A phase is added here when it lands.
 
 | Phase | Change | Status |
 | --- | --- | --- |
-| 1 | [`provider-kit try`](#phase-1-provider-kit-try): the first paid call in one command | Done, in review |
-| 2 | `provider-kit init --openapi`: services from an OpenAPI document | Planned |
+| 1 | [`provider-kit try`](#phase-1-provider-kit-try): the first paid call in one command | Done |
+| 2 | [`provider-kit init --openapi`](#phase-2-provider-kit-init---openapi): the gateway config from an OpenAPI document | Done, in review |
 | 3 | `npm create stellar-service`, and showing a provider how agents see it | Planned |
 
 Before these phases, the owner's transactions (the USDC trustline, 8004 registration, validation requests) moved
@@ -126,3 +126,126 @@ GDJB…XA3O (payTo) received 0.01 USDC.
 - Each run makes a new testnet account through Friendbot.
 - The journal lives in memory, so `try` can't recover a job after it exits. The provider settles any uncertain
   payment by itself, and `provider-kit reconcile --dry-run` shows where it stands.
+
+## Phase 2: `provider-kit init --openapi`
+
+### Why
+
+Gateway mode makes an existing API paid with a config file, but every service's input and output schema had to be
+written by hand, in JSON Schema. Most APIs already describe themselves: FastAPI serves an OpenAPI document at
+`/openapi.json`, and Django (drf-spectacular), Spring, NestJS and others can write one.
+
+Before:
+
+```bash
+provider-kit init --upstream http://127.0.0.1:5000/run   # one placeholder service
+# then write each service's name, description, inputSchema and outputSchema by hand
+```
+
+After:
+
+```bash
+provider-kit init --openapi http://127.0.0.1:8000/openapi.json
+```
+
+### What it does
+
+1. **Reads the document:** OpenAPI 3.0, 3.1 or 3.2, JSON or YAML, from a file or a URL (up to 10 MB). Swagger 2.0
+   is refused with a pointer to converting it.
+2. **Picks the operations the gateway can call:** a `POST` that takes a JSON object (or no body) and answers `2xx`
+   with a JSON object, with no path parameters and no required query, header or cookie parameters. Every other
+   operation is listed with the reason: `GET`, a path parameter, a required query parameter, a file upload, a form
+   body, an array or image answer, no content, deprecated, more than 25 services.
+3. **Converts schemas** to what the standard asks [S4]–[S6]: JSON Schema 2020-12, the body's own schema at the root
+   with `"type": "object"` first, and the components it uses under `$defs`, recursion included. OpenAPI 3.0's
+   `nullable`, `example` and boolean `exclusiveMinimum`/`exclusiveMaximum` are rewritten. `readOnly` properties
+   leave the input and `writeOnly` ones the output. `x-` extensions, `xml`, `discriminator` and `externalDocs` are
+   dropped.
+4. **Fills in the rest from the document:** the provider's name and description from `info`. For each service: a
+   name from the path (`/v1/text/summarize` is `text-summarize`), a title from the summary, the description, tags,
+   and an example when the document has an input and output that match their schemas [S9].
+5. **Finds the API:** `--upstream`, else the operation's, path's or document's server (with its variables'
+   defaults), else the address the document was read from. A relative server in a file needs `--upstream`.
+6. **Keeps the API's credentials out of the file:** an API key header, bearer or basic becomes an `upstream.headers`
+   entry read from the environment, such as `"X-API-Key": "env:UPSTREAM_X_API_KEY"`. Credentials that can't be a
+   fixed header (OAuth2, cookies) get a warning.
+7. **Checks each service as `serve` would:** `defineService()` and a manifest with it must pass. One that fails, such
+   as a Python-only regular expression or a schema over 32 KiB, is skipped with the problem, so the config always
+   loads. Then the written file itself is loaded as `serve` loads it.
+8. **Says what's next:** prices to set, descriptions to write, environment variables to export, then `serve` and
+   `provider-kit try`.
+
+```text
+Read Text Tools API 1.4.0 (OpenAPI 3.1.0) from http://127.0.0.1:8000/openapi.json
+
+Wrote provider.config.json with 4 services:
+  summarize      POST http://127.0.0.1:8000/summarize
+  translate      POST http://127.0.0.1:8000/v1/translate  with X-API-Key
+  classify-tree  POST http://127.0.0.1:8000/classify/tree
+  random-fact    POST http://127.0.0.1:8000/random-fact
+
+Skipped 7 operations:
+  GET   /health                             the gateway calls the API with POST
+  POST  /documents/{document_id}/summarize  it has a path parameter ({document_id}); the gateway calls one fixed URL
+  POST  /search                             it needs the query parameter "q"; the gateway sends only a JSON body
+  POST  /upload                             it takes multipart/form-data, not JSON
+  POST  /languages                          it answers with an array, not a JSON object
+  POST  /render                             it answers with image/png, not JSON
+  POST  /v0/summarize                       it is deprecated
+
+✓ The config passes Provider Standard v1, checked as provider-kit serve checks it.
+
+Next:
+  1. Review provider.config.json: each service's price (0.01 USDC for now), charge and description, which agents choose by.
+     Write one for classify-tree: the document gives only a summary, or nothing.
+  2. export UPSTREAM_X_API_KEY=...   the API's key, sent as X-API-Key
+  3. PAY_TO=G... provider-kit serve --config provider.config.json
+  4. provider-kit try summarize   one paid testnet call, from another terminal
+```
+
+### What it doesn't decide
+
+The price (`0.01`), charge policy (`upfront`), expected duration (5 s) and capacity are the same first guesses as the
+starter config's. The output says to set them. It never overwrites a file, and with no callable operation it writes
+nothing.
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `packages/provider-kit/src/gateway/openapi.ts` | New: reading the document, choosing operations, converting schemas, credentials, checking each service |
+| `packages/provider-kit/src/cli/init.ts` | `--openapi`, the summary and next steps. The starter config is written as before, from the same first guesses. |
+| `packages/provider-kit/src/cli/main.ts`, `shared.ts` | The `--openapi` flag and its help |
+| `packages/provider-kit/package.json`, `package-lock.json` | `yaml` 2.9.1 (ISC, no dependencies), pinned. The lockfile adds that entry only. |
+| `packages/provider-kit/test/openapi.test.ts` | New: 26 tests |
+| `packages/provider-kit/test/fixtures/openapi/` | A real FastAPI document and the app that generates it (FastAPI 0.115.12, Pydantic 2.14.1), and an OpenAPI 3.0 YAML document in drf-spectacular style |
+| Docs | [Setup guide §3a](provider-setup-guide.md#3a-gateway-an-existing-api), [provider-kit README](../packages/provider-kit/README.md#from-an-openapi-document), [AGENTS.md](../AGENTS.md) §2, the wrap-existing-api skill, the implementation plan, `llms-full.txt` |
+
+### How it was checked
+
+- **Tests:** `npm run typecheck` and `npm test` pass: 902 tests, 26 of them new. They cover the FastAPI document
+  (services, skipped operations, `$defs`, recursion, examples, the API key), the OpenAPI 3.0 YAML rewrites, every
+  reason to skip, the 25-service limit, names, any-type answers, credential alternatives, server resolution,
+  reading files and URLs, and the CLI: output, no overwriting, nothing written when nothing is callable, and the
+  unchanged starter config. One test serves the generated config and makes paid calls through the gateway to a
+  stand-in API, which receives the right path, body and key.
+- **The whole flow, live:** the FastAPI fixture app ran under uvicorn. `init --openapi
+  http://127.0.0.1:8000/openapi.json` found the API's address by itself, then `serve` started on the generated
+  config, and `provider-kit try` paid on testnet:
+  - `summarize` with its example: [settlement](https://stellar.expert/explorer/testnet/tx/6943f507e559a91a7d91feb1f9bc8932a150de4c129e722217c77333482b0863)
+  - `translate`, through FastAPI's API key check, with the key from `UPSTREAM_X_API_KEY`:
+    [settlement](https://stellar.expert/explorer/testnet/tx/6d968b968594ebca0dd71d3ce0d4a356bb9917a553266776d333fe81c295ccee)
+- **A third-party document:** the public Swagger Petstore (`petstore3.swagger.io`, OpenAPI 3.0.4) gave 3 services
+  and 16 skipped operations with their reasons. Its relative server was resolved against the document's URL, and
+  OAuth2 got its warning.
+- **Docker image:** the runtime install was rebuilt by hand again: `npm ci --omit=dev` installs `yaml`, and `init
+  --openapi` reads a YAML document with only the files the image ships.
+
+### Limits
+
+- External `$ref`s (`other.yaml#/Thing`) aren't followed: such an operation is skipped and asks for a bundled
+  document.
+- Endpoints that take path or query parameters, forms or files can't be gateway services. The way to offer one is a
+  small JSON route in front of it, as the wrap-existing-api skill says.
+- A `readOnly` or `writeOnly` property is found when it is marked on the property itself, not inside a referenced
+  component.

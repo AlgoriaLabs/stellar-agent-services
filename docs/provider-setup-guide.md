@@ -72,6 +72,21 @@ export PAY_TO=$(stellar keys address payto)
 Your API needs one endpoint per service that takes the input as a JSON body (`POST`) and answers with a JSON
 object. It needs to know nothing about payments.
 
+**If your API has an OpenAPI document**, start from it. FastAPI serves one at `/openapi.json`; Django
+(drf-spectacular), Spring, NestJS and most frameworks can write one:
+
+```bash
+provider-kit init --openapi http://127.0.0.1:8000/openapi.json     # or a .json or .yaml file, with --upstream <url>
+```
+
+This writes `provider.config.json` with a service for each `POST` endpoint the gateway can call: its schemas
+(converted to JSON Schema 2020-12), title, description, tags and example come from the document. It lists every
+other operation with the reason it was skipped, such as a path parameter or a file upload, and checks the config as
+`serve` would. If the API needs its own key, it is sent from an environment variable that `init` names. Then
+review the guesses below, starting with the price.
+
+**Otherwise**, start from one service and write its schemas yourself:
+
 ```bash
 provider-kit init --upstream http://127.0.0.1:5000/run
 ```

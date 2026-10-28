@@ -244,6 +244,7 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 | `provider.ts` | `createProvider(config)` → `{ fetch(request): Promise<Response> }`, which wires every part together |
 | `http/router.ts` | Manifest, create-job, check-status and get-result routes, in the spec's processing order. RFC 9457 errors, body size caps, no redirects. |
 | `gateway/config.ts`, `gateway/upstream.ts` | Gateway mode: a config file describes services whose handler forwards the input to an existing HTTP API in any language |
+| `gateway/openapi.ts` | The gateway config from an existing API's OpenAPI 3 document (`provider-kit init --openapi`): its callable POST endpoints as services, schemas in JSON Schema 2020-12 |
 | `payments/x402-server.ts` | The challenge, built from the manifest, with the Bazaar extension while the header stays under 8 KiB; reading the paid request |
 | `payments/payload-checks.ts` | Local checks run before calling the facilitator: exactly one SAC `transfer(payer → payTo, amount)` on the manifest's asset, authorized by the payer's own signed auth entry and nothing else. The fingerprint is `sha256(JCS({ network, payer, nonce }))`, so re-wrapping one signed auth entry can't buy a second job. Signature validity stays with the facilitator's simulation. |
 | `payments/facilitator.ts` | The kit's own facilitator client: HTTPS-only, no redirects, deadlines (settle: `maxTimeoutSeconds` + 30 s), bounded answers, only the fields the facilitator needs; `checkFacilitator()` at startup (network, `exact`, sponsored fees) |
@@ -261,7 +262,7 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 | `registration.ts` | The 8004 registration file from the manifest [I1], and `checkRegistration()` (I1–I3, read-only) |
 | `validation-request.ts` | The validation request, checked before anything is signed (I1–I3, a signer the registry accepts, a validator that is not the provider itself) and sent as canonical JSON in a `data:` URI |
 | `testing.ts` | `signTestPayment()`: real x402 payments signed offline, for provider and client tests |
-| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `try` (one paid testnet call from a throwaway payer), `trustline`, `register`, `request-validation`, `reconcile` |
+| `cli/` | `serve --config` (gateway mode), `init` (a starter config, or `--openapi` from an OpenAPI document), `check` (self-check), `try` (one paid testnet call from a throwaway payer), `trustline`, `register`, `request-validation`, `reconcile` |
 | `Dockerfile`, `schemas/gateway-config.schema.json` | The gateway image; the config file's JSON Schema |
 
 **Developer experience targets (W2 exit criteria):**
