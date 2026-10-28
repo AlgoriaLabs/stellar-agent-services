@@ -96,7 +96,8 @@ export class PaymentUncertainError extends Error {
   override name = "PaymentUncertainError";
   constructor(
     readonly jobId: string,
-    reason: string,
+    /** What happened, without the advice the message adds. */
+    readonly reason: string,
   ) {
     super(`${reason}. The payment may have gone through: recover job ${jobId}, do not pay again.`);
   }

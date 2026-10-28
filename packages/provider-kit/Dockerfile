@@ -21,6 +21,8 @@ COPY examples/paid-service/package.json examples/paid-service/
 COPY apps/wallet/package.json apps/wallet/
 RUN npm ci --workspace @stellar-agent-services/provider-kit --include-workspace-root --ignore-scripts
 COPY packages/protocol packages/protocol
+# The payment client is what `provider-kit try` pays with; the CLI loads it with every command.
+COPY packages/payment-client packages/payment-client
 COPY packages/provider-kit packages/provider-kit
 RUN npx tsc -b packages/provider-kit
 
@@ -38,6 +40,7 @@ COPY apps/wallet/package.json apps/wallet/
 RUN npm ci --omit=dev --workspace @stellar-agent-services/provider-kit --ignore-scripts && npm cache clean --force
 COPY --from=build /repo/packages/protocol/dist packages/protocol/dist
 COPY --from=build /repo/packages/protocol/schemas packages/protocol/schemas
+COPY --from=build /repo/packages/payment-client/dist packages/payment-client/dist
 COPY --from=build /repo/packages/provider-kit/dist packages/provider-kit/dist
 COPY --from=build /repo/packages/provider-kit/schemas packages/provider-kit/schemas
 

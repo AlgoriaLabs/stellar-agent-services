@@ -12,7 +12,7 @@
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import type { JsonObject, ProviderInfo, StellarNetwork } from "@stellar-agent-services/protocol";
+import { DEFAULT_MANIFEST_PATH, type JsonObject, type ProviderInfo, type StellarNetwork } from "@stellar-agent-services/protocol";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
 import { defineService, type CapacityConfig } from "../define-service.js";
 import { memoryStore } from "../jobs/memory-store.js";
@@ -110,13 +110,7 @@ export async function loadGatewayConfig(
   }
   const file = { ...(raw as GatewayConfig), ...stripUndefined({ dev: options.overrides?.dev, runQueuedJobs: options.overrides?.runQueuedJobs }) };
 
-  const fromEnv = (value: string, field: string): string => {
-    if (!value.startsWith("env:")) return value;
-    const name = value.slice("env:".length);
-    const found = env[name];
-    if (found === undefined || found === "") throw new GatewayConfigError(`${field} reads the environment variable ${name}, which is not set`);
-    return found;
-  };
+  const fromEnv = (value: string, field: string): string => readEnv(value, field, env);
   const headers = (values: Record<string, string> | undefined, field: string) =>
     values === undefined ? undefined : Object.fromEntries(Object.entries(values).map(([name, value]) => [name, fromEnv(value, `${field}.${name}`)]));
   const loadSchema = async (value: JsonObject | string, field: string): Promise<JsonObject> => {
@@ -215,6 +209,36 @@ export async function loadGatewayConfig(
   const port = options.overrides?.port ?? (env["PORT"] === undefined ? undefined : Number(env["PORT"])) ?? file.listen?.port ?? DEFAULT_PORT;
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new GatewayConfigError(`the port must be 0–65535, not ${port}`);
   return { config, listen: { host: file.listen?.host ?? "0.0.0.0", port } };
+}
+
+/**
+ * Where the provider a config file describes serves its manifest. Only `baseUrl` and `manifestPath` are read, so
+ * the rest of the provider's environment (PAY_TO, upstream keys) needn't be set here to find it.
+ */
+export async function gatewayManifestUrl(path: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
+  let file: Partial<Record<"baseUrl" | "manifestPath", unknown>>;
+  try {
+    file = JSON.parse(await readFile(path, "utf8")) as typeof file;
+  } catch (error) {
+    throw new GatewayConfigError(`the config file can't be read: ${(error as Error).message}`);
+  }
+  if (typeof file.baseUrl !== "string") throw new GatewayConfigError("the config file has no baseUrl");
+  const baseUrl = readEnv(file.baseUrl, "baseUrl", env);
+  const manifestPath = typeof file.manifestPath === "string" ? file.manifestPath : DEFAULT_MANIFEST_PATH;
+  try {
+    return new URL(manifestPath, new URL(baseUrl).origin).toString();
+  } catch {
+    throw new GatewayConfigError(`baseUrl is not a URL: ${baseUrl}`);
+  }
+}
+
+/** A config value, or the environment variable it names as "env:NAME". */
+function readEnv(value: string, field: string, env: NodeJS.ProcessEnv): string {
+  if (!value.startsWith("env:")) return value;
+  const name = value.slice("env:".length);
+  const found = env[name];
+  if (found === undefined || found === "") throw new GatewayConfigError(`${field} reads the environment variable ${name}, which is not set`);
+  return found;
 }
 
 /** Drops undefined members, for exactOptionalPropertyTypes. */

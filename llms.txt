@@ -56,6 +56,7 @@
 
 - [Contributing](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/CONTRIBUTING.md): How changes are made: the spec first, then the kit, client and verifier
 - [ERC compatibility](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/erc-compatibility.md): How the standard lines up with ERC-8126 (agent verification) and ERC-8196 (agent authenticated wallet)
+- [Developer experience improvements](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/dx-improvements.md): What each phase of the developer-experience work changed for providers, and how it was checked
 - [Manifest JSON Schema](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/protocol/schemas/manifest.schema.json): The schema every manifest must pass [M9]
 - [Gateway config JSON Schema](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/provider-kit/schemas/gateway-config.schema.json): The schema of `provider.config.json`
 - [Implementation plan](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/IMPLEMENTATION_PLAN.md): The project plan and its weekly milestones

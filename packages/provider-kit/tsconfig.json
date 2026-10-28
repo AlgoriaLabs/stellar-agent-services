@@ -7,5 +7,5 @@
     "resolveJsonModule": true
   },
   "include": ["src"],
-  "references": [{ "path": "../protocol" }]
+  "references": [{ "path": "../protocol" }, { "path": "../payment-client" }]
 }

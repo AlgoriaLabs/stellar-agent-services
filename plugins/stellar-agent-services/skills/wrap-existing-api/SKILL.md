@@ -66,8 +66,13 @@ verifier check http://localhost:8787/.well-known/stellar-agent-services.json --d
 `PAY_TO` is a public testnet address with a USDC trustline, an account in the user's own wallet:
 `provider-kit trustline --network testnet` sets it up and prints it (`docs/provider-setup-guide.md` §2). It opens a
 page in the user's browser and waits for them to approve in their wallet. Before 8004 registration, `check` reports
-a missing agent id. That is expected. For a paid test call, ask the user first, then use `stellar-pay` as in
-`docs/provider-setup-guide.md` §6.
+a missing agent id. That is expected.
+
+For a paid test call, ask the user first: it spends test money only, but it is a payment. Once they agree, run
+`provider-kit try <service> --manifest http://localhost:8787/.well-known/stellar-agent-services.json --yes`. It pays
+from a throwaway testnet account it funds itself, so the user needs no payer wallet, and it shows the result and the
+transfer on chain (`docs/provider-setup-guide.md` §6). Without `--yes` it asks in the terminal, which you can't
+answer.
 
 ## 5. Deploy and register
 

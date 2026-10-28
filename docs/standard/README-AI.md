@@ -418,7 +418,15 @@ itself in its `description`.
 `chargedFor`, `jobViewHttpStatus`, `parseRetryAfter`, `problem`, `jobError`, `createJobUrl`, `jobStatusUrl`,
 `jobResultUrl`, `stellarAddressKind`, `validationRequestHash`, `validationRequestDataUri`, `USDC_ASSET`.
 
-**A real paid call on testnet** against a local provider, using the payment client CLI (see
+**A real paid call on testnet** against a local provider, in any language. `provider-kit try` pays once from a
+throwaway testnet account it funds itself, then confirms the transfer on chain. It shows the payment and asks
+first; `--yes` skips the question:
+
+```bash
+npx provider-kit try text-stats '{"text":"Hello agents."}' --manifest http://localhost:8787/.well-known/stellar-agent-services.json
+```
+
+Or pay from a payer wallet of your own with the payment client CLI (see
 [packages/payment-client/README.md](../../packages/payment-client/README.md)):
 
 ```bash

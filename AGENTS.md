@@ -101,8 +101,9 @@ These come from the spec and [SECURITY.md](SECURITY.md). Breaking one loses or d
 ## 5. Before you call it done
 
 - **Provider:** the manifest passes the JSON Schema and `checkManifestRules` (or the MCP tool
-  `validate_manifest`). `provider-kit check` and `verifier check` pass. A paid testnet call with `stellar-pay pay`
-  succeeds, and the transfer is on chain. The checklist is in
+  `validate_manifest`). `provider-kit check` and `verifier check` pass. A paid testnet call succeeds and the
+  transfer is on chain: `provider-kit try <service> --manifest <url> --yes`, after the user agreed to pay, pays from
+  a throwaway testnet account (or `stellar-pay pay` from a payer wallet). The checklist is in
   [docs/standard/README-AI.md §13](docs/standard/README-AI.md#13-testing-and-conformance).
 - **Client or adapter:** the conformance checks pass, and tests use `Keypair.random()` and never the network.
 - **Any change here:** `npm run typecheck` and `npm test` pass. If you changed a document that

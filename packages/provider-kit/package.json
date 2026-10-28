@@ -26,6 +26,7 @@
     "check": "svelte-check --workspace ./approve --tsconfig ./tsconfig.json --fail-on-warnings"
   },
   "dependencies": {
+    "@stellar-agent-services/payment-client": "0.0.0",
     "@stellar-agent-services/protocol": "0.0.0",
     "@stellar/stellar-sdk": "16.3.1",
     "@trionlabs/stellar8004": "0.0.11",

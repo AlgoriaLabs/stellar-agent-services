@@ -109,8 +109,9 @@ These come from the spec and [SECURITY.md](SECURITY.md). Breaking one loses or d
 ## 5. Before you call it done
 
 - **Provider:** the manifest passes the JSON Schema and `checkManifestRules` (or the MCP tool
-  `validate_manifest`). `provider-kit check` and `verifier check` pass. A paid testnet call with `stellar-pay pay`
-  succeeds, and the transfer is on chain. The checklist is in
+  `validate_manifest`). `provider-kit check` and `verifier check` pass. A paid testnet call succeeds and the
+  transfer is on chain: `provider-kit try <service> --manifest <url> --yes`, after the user agreed to pay, pays from
+  a throwaway testnet account (or `stellar-pay pay` from a payer wallet). The checklist is in
   [docs/standard/README-AI.md §13](docs/standard/README-AI.md#13-testing-and-conformance).
 - **Client or adapter:** the conformance checks pass, and tests use `Keypair.random()` and never the network.
 - **Any change here:** `npm run typecheck` and `npm test` pass. If you changed a document that
@@ -1384,7 +1385,15 @@ itself in its `description`.
 `chargedFor`, `jobViewHttpStatus`, `parseRetryAfter`, `problem`, `jobError`, `createJobUrl`, `jobStatusUrl`,
 `jobResultUrl`, `stellarAddressKind`, `validationRequestHash`, `validationRequestDataUri`, `USDC_ASSET`.
 
-**A real paid call on testnet** against a local provider, using the payment client CLI (see
+**A real paid call on testnet** against a local provider, in any language. `provider-kit try` pays once from a
+throwaway testnet account it funds itself, then confirms the transfer on chain. It shows the payment and asks
+first; `--yes` skips the question:
+
+```bash
+npx provider-kit try text-stats '{"text":"Hello agents."}' --manifest http://localhost:8787/.well-known/stellar-agent-services.json
+```
+
+Or pay from a payer wallet of your own with the payment client CLI (see
 [packages/payment-client/README.md](../../packages/payment-client/README.md)):
 
 ```bash
@@ -1903,18 +1912,35 @@ verifier check http://localhost:8787/.well-known/stellar-agent-services.json --d
 
 ## 6. Make a paid testnet request
 
-Pay your own service with the payment client, from a separate payer wallet:
+Pay your own service once, the way any client will:
+
+```bash
+provider-kit try <service>                    # with the service's example input
+provider-kit try <service> '<input JSON>'     # or your own input, or @input.json
+```
+
+It shows the exact payment and asks first. Then it pays from a throwaway testnet account it makes for this call,
+with test XLM from Friendbot and the price in test USDC from the testnet DEX, and shows the result and the
+`transfer` on chain. You need no payer wallet, and the throwaway key is never written anywhere. A gateway is found
+from `provider.config.json`, any other provider with `--manifest <url>`, and without either it tries
+`http://localhost:8787`.
+
+<details>
+<summary>Pay from your own test wallet instead</summary>
+
+The payment client's CLI keeps a payer wallet, a spending policy and a journal, as a real client does, and can
+recover a job after a lost response ([job-recovery.md](job-recovery.md)):
 
 ```bash
 npx stellar-pay wallet create
 npx stellar-pay wallet fund --usdc 2
 MANIFEST=http://localhost:8787/.well-known/stellar-agent-services.json
-npx stellar-pay services $MANIFEST --dev
 npx stellar-pay pay $MANIFEST <service> '<input JSON>' --dev
 ```
 
-You see the approval prompt, the payment settles on testnet, and the client confirms the `transfer` on chain. The
-web page in [apps/wallet](../apps/wallet) does the same in a browser.
+The web page in [apps/wallet](../apps/wallet) does the same in a browser.
+
+</details>
 
 ## 7. Deploy on HTTPS
 
@@ -1986,7 +2012,7 @@ Turn a function, or an existing HTTP API in any language, into a paid Stellar se
 - job recovery: a client that lost its response collects the result without paying again
 - capacity: a queue per service, and `429`/`503` before payment when it is full
 - durable jobs: paid jobs survive restarts, and workers can run in separate processes
-- Stellar 8004 registration and a self-check, from the CLI
+- Stellar 8004 registration, a self-check and a paid test call, from the CLI
 
 Two ways to use it:
 
@@ -2099,13 +2125,55 @@ mount the config at `/config/provider.config.json` and a volume at `/data` (set 
 | `provider-kit serve --config <file>` | Gateway mode. Graceful shutdown on SIGTERM. `--no-workers` for HTTP-only processes. |
 | `provider-kit init [--upstream <url>]` | Writes a starter gateway config. |
 | `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. |
+| `provider-kit try [<service>] ['<input JSON>' \| @<file>]` | One paid call on testnet, the way any client makes it. See [Trying a paid call](#trying-a-paid-call). |
 | `provider-kit trustline [--config \| --manifest \| --network <testnet\|mainnet>]` | Adds a USDC trustline to `payTo` [P2], approved in its wallet. A new testnet account gets test XLM from Friendbot first. Without `--config` or `--manifest`, it sets up the account the wallet connects and prints it as `PAY_TO`. Signs nothing when the trustline exists. |
 | `provider-kit register (--config \| --manifest)` | Registers in the Stellar 8004 identity registry from the `payTo` account, or updates the registration from the agent's owner, approved in the wallet. Adds the USDC trustline first when it is missing, and saves the new `agentId` to `--config` [I2]. |
 | `provider-kit request-validation (--config \| --manifest) --validator <G…>` | Asks a verifier for validation in the Stellar 8004 Validation Registry. Checks first that a verifier can validate the provider ([I1]–[I3]), that the connected account may ask for the agent, and that the validator is not the provider itself. Puts the request document on chain as a `data:` URI, has the owner's wallet sign it and prints the request hash for the verifier. `--out` writes the request document. |
+| `provider-kit reconcile (--config <file> \| --store <file> --network <net>)` | Decides `payment_uncertain` jobs from on-chain data [J13]. `--dry-run` only reports; `--rpc <url>` picks the Soroban RPC. It reads the chain, writes only the job store and signs nothing, so it is safe next to a running provider. Exits 1 while a job is undecided. |
 
 `trustline`, `register` and `request-validation` take `--source <key>` to sign with the
 [Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain instead of a wallet, for scripts and CI. With
 `--source`, `--dry-run` prints the Stellar CLI command. `--rpc <url>` picks the Soroban RPC.
+
+### Trying a paid call
+
+`provider-kit try` pays for one job on testnet, as a client would, so you see the whole flow work before anyone
+else pays:
+
+```bash
+provider-kit try text-stats                         # the service's example input
+provider-kit try text-stats '{"text":"Hello"}'      # or your own, or @input.json
+```
+
+```text
+  ✓ Test XLM from Friendbot
+  ✓ Test USDC from the testnet DEX: 0.01 USDC
+  ✓ text-stats succeeded: 10.2 s from payment to result
+  ✓ Paid 0.01 USDC, confirmed on chain: https://stellar.expert/explorer/testnet/tx/0051061a…cda9
+
+{
+  "words": 2,
+  "sentences": 1,
+  "characters": 12
+}
+
+GDJB…XA3O (payTo) received 0.01 USDC.
+```
+
+- **The provider:** `--manifest <url>` for any provider, or `--config` for a gateway, read for its `baseUrl` only.
+  Without either, `./provider.config.json` when it exists, else `http://localhost:8787`. With several services and
+  none named, it lists them.
+- **The payer:** a throwaway test account, made for this call. It gets test XLM from Friendbot and exactly the price
+  in test USDC from the testnet DEX. Its key stays in memory and is never written anywhere. You need no payer wallet.
+- **The payment:** the payment client's own flow, with every check. The exact price, payee and network are shown and
+  approved first (`--yes` skips the question, for scripts), and its spending policy allows that one payment only.
+  The transfer is confirmed on chain [J16].
+- **Testnet only.** A provider on Mainnet is refused before anything is signed.
+
+It exits 0 only when the job succeeded and its payment is confirmed. If the answer to the paid request is lost, it
+says the payment may have gone through and never calls it unpaid: your provider decides it from the chain
+[J13]. If the testnet DEX has no USDC for sale, nothing is paid: try again later, or pay with `stellar-pay` from a
+test wallet of your own, funded at [faucet.circle.com](https://faucet.circle.com) (setup guide §6).
 
 ### Approving in your wallet
 
@@ -2134,7 +2202,6 @@ How it stays safe:
 
 The page's source is in `approve/` (Svelte), built into `dist/approve` by `npm run build`. `npm run dev:approve`
 serves it alone for design work.
-| `provider-kit reconcile (--config <file> \| --store <file> --network <net>)` | Decides `payment_uncertain` jobs from on-chain data [J13]. `--dry-run` only reports; `--rpc <url>` picks the Soroban RPC. It reads the chain, writes only the job store and signs nothing, so it is safe next to a running provider. Exits 1 while a job is undecided. |
 
 ## Payment safety
 
@@ -2252,6 +2319,7 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/cli/approval-view.ts` | What the page shows: the session as JSON, shared with the page |
 | `src/cli/owner-chain.ts` | The owner's transactions: built, checked once signed, sent and followed into a ledger |
 | `src/cli/owner-steps.ts` | Test XLM, the USDC trustline, registration and the validation request, as approval steps |
+| `src/cli/try.ts` | `provider-kit try`: one paid testnet call through the payment client, from a throwaway payer |
 | `approve/` | The approval page (Svelte, Stellar Wallets Kit), built into `dist/approve` |
 | `schemas/gateway-config.schema.json` | The gateway config file's JSON Schema |
 | `Dockerfile` | The gateway image |
@@ -2273,7 +2341,9 @@ Jobs are kept in SQLite (`JOB_DB_PATH`, default `./jobs.sqlite`), so a paid job 
 server while a report is queued, start it again, and the report runs.
 
 Run it with `PAY_TO=G... npm start` in this directory, after `npm install && npm run build` at the repository
-root. `.env.example` lists the settings; they are public values only. See
+root. `.env.example` lists the settings; they are public values only. Then `npx provider-kit try text-stats`, from
+another terminal, pays for one job on testnet from a throwaway account and shows the result (`try delayed-report`
+shows a job that answers 202 and is polled). See
 [packages/payment-client](../../packages/payment-client/README.md) for a full testnet walkthrough, and the
 [setup guide](../../docs/provider-setup-guide.md) for building your own provider from this template.
 
@@ -2312,12 +2382,14 @@ PUBLIC_ORIGIN=http://localhost:8787 PAY_TO=G... \
 
 `PAY_TO` is the public address that receives the USDC, an account in your own wallet. It needs a USDC trustline:
 `provider-kit trustline --network testnet` adds one, approved in your wallet (see the
-[setup guide](../../docs/provider-setup-guide.md)). Then pay it from another terminal:
+[setup guide](../../docs/provider-setup-guide.md)). Then pay it once from another terminal, with its example input:
 
 ```bash
-MANIFEST=http://localhost:8787/.well-known/stellar-agent-services.json
-npx stellar-pay pay $MANIFEST summarize '{"text":"Stellar settles in seconds. Fees are tiny.","sentences":1}' --dev
+node packages/provider-kit/dist/cli/index.js try summarize --manifest http://localhost:8787/.well-known/stellar-agent-services.json
 ```
+
+It pays from a throwaway testnet account it funds itself, after you approve the exact payment, and shows the summary
+and the transfer on chain.
 
 `packages/provider-kit/test/gateway.test.ts` runs this example end to end, with a stand-in facilitator.
 

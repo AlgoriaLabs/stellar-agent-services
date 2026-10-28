@@ -49,6 +49,7 @@ export async function init(flags: CliFlags): Promise<number> {
   1. Edit the service: name, description, price, schemas and upstream URL.
   2. PAY_TO=G... provider-kit check --config ${out}
   3. PAY_TO=G... provider-kit serve --config ${out}
+  4. provider-kit try my-service '{"text":"Hello"}' --config ${out}   (one paid testnet call, from another terminal)
   For production, set baseUrl to your public HTTPS URL and remove "dev".`);
   return 0;
 }

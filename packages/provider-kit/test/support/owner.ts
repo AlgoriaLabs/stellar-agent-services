@@ -31,12 +31,12 @@ export function fakeChain(network: StellarNetwork = "stellar:testnet"): FakeChai
   const passphrase = network === "stellar:pubnet" ? Networks.PUBLIC : Networks.TESTNET;
   const calls = new Map<string, ContractCall>();
   let sequence = 100n;
-  const build = (address: string, operation: xdr.Operation) => {
+  const usdc = new Asset("USDC", USDC_ISSUER[network]);
+  const build = (address: string, ...operations: xdr.Operation[]) => {
     sequence += 1n;
-    return new TransactionBuilder(new Account(address, sequence.toString()), { fee: "100", networkPassphrase: passphrase })
-      .addOperation(operation)
-      .setTimeout(300)
-      .build();
+    const builder = new TransactionBuilder(new Account(address, sequence.toString()), { fee: "100", networkPassphrase: passphrase });
+    for (const operation of operations) builder.addOperation(operation);
+    return builder.setTimeout(300).build();
   };
   const chain: FakeChain = {
     network,
@@ -55,7 +55,15 @@ export function fakeChain(network: StellarNetwork = "stellar:testnet"): FakeChai
       chain.accounts.set(address, { usdcTrustline: false });
     },
     async trustline(address) {
-      return build(address, Operation.changeTrust({ asset: new Asset("USDC", USDC_ISSUER[network]) }));
+      return build(address, Operation.changeTrust({ asset: usdc }));
+    },
+    async buyTestUsdc(address, amount) {
+      const destAmount = (Number(amount) / 1e7).toFixed(7);
+      return build(
+        address,
+        Operation.changeTrust({ asset: usdc }),
+        Operation.pathPaymentStrictReceive({ sendAsset: Asset.native(), sendMax: "5000", destination: address, destAsset: usdc, destAmount, path: [] }),
+      );
     },
     async invoke(address, call) {
       chain.invoked.push({ address, call });

@@ -1,9 +1,9 @@
 // The owner's transactions: built here, signed in the developer's own wallet, then checked and sent here
 // (docs/provider-setup-guide.md §2, §8 and §9). Nothing in this file holds or asks for a key.
 //
-// - OwnerChain: the reads and writes the owner commands make. rpcOwnerChain() uses Soroban RPC, which
-//   takes classic transactions (the USDC trustline) and contract calls (the Stellar 8004 registries)
-//   alike. Tests pass a fake.
+// - OwnerChain: the reads and writes the owner commands make, plus the test USDC that `provider-kit try`
+//   buys for its throwaway payer. rpcOwnerChain() uses Soroban RPC, which takes classic transactions (the
+//   USDC trustline) and contract calls (the Stellar 8004 registries) alike. Tests pass a fake.
 // - verifySigned(): what a wallet hands back must be the very transaction built here, signed by the
 //   connected account for this network. Anything else is refused before it is sent.
 // - registerCall(), setAgentUriCall(), validationRequestCall(): the registry invocations, with their
@@ -34,6 +34,8 @@ import type { PreparedValidationRequest } from "../validation-request.js";
 export const OWNER_TX_TIMEOUT_SECONDS = 300;
 /** The most a classic transaction may cost in fees, in stroops: 0.001 XLM. Without surge pricing it costs 0.00001. */
 const CLASSIC_MAX_FEE = "10000";
+/** The most test XLM buyTestUsdc() spends: half of what Friendbot gives a new account. */
+const TEST_XLM_SPEND = "5000";
 const RPC_TIMEOUT_MS = 30_000;
 /** send() polls the RPC once a second for this many seconds. A ledger closes about every 5 s. */
 const POLL_ATTEMPTS = 30;
@@ -83,6 +85,11 @@ export interface OwnerChain {
   fund(address: string): Promise<void>;
   /** A transaction from `address` that adds its USDC trustline [P2]. */
   trustline(address: string): Promise<Transaction>;
+  /**
+   * Testnet only: a transaction from `address` that adds its USDC trustline and buys `amount` USDC (base units)
+   * with test XLM on the testnet DEX. It funds the throwaway payer of `provider-kit try`.
+   */
+  buyTestUsdc(address: string, amount: string): Promise<Transaction>;
   /** A contract call from `address`, simulated and assembled, ready to sign. Throws an ApprovalError explaining a contract error. */
   invoke(address: string, call: ContractCall): Promise<Transaction>;
   /** Sends a signed transaction and waits for a ledger to include it. */
@@ -130,6 +137,23 @@ export function rpcOwnerChain(network: StellarNetwork, rpcUrl?: string): OwnerCh
     async trustline(address) {
       return new TransactionBuilder(await source(address), { fee: CLASSIC_MAX_FEE, networkPassphrase: passphrase })
         .addOperation(Operation.changeTrust({ asset: usdc }))
+        .setTimeout(OWNER_TX_TIMEOUT_SECONDS)
+        .build();
+    },
+    async buyTestUsdc(address, amount) {
+      if (network !== "stellar:testnet") throw new ApprovalError("No test USDC on Mainnet", "The testnet DEX sells test USDC only.", "none");
+      return new TransactionBuilder(await source(address), { fee: CLASSIC_MAX_FEE, networkPassphrase: passphrase })
+        .addOperation(Operation.changeTrust({ asset: usdc }))
+        .addOperation(
+          Operation.pathPaymentStrictReceive({
+            sendAsset: Asset.native(),
+            sendMax: TEST_XLM_SPEND,
+            destination: address,
+            destAsset: usdc,
+            destAmount: decimal(BigInt(amount)),
+            path: [],
+          }),
+        )
         .setTimeout(OWNER_TX_TIMEOUT_SECONDS)
         .build();
     },
@@ -246,10 +270,19 @@ export function explorerUrl(network: StellarNetwork, kind: "tx" | "account" | "c
 
 /** Stroops as XLM, such as "0.0012345 XLM". */
 export function formatXlm(stroops: string | number | bigint): string {
-  const value = BigInt(stroops);
-  const whole = value / 10_000_000n;
-  const fraction = (value % 10_000_000n).toString().padStart(7, "0").replace(/0+$/, "");
-  return `${whole}${fraction === "" ? "" : `.${fraction}`} XLM`;
+  return `${decimal(BigInt(stroops))} XLM`;
+}
+
+/** USDC base units as USDC, such as "0.01 USDC". */
+export function formatUsdc(units: string | bigint): string {
+  return `${decimal(BigInt(units), 2)} USDC`;
+}
+
+/** An amount with 7 decimals, as Stellar writes assets, with at least `minDecimals` of them. */
+function decimal(units: bigint, minDecimals = 0): string {
+  const whole = units / 10_000_000n;
+  const fraction = (units % 10_000_000n).toString().padStart(7, "0").replace(/0+$/, "").padEnd(minDecimals, "0");
+  return `${whole}${fraction === "" ? "" : `.${fraction}`}`;
 }
 
 function accountKey(address: string): xdr.LedgerKey {
@@ -295,6 +328,8 @@ const RESULT_CODES: Record<string, string> = {
   txInsufficientFee: "The fee was too low for the network's load right now.",
   txSorobanInvalid: "The contract call's resources didn't fit.",
   changeTrustLowReserve: "The account needs 0.5 XLM more to hold USDC: Stellar keeps it in reserve while the trustline exists.",
+  pathPaymentStrictReceiveTooFewOffers: "The testnet DEX has no test USDC for sale right now.",
+  pathPaymentStrictReceiveOverSendmax: "Test USDC costs more XLM on the testnet DEX right now than the account may spend.",
   invokeHostFunctionTrapped: "The contract refused the call.",
   invokeHostFunctionResourceLimitExceeded: "The contract call needed more resources than simulated.",
   invokeHostFunctionInsufficientRefundableFee: "The contract call needed a higher fee than simulated.",
@@ -306,10 +341,11 @@ export function describeResult(result: xdr.TransactionResult | undefined): strin
   const outcome = result.result();
   let code: string = outcome.switch().name;
   if (code === "txFailed") {
-    const operation = outcome.results()[0];
-    if (operation !== undefined) {
-      code = operation.switch().name === "opInner" ? (operation.tr().value() as { switch(): { name: string } }).switch().name : operation.switch().name;
-    }
+    // The operation that failed. The ones before it succeeded, and were undone with the transaction.
+    const codes = outcome
+      .results()
+      .map((operation) => (operation.switch().name === "opInner" ? (operation.tr().value() as { switch(): { name: string } }).switch().name : operation.switch().name));
+    code = codes.find((name) => !name.endsWith("Success")) ?? codes[0] ?? code;
   }
   return RESULT_CODES[code] ?? `Stellar answered ${code}.`;
 }

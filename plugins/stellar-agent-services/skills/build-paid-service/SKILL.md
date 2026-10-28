@@ -82,9 +82,10 @@ config. Don't work around the check.
 1. `provider-kit check --manifest http://localhost:8787/.well-known/stellar-agent-services.json --dev`. Before
    8004 registration it reports a missing agent id. That is expected.
 2. `verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev`. C1, C3, C6 and C7 must pass.
-3. Ask before spending testnet funds, then make a paid call from a separate payer wallet:
-   `alias stellar-pay="node $REPO/packages/payment-client/dist/cli.js"`, `stellar-pay wallet create`,
-   `stellar-pay wallet fund --usdc 2`, then `stellar-pay pay <manifest-url> translate '{"text":"Hello"}' --dev`.
+3. Ask the user before paying: it spends test money only, but it is a payment. Once they agree, run
+   `provider-kit try translate '{"text":"Hello"}' --manifest http://localhost:8787/.well-known/stellar-agent-services.json --yes`.
+   It pays from a throwaway testnet account it funds itself, so the user needs no payer wallet, and shows the result
+   and the transfer on chain. Without `--yes` it asks in the terminal, which you can't answer.
 
 The user needs a testnet `payTo` account with a USDC trustline: an account in the wallet they already use.
 `provider-kit trustline --network testnet` sets it up (`docs/provider-setup-guide.md` §2). It opens a page in the

@@ -168,18 +168,35 @@ verifier check http://localhost:8787/.well-known/stellar-agent-services.json --d
 
 ## 6. Make a paid testnet request
 
-Pay your own service with the payment client, from a separate payer wallet:
+Pay your own service once, the way any client will:
+
+```bash
+provider-kit try <service>                    # with the service's example input
+provider-kit try <service> '<input JSON>'     # or your own input, or @input.json
+```
+
+It shows the exact payment and asks first. Then it pays from a throwaway testnet account it makes for this call,
+with test XLM from Friendbot and the price in test USDC from the testnet DEX, and shows the result and the
+`transfer` on chain. You need no payer wallet, and the throwaway key is never written anywhere. A gateway is found
+from `provider.config.json`, any other provider with `--manifest <url>`, and without either it tries
+`http://localhost:8787`.
+
+<details>
+<summary>Pay from your own test wallet instead</summary>
+
+The payment client's CLI keeps a payer wallet, a spending policy and a journal, as a real client does, and can
+recover a job after a lost response ([job-recovery.md](job-recovery.md)):
 
 ```bash
 npx stellar-pay wallet create
 npx stellar-pay wallet fund --usdc 2
 MANIFEST=http://localhost:8787/.well-known/stellar-agent-services.json
-npx stellar-pay services $MANIFEST --dev
 npx stellar-pay pay $MANIFEST <service> '<input JSON>' --dev
 ```
 
-You see the approval prompt, the payment settles on testnet, and the client confirms the `transfer` on chain. The
-web page in [apps/wallet](../apps/wallet) does the same in a browser.
+The web page in [apps/wallet](../apps/wallet) does the same in a browser.
+
+</details>
 
 ## 7. Deploy on HTTPS
 

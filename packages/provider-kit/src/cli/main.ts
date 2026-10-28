@@ -3,13 +3,15 @@
 //   serve --config <file>  gateway mode: put an existing HTTP API behind payment and job recovery
 //   init                   write a starter gateway config
 //   check                  self-check against Provider Standard v1 (no payment, no keys)
+//   try                    one paid testnet call, from a throwaway payer that only lives in memory
 //   trustline              let the payout account receive USDC (signed in the owner's wallet)
 //   register               register or update the 8004 identity (signed in the owner's wallet)
 //   request-validation     ask a verifier for validation in the 8004 Validation Registry (signed the same way)
 //   reconcile              decide payment_uncertain jobs from on-chain data (signs nothing)
 //
-// This CLI never holds a key. The owner's transactions are signed in their own wallet, on a page the CLI
-// serves on this computer (approval.ts), or with --source by the Stellar CLI keychain.
+// This CLI never holds the owner's key. The owner's transactions are signed in their own wallet, on a page the
+// CLI serves on this computer (approval.ts), or with --source by the Stellar CLI keychain. The only key it makes
+// is try's throwaway testnet payer, kept in memory and never written anywhere.
 // `serve` is also shipped as a Docker image (packages/provider-kit/Dockerfile).
 
 import { parseArgs } from "node:util";
@@ -21,6 +23,7 @@ import { requestValidation } from "./request-validation.js";
 import { serve } from "./serve.js";
 import { OPTIONS, UsageError } from "./shared.js";
 import { trustline } from "./trustline.js";
+import { tryCall } from "./try.js";
 
 const USAGE = `provider-kit: run a paid AI service on Stellar (Provider Standard v1)
 
@@ -28,6 +31,8 @@ Usage:
   provider-kit serve --config <file> [--port <n>] [--dev] [--no-workers]
   provider-kit init [--out <file>] [--upstream <url>]
   provider-kit check (--config <file> | --manifest <url>) [--dev]
+  provider-kit try [<service>] ['<input JSON>' | @<file>] [--config <file> | --manifest <url>]
+                   [--yes] [--rpc <url>]
   provider-kit trustline [--config <file> | --manifest <url> | --network <testnet|mainnet>]
                          [--source <stellar-cli key>] [--rpc <url>] [--dry-run]
   provider-kit register (--config <file> | --manifest <url>) [--source <stellar-cli key>]
@@ -44,6 +49,11 @@ serve       Puts the HTTP API named in the config behind the manifest, x402 paym
 init        Writes a starter gateway config to edit.
 check       Checks a provider without paying: config, manifest, facilitator, payTo trustline and the
             Stellar 8004 registration. Exits 1 if anything fails.
+try         Pays for one job on testnet, the way any client does, and shows the result and the
+            payment on chain. The payer is a throwaway test account, funded with test XLM and test
+            USDC, kept in memory only. Without an input, it uses the service's example. Without
+            --config or --manifest, it tries ./provider.config.json, else http://localhost:8787.
+            It shows the exact payment and asks first; --yes pays without asking.
 trustline   Lets the payout account (payTo) receive USDC: a USDC trustline, approved in your wallet.
             A new testnet account gets test XLM first. Without --config or --manifest, it sets up the
             account your wallet connects and prints it as PAY_TO.
@@ -69,7 +79,7 @@ The provider never needs a Stellar secret key. Docs: docs/provider-setup-guide.m
 
 async function main(argv: string[]): Promise<number> {
   const { values, positionals } = parseArgs({ args: argv, options: OPTIONS, allowPositionals: true, strict: true });
-  const [command] = positionals;
+  const [command, ...args] = positionals;
   if (values.help || command === undefined || command === "help") {
     console.log(USAGE);
     return command === undefined && !values.help ? 1 : 0;
@@ -81,6 +91,8 @@ async function main(argv: string[]): Promise<number> {
       return init(values);
     case "check":
       return check(values);
+    case "try":
+      return tryCall(values, args);
     case "trustline":
       return trustline(values);
     case "register":

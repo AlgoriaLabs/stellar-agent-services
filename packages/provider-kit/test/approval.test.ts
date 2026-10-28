@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { Networks, TransactionBuilder, xdr, type Transaction } from "@stellar/stellar-sdk";
 import { afterAll, describe, expect, it } from "vitest";
 import { ApprovalConflict, ApprovalError, ApprovalSession, startApprovalServer, type ApprovalPlan, type ApprovalStep } from "../src/cli/approval.js";
-import { contractError, describeResult, formatXlm, verifySigned } from "../src/cli/owner-chain.js";
+import { contractError, describeResult, formatUsdc, formatXlm, verifySigned } from "../src/cli/owner-chain.js";
 import { accountSteps } from "../src/cli/owner-steps.js";
 import { account, fakeChain, signed, type FakeChain } from "./support/owner.js";
 
@@ -332,6 +332,12 @@ describe("the owner's transactions", () => {
     expect(describeResult(result(xdr.TransactionResultResult.txBadSeq()))).toBe("The account sent another transaction first.");
     const lowReserve = xdr.TransactionResultResult.txFailed([xdr.OperationResult.opInner(xdr.OperationResultTr.changeTrust(xdr.ChangeTrustResult.changeTrustLowReserve()))]);
     expect(describeResult(result(lowReserve))).toMatch(/needs 0\.5 XLM more to hold USDC/);
+    // The operation that failed is named, not the first one, which succeeded before it.
+    const noOffers = xdr.TransactionResultResult.txFailed([
+      xdr.OperationResult.opInner(xdr.OperationResultTr.changeTrust(xdr.ChangeTrustResult.changeTrustSuccess())),
+      xdr.OperationResult.opInner(xdr.OperationResultTr.pathPaymentStrictReceive(xdr.PathPaymentStrictReceiveResult.pathPaymentStrictReceiveTooFewOffers())),
+    ]);
+    expect(describeResult(result(noOffers))).toBe("The testnet DEX has no test USDC for sale right now.");
     expect(describeResult(result(xdr.TransactionResultResult.txFrozenKeyAccessed()))).toBe("Stellar answered txFrozenKeyAccessed.");
     expect(describeResult(undefined)).toMatch(/without saying why/);
   });
@@ -343,10 +349,14 @@ describe("the owner's transactions", () => {
     expect(contractError("identity", new Error("network down\nmore"))).toMatchObject({ message: "Simulating it failed: network down" });
   });
 
-  it("show fees in XLM", () => {
+  it("show fees in XLM, and prices in USDC", () => {
     expect(formatXlm(100)).toBe("0.00001 XLM");
     expect(formatXlm("336151")).toBe("0.0336151 XLM");
     expect(formatXlm(20_000_000n)).toBe("2 XLM");
+    expect(formatUsdc("100000")).toBe("0.01 USDC");
+    expect(formatUsdc(1_000_000n)).toBe("0.10 USDC");
+    expect(formatUsdc("12345")).toBe("0.0012345 USDC");
+    expect(formatUsdc("20000000")).toBe("2.00 USDC");
   });
 });
 

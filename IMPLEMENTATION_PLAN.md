@@ -261,7 +261,7 @@ persists the result, then drops the response. This is how the SOW recovery demo 
 | `registration.ts` | The 8004 registration file from the manifest [I1], and `checkRegistration()` (I1–I3, read-only) |
 | `validation-request.ts` | The validation request, checked before anything is signed (I1–I3, a signer the registry accepts, a validator that is not the provider itself) and sent as canonical JSON in a `data:` URI |
 | `testing.ts` | `signTestPayment()`: real x402 payments signed offline, for provider and client tests |
-| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `register`, `request-validation`, `reconcile` |
+| `cli/` | `serve --config` (gateway mode), `init`, `check` (self-check), `try` (one paid testnet call from a throwaway payer), `trustline`, `register`, `request-validation`, `reconcile` |
 | `Dockerfile`, `schemas/gateway-config.schema.json` | The gateway image; the config file's JSON Schema |
 
 **Developer experience targets (W2 exit criteria):**

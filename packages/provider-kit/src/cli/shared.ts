@@ -26,6 +26,7 @@ export const OPTIONS = {
   store: { type: "string" },
   rpc: { type: "string" },
   "dry-run": { type: "boolean" },
+  yes: { type: "boolean", short: "y" },
   help: { type: "boolean", short: "h" },
 } as const;
 
