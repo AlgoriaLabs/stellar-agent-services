@@ -7,7 +7,8 @@
 //
 // Secrets stay out of the file: the upstream's API key, a facilitator key and deployment values may be
 // written "env:NAME" and are read from the environment. There is never a Stellar secret key to
-// configure: the gateway, like any provider runtime, holds none.
+// configure: the gateway, like any provider runtime, holds none. provider.agentId is optional, so an
+// "env:AGENT_ID" whose variable is unset or empty leaves it out: the provider isn't registered yet.
 
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -84,7 +85,8 @@ export async function loadGatewayConfig(
   path: string,
   options: {
     env?: NodeJS.ProcessEnv;
-    overrides?: Partial<Pick<GatewayConfig, "dev" | "runQueuedJobs">> & { port?: number };
+    /** baseUrl serves the provider from another origin, such as its public one for `provider-kit launch`. */
+    overrides?: Partial<Pick<GatewayConfig, "dev" | "runQueuedJobs" | "baseUrl">> & { port?: number };
     /** false: use a memory store and leave the job database alone (check, register). Default true. */
     openStore?: boolean;
   } = {},
@@ -158,8 +160,9 @@ export async function loadGatewayConfig(
 
   const { agentId: configuredAgentId, ...info } = file.provider;
   const provider: ProviderInfo = info;
-  if (configuredAgentId !== undefined) {
-    const agentId = Number(typeof configuredAgentId === "string" ? fromEnv(configuredAgentId, "provider.agentId") : configuredAgentId);
+  const agentIdText = typeof configuredAgentId === "string" ? optionalEnv(configuredAgentId, env) : configuredAgentId;
+  if (agentIdText !== undefined) {
+    const agentId = Number(agentIdText);
     if (!Number.isInteger(agentId) || agentId < 0 || agentId > 0xffffffff) throw new GatewayConfigError("provider.agentId must be a Stellar 8004 agent id (a u32)");
     provider.agentId = agentId;
   }
@@ -187,7 +190,7 @@ export async function loadGatewayConfig(
       runQueuedJobs: file.runQueuedJobs,
       leaseSeconds: file.leaseSeconds,
     }),
-    baseUrl: fromEnv(file.baseUrl, "baseUrl"),
+    baseUrl: options.overrides?.baseUrl ?? fromEnv(file.baseUrl, "baseUrl"),
     network: file.network,
     payTo: fromEnv(file.payTo, "payTo"),
     provider,
@@ -230,6 +233,13 @@ export async function gatewayManifestUrl(path: string, env: NodeJS.ProcessEnv = 
   } catch {
     throw new GatewayConfigError(`baseUrl is not a URL: ${baseUrl}`);
   }
+}
+
+/** An optional value: the value itself, or the variable it names as "env:NAME", undefined when that is unset or empty. */
+function optionalEnv(value: string, env: NodeJS.ProcessEnv): string | undefined {
+  if (!value.startsWith("env:")) return value;
+  const found = env[value.slice("env:".length)];
+  return found === undefined || found === "" ? undefined : found;
 }
 
 /** A config value, or the environment variable it names as "env:NAME". */

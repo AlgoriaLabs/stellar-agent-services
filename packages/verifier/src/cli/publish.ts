@@ -8,10 +8,10 @@
 import { anchorProblems, checkPublication, DEFAULT_MAX_AGE_SECONDS, invokeArguments } from "../publish.js";
 import { readReceipt } from "../receipt.js";
 import { rpcRegistry } from "../registry.js";
-import { quote, UsageError, type CliFlags, type Io } from "./shared.js";
+import { quote, UsageError, WATCH_FLAGS, type CliFlags, type Io } from "./shared.js";
 
 export async function publish(path: string, flags: CliFlags, io: Io): Promise<number> {
-  for (const flag of ["pay", "service", "input", "validator", "out", "max-price", "max-spend", "dev", "json"] as const) {
+  for (const flag of ["pay", "service", "input", "validator", "out", "max-price", "max-spend", "dev", "json", ...WATCH_FLAGS] as const) {
     if (flags[flag] !== undefined) throw new UsageError(`--${flag} does not apply to publish`);
   }
   const requestHash = flags["request-hash"];

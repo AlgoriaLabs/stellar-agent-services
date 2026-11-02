@@ -3,6 +3,7 @@
 // Stellar CLI, with a key from its keychain.
 
 import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { promisify } from "node:util";
 import type { parseArgs } from "node:util";
 import type { StellarNetwork } from "@stellar-agent-services/protocol";
@@ -29,9 +30,40 @@ export const OPTIONS = {
   "dry-run": { type: "boolean" },
   yes: { type: "boolean", short: "y" },
   help: { type: "boolean", short: "h" },
+  // dev, launch, status and try
+  "env-file": { type: "string" },
+  with: { type: "string" },
+  tunnel: { type: "boolean" },
+  start: { type: "string" },
+  url: { type: "string" },
+  deploy: { type: "boolean" },
+  "no-deploy": { type: "boolean" },
+  "no-wait": { type: "boolean" },
+  "no-validation": { type: "boolean" },
+  validate: { type: "boolean" },
+  // check and status
+  json: { type: "boolean" },
+  fix: { type: "boolean" },
 } as const;
 
 export type CliFlags = ReturnType<typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true }>>["values"];
+
+/** The gateway config a command reads when --config doesn't name one: the one `provider-kit init` writes. */
+export const DEFAULT_CONFIG = "provider.config.json";
+
+/**
+ * How to run a step in this project: its npm script when ./package.json has one (`npm create stellar-service` writes
+ * them), else the provider-kit command.
+ */
+export function nextCommand(step: "dev" | "try" | "check" | "launch" | "status" | "deploy", fallback = `provider-kit ${step}`): string {
+  try {
+    const scripts = (JSON.parse(readFileSync("package.json", "utf8")) as { scripts?: Record<string, unknown> }).scripts;
+    if (typeof scripts?.[step] === "string") return `npm run ${step}`;
+  } catch {
+    // No package.json here, or not one to read.
+  }
+  return fallback;
+}
 
 /** A mistake in how the CLI was called: printed with the usage text, exit code 2. */
 export class UsageError extends Error {

@@ -8,7 +8,7 @@ Turn a function, or an existing HTTP API in any language, into a paid Stellar se
 - job recovery: a client that lost its response collects the result without paying again
 - capacity: a queue per service, and `429`/`503` before payment when it is full
 - durable jobs: paid jobs survive restarts, and workers can run in separate processes
-- Stellar 8004 registration, a self-check and a paid test call, from the CLI
+- the CLI from nothing to live: run it with no wallet, pay it once, then register, verify and deploy it in one go
 
 Two ways to use it:
 
@@ -22,6 +22,28 @@ gateway:  provider-kit serve --config <file>  ->  forwards paid jobs to your exi
   approved in your own wallet, on a page the CLI opens on your computer. See [Approving in your wallet](#approving-in-your-wallet).
 
 The step-by-step guide is [docs/provider-setup-guide.md](../../docs/provider-setup-guide.md).
+
+## From nothing to live
+
+```bash
+provider-kit dev --config provider.config.json   # runs it here, paid to a throwaway testnet account: no wallet yet
+provider-kit try                                 # pays for one call with test money (starts the provider if needed)
+provider-kit launch --config provider.config.json   # one page in your wallet: trustline, registration, verification
+provider-kit status                              # where it stands, and the one command to run next
+```
+
+- **`dev`** reads `.env`. With `PAY_TO` empty, it makes a [throwaway payout account](#the-throwaway-payout-account),
+  so nothing needs a wallet until the service goes live. `--with '<command>'` runs the API a gateway calls next to
+  it, and `-- <command>` runs any other provider, such as `provider-kit dev -- node dist/server.js`. `--tunnel` also
+  serves it at a temporary public HTTPS address (cloudflared).
+- **`launch`** takes the public address from `--url`, `fly.toml` or an `https://` `PUBLIC_ORIGIN`, builds the
+  manifest that address will serve, and opens one approval page for every owner step. It saves `PAY_TO` and
+  `AGENT_ID`, deploys with `flyctl` when there is a `fly.toml` and you agree, and waits for the public manifest. See
+  [Launching](#launching).
+- **`status`** reads this computer, the chain and the public address: running here, paid once, registered, live,
+  verified. `--json` prints it for scripts and coding agents.
+
+`npm create stellar-service` makes a project with these as npm scripts ([create-stellar-service](../create-stellar-service)).
 
 ## Library in short
 
@@ -157,18 +179,79 @@ Price (`0.01`), charge (`upfront`), duration and capacity are first guesses: set
 
 | Command | What it does |
 | --- | --- |
+| `provider-kit dev [--config <file>] [--with '<command>'] [--tunnel] [-- <command> ...]` | Runs a provider on this computer, on testnet: a gateway config (default `./provider.config.json`) in dev mode, or your provider's own command after `--`. Reads `.env`. With `PAY_TO` empty, makes a [throwaway payout account](#the-throwaway-payout-account). `--with` starts the API the gateway calls and waits for it to take connections; `--tunnel` adds a temporary public HTTPS address. |
+| `provider-kit launch [--config <file> \| --start '<command>' \| --manifest <url>] [--url <https origin>]` | Takes it live: one approval page for the trustline, the 8004 registration (or its update) and a validation request, then saves `PAY_TO` and `AGENT_ID`, deploys with `flyctl` (`--deploy`, `--no-deploy`) and waits for the public manifest (`--no-wait` skips it). `--validator <G…>` names the verifier, `--no-validation` asks none. See [Launching](#launching). |
+| `provider-kit status [--config <file>] [--url <https origin>] [--json]` | Where the provider stands: running here, payTo, paid once, registered [I1]–[I3], live, verified. Names the one command to run next. Reads only. |
 | `provider-kit serve --config <file>` | Gateway mode. Graceful shutdown on SIGTERM. `--no-workers` for HTTP-only processes. |
-| `provider-kit init [--upstream <url>] [--openapi <file \| url>]` | Writes a starter gateway config. With `--openapi`, writes one from an OpenAPI 3 document: see [From an OpenAPI document](#from-an-openapi-document). |
-| `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. Exits 1 on any failure. `--manifest` works for any provider, library or native. Then shows [how agents see you](#how-agents-see-you). |
-| `provider-kit try [<service>] ['<input JSON>' \| @<file>]` | One paid call on testnet, the way any client makes it. See [Trying a paid call](#trying-a-paid-call). |
+| `provider-kit init [--upstream <url>] [--openapi <file \| url>]` | Writes a starter gateway config. With `--openapi`, writes one from an OpenAPI 3 document: see [From an OpenAPI document](#from-an-openapi-document). `--json` prints what it wrote and skipped as JSON. |
+| `provider-kit check (--config <file> \| --manifest <url>)` | Self-check without paying: manifest, facilitator, `payTo` trustline [P2], 8004 registration [I1]–[I3]. A provider on this computer that isn't registered yet passes with a note. Exits 1 on any failure. `--manifest` works for any provider, library or native. Then shows [how agents see you](#how-agents-see-you). `--fix` writes the words search would miss into the config's `provider.description`; `--json` prints the result as JSON. |
+| `provider-kit try [<service>] ['<input JSON>' \| @<file>]` | One paid call on testnet, the way any client makes it. Starts the provider for the call when nothing answers. See [Trying a paid call](#trying-a-paid-call). |
 | `provider-kit trustline [--config \| --manifest \| --network <testnet\|mainnet>]` | Adds a USDC trustline to `payTo` [P2], approved in its wallet. A new testnet account gets test XLM from Friendbot first. Without `--config` or `--manifest`, it sets up the account the wallet connects and prints it as `PAY_TO`. Signs nothing when the trustline exists. |
 | `provider-kit register (--config \| --manifest)` | Registers in the Stellar 8004 identity registry from the `payTo` account, or updates the registration from the agent's owner, approved in the wallet. Adds the USDC trustline first when it is missing, and saves the new `agentId` to `--config` [I2]. |
 | `provider-kit request-validation (--config \| --manifest) --validator <G…>` | Asks a verifier for validation in the Stellar 8004 Validation Registry. Checks first that a verifier can validate the provider ([I1]–[I3]), that the connected account may ask for the agent, and that the validator is not the provider itself. Puts the request document on chain as a `data:` URI, has the owner's wallet sign it and prints the request hash for the verifier. `--out` writes the request document. |
 | `provider-kit reconcile (--config <file> \| --store <file> --network <net>)` | Decides `payment_uncertain` jobs from on-chain data [J13]. `--dry-run` only reports; `--rpc <url>` picks the Soroban RPC. It reads the chain, writes only the job store and signs nothing, so it is safe next to a running provider. Exits 1 while a job is undecided. |
 
-`trustline`, `register` and `request-validation` take `--source <key>` to sign with the
-[Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain instead of a wallet, for scripts and CI. With
-`--source`, `--dry-run` prints the Stellar CLI command. `--rpc <url>` picks the Soroban RPC.
+`launch` runs what `trustline`, `register` and `request-validation` run one at a time. Those three take
+`--source <key>` to sign with the [Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain instead of a
+wallet, for scripts and CI. With `--source`, `--dry-run` prints the Stellar CLI command. `--rpc <url>` picks the
+Soroban RPC.
+
+### The throwaway payout account
+
+A provider has to be paid to an account that holds a USDC trustline [P2]. During development that needn't be yours:
+with `PAY_TO` empty, `provider-kit dev` (and `try`, when it starts a gateway) makes a new testnet account, gets it
+test XLM from Friendbot and signs its trustline with a key that lives in memory only. Then the key is dropped. It is
+never written to a file or the environment, and the provider never sees it: like any provider, it knows only the
+public address.
+
+The address goes in `.env` as `PAY_TO`, and as `DEV_PAY_TO`, so `launch` can tell it from an account of yours and
+replace it. What it receives is test money nobody can spend. It is never made on Mainnet.
+
+### Launching
+
+```bash
+provider-kit launch --config provider.config.json            # a gateway, its address from fly.toml
+provider-kit launch --start 'node dist/server.js' --url https://api.example.com
+```
+
+```text
+Launching Text Tools on Stellar Testnet
+  manifest   https://text-tools.fly.dev/.well-known/stellar-agent-services.json
+  services   summarize, translate
+
+Approve in your wallet
+  http://localhost:8790/#…
+  ✓ Connected GBQX…7KQM (Freighter)
+  ✓ Get test XLM: funded by Friendbot
+  ✓ Add USDC: USDC trustline added · https://stellar.expert/explorer/testnet/tx/…
+  ✓ Register: agent 42 · https://stellar.expert/explorer/testnet/tx/…
+  ✓ Request validation: request 3f0a9c41d2e7… · https://stellar.expert/explorer/testnet/tx/…
+  ✓ Saved PAY_TO=GBQX…, AGENT_ID=42 in .env
+  ✓ Saved PUBLIC_ORIGIN, PAY_TO, AGENT_ID in fly.toml's [env], for every deploy
+
+✓ Text Tools is agent 42 on Stellar Testnet, paid to GBQX…7KQM
+✓ Validation requested from GBRP…OX2H (request 3f0a9c41d2e7…): its answer lands in the Validation Registry
+
+Deploy to Fly.io now (fly deploy, app text-tools)? [Y/n]
+```
+
+- **The address before the deploy.** `--url`, else `fly.toml`'s app (`https://<app>.fly.dev`), else an `https://`
+  `PUBLIC_ORIGIN`. A quick tunnel's address is refused: it changes every run.
+- **The manifest that address will serve**, checked against the standard: from the gateway config, from your
+  provider's own command (`--start`, run on a free port with `PUBLIC_ORIGIN`, `PAY_TO` and a throwaway job database),
+  or from a deployed provider (`--manifest`). Until a wallet connects, a stand-in `payTo` builds it: the registration
+  doesn't name `payTo`, and the registry makes the registering account the agent's wallet [I3].
+- **One page.** The steps the chain still needs, in order: test XLM, the trustline, `register_with_uri` (or
+  `set_agent_uri` when the manifest moved), and `validation_request`, built once the agent id is known. The verifier
+  is `--validator`, `STELLAR_VALIDATOR`, or the default in `src/cli/validators.ts`; a provider's own account is never
+  asked.
+- **Saved.** `PAY_TO` and `AGENT_ID` in `.env` (`DEV_PAY_TO` goes), the agent id where the gateway config reads it,
+  and the public settings in `fly.toml`. A new agent's id is saved even if a later step stops, so running `launch`
+  again never registers a second agent; it signs nothing when everything is in place.
+- **Deployed and checked.** `flyctl` creates the app the first time, the API's key from `.env` is staged as a Fly
+  secret, and `fly deploy` runs with one machine. Then `launch` waits until the public manifest serves the agent id,
+  and checks [I1]–[I3] from outside. A gateway whose `upstream.url` is on 127.0.0.1 isn't deployed: in a container
+  that is the container itself, unless the API runs inside it too, as the Python kind's does.
 
 ### Trying a paid call
 
@@ -198,6 +281,9 @@ GDJB…XA3O (payTo) received 0.01 USDC.
 - **The provider:** `--manifest <url>` for any provider, or `--config` for a gateway, read for its `baseUrl` only.
   Without either, `./provider.config.json` when it exists, else `http://localhost:8787`. With several services and
   none named, it lists them.
+- **Not running?** When nothing answers, `try` starts the provider for the call and stops it after: the gateway
+  config in its own process (with a throwaway `payTo` when `PAY_TO` is empty), or `--start '<command>'`, such as
+  `--start 'npm run dev'`.
 - **The payer:** a throwaway test account, made for this call. It gets test XLM from Friendbot and exactly the price
   in test USDC from the testnet DEX. Its key stays in memory and is never written anywhere. You need no payer wallet.
 - **The payment:** the payment client's own flow, with every check. The exact price, payee and network are shown and
@@ -205,7 +291,8 @@ GDJB…XA3O (payTo) received 0.01 USDC.
   The transfer is confirmed on chain [J16].
 - **Testnet only.** A provider on Mainnet is refused before anything is signed.
 
-It exits 0 only when the job succeeded and its payment is confirmed. If the answer to the paid request is lost, it
+`--json` prints the outcome as JSON on standard output (the job, its status, the payment and the output) and the
+steps on standard error. It exits 0 only when the job succeeded and its payment is confirmed. If the answer to the paid request is lost, it
 says the payment may have gone through and never calls it unpaid: your provider decides it from the chain
 [J13]. If the testnet DEX has no USDC for sale, nothing is paid: try again later, or pay with `stellar-pay` from a
 test wallet of your own, funded at [faucet.circle.com](https://faucet.circle.com) (setup guide §6).
@@ -216,33 +303,41 @@ test wallet of your own, funded at [faucet.circle.com](https://faucet.circle.com
 
 ```text
 How agents see you
-  Search matches only this name and description, which provider-kit register publishes:
+  Search matches this name and description, which provider-kit launch publishes:
     Text Tools API
     Summaries, translations and labels for English text.
-  ! Search reads no service names, titles or tags, so agents searching for "summarize", "translate",
-    "classify", "tree", "random" or "fact" won't find you. Put those words in provider.description.
+  · On testnet it also matches your services' names, titles, descriptions and tags, once the manifest is live
+    and names the agent [I1]–[I3].
   ! translate: a 7-word description, no example
   ! classify-tree: a 3-word description, no example
     An agent picks a service by its description: what it does, when to use it, its limits, with no price or
     URL [§3.4]. An example shows it what to send, and provider-kit try pays with it.
+  · On mainnet, search reads no service names, titles or tags: agents searching there for "summarize",
+    "translate", "classify", "tree", "random" or "fact" wouldn't find you. provider-kit check --fix puts those
+    words in provider.description.
   · Ranking counts reviews from distinct paying clients only. Until the first, search lists you as new and
     unrated.
-  · Not registered yet: provider-kit register publishes this name and description.
+  · Not registered yet: provider-kit launch publishes this name and description.
 ```
 
-- **Search** (stellar-agent-search's `find_agent`, and 8004 explorers) matches a query against the registration's
-  name and description only: `provider.name` and `provider.description`, as `register` publishes them. Words are
-  matched the way stellar-agent-search 0.1.0 matches them: folded, its stopwords dropped, a crude stem, then a
-  substring test. A word from a service's name, title or tags that this test misses is listed.
+- **Search** (stellar-agent-search's `find_agent`, and 8004 explorers) matches a query against the registration: the
+  name and description `launch` publishes from `provider.name` and `provider.description`, and the registration's
+  services. On testnet, stellar-agent-search 0.2.0 reads agents straight from the registry and also matches a bound
+  manifest's services: their names, titles, descriptions and tags. On mainnet, its explorer lists no services, so
+  only the name and description count: there, a word from a service's name, title or tags that the name and
+  description miss is a warning, and `check --fix` writes the missing words into a gateway config's description.
+  Words are matched the way stellar-agent-search 0.2.0 matches them: folded, its stopwords dropped, a crude stem,
+  then a substring test.
 - **Once registered,** it shows the name and description the registry has, says when they are older than the
-  manifest (`register` updates them), and prints the stellar-agent-search command that shows the live profile.
+  manifest (`launch` updates them), and prints the stellar-agent-search command that shows the live profile.
 - **Each service:** a description too short to say what it does, when to use it and its limits, a price or URL
   in it [§3.4], or no example.
 
 ### Approving in your wallet
 
-Without `--source`, an owner command opens a page on this computer, `http://localhost:8790` (or any free port),
-where you connect the wallet you already use and approve each transaction:
+Without `--source`, an owner command (`launch`, `trustline`, `register`, `request-validation`) opens a page on this
+computer, `http://localhost:8790` (or any free port), where you connect the wallet you already use and approve each
+transaction:
 
 1. **Connect.** Freighter, xBull, Albedo, Rabet, Hana, MetaMask, Ledger and the other wallets
    [Stellar Wallets Kit](https://stellarwalletskit.dev) supports without extra setup, except LOBSTR: its connector
@@ -380,6 +475,13 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/gateway/openapi.ts` | Gateway services from an OpenAPI document, for `provider-kit init --openapi` |
 | `src/registration.ts` | 8004 registration file, the I1–I3 check (with the file it read), and who may act for an agent |
 | `src/cli/` | The `provider-kit` command |
+| `src/cli/dev.ts`, `src/cli/dev-account.ts` | `provider-kit dev`, and the throwaway payout account it makes when `PAY_TO` is empty |
+| `src/cli/launch.ts` | `provider-kit launch`: the public address, the manifest it will serve, one approval page, the settings saved, the deploy and the live check |
+| `src/cli/status.ts` | `provider-kit status`: each stage, and the command to run next |
+| `src/cli/serve.ts` | `provider-kit serve`, and `serveGateway()` that `dev` and `try` start a gateway with |
+| `src/cli/env-file.ts`, `src/cli/fly.ts` | Reading and writing `.env` and `fly.toml`'s `[env]`; deploying with `flyctl` |
+| `src/cli/processes.ts`, `src/cli/tunnel.ts` | Starting and stopping a provider's command, waiting for its manifest; the cloudflared quick tunnel |
+| `src/cli/validators.ts` | The verifier `launch` asks by default, per network |
 | `src/cli/approval.ts` | Approving in a wallet: the session (steps, checks, sending) and the local page's server and API |
 | `src/cli/approval-view.ts` | What the page shows: the session as JSON, shared with the page |
 | `src/cli/owner-chain.ts` | The owner's transactions: built, checked once signed, sent and followed into a ledger |

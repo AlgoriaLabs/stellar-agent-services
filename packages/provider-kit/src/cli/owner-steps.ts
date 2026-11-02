@@ -107,26 +107,42 @@ export function registerStep(chain: OwnerChain, options: RegisterStepOptions): A
   };
 }
 
-/** validation_request from `caller`, as prepareValidationRequest() built and checked it. */
-export function validationRequestStep(chain: OwnerChain, caller: string, prepared: PreparedValidationRequest): ApprovalStep {
-  const { request } = prepared;
+/**
+ * validation_request from `caller`, as prepareValidationRequest() built and checked it. `prepared` may be a function
+ * that prepares it when the step is due, such as after an earlier step of the same session registered the agent.
+ */
+export function validationRequestStep(
+  chain: OwnerChain,
+  caller: string,
+  prepared: PreparedValidationRequest | (() => Promise<PreparedValidationRequest>),
+  onSent?: (prepared: PreparedValidationRequest) => void,
+): ApprovalStep {
+  let ready = typeof prepared === "function" ? undefined : prepared;
   return {
     kind: "sign",
     id: "request-validation",
     title: "Request validation",
-    build: async () => ({
-      transaction: await chain.invoke(caller, validationRequestCall(caller, prepared)),
-      summary:
-        "Asks the verifier to check your service and answer in the Stellar 8004 Validation Registry. The request document goes on chain with it, so there is nothing to host.",
-      details: [
-        { label: "Agent", value: String(request.agentId) },
-        { label: "Verifier", value: request.validator, mono: true, href: explorerUrl(chain.network, "account", request.validator) },
-        { label: "Manifest", value: request.manifest.url, href: request.manifest.url },
-        { label: "Request hash", value: prepared.requestHash, mono: true },
-        { label: "Contract", value: prepared.contractId, mono: true, href: explorerUrl(chain.network, "contract", prepared.contractId) },
-        { label: "Function", value: "validation_request", mono: true },
-      ],
-    }),
-    done: () => `request ${prepared.requestHash.slice(0, 12)}…`,
+    build: async () => {
+      // Prepared once: building again after a refusal sends the same request, with the same hash.
+      ready ??= await (prepared as () => Promise<PreparedValidationRequest>)();
+      const { request, requestHash, contractId } = ready;
+      return {
+        transaction: await chain.invoke(caller, validationRequestCall(caller, ready)),
+        summary:
+          "Asks the verifier to check your service and answer in the Stellar 8004 Validation Registry. The request document goes on chain with it, so there is nothing to host.",
+        details: [
+          { label: "Agent", value: String(request.agentId) },
+          { label: "Verifier", value: request.validator, mono: true, href: explorerUrl(chain.network, "account", request.validator) },
+          { label: "Manifest", value: request.manifest.url, href: request.manifest.url },
+          { label: "Request hash", value: requestHash, mono: true },
+          { label: "Contract", value: contractId, mono: true, href: explorerUrl(chain.network, "contract", contractId) },
+          { label: "Function", value: "validation_request", mono: true },
+        ],
+      };
+    },
+    done: () => {
+      onSent?.(ready!);
+      return `request ${ready!.requestHash.slice(0, 12)}…`;
+    },
   };
 }

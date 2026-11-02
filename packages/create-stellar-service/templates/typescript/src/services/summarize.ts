@@ -1,4 +1,4 @@
-// summarize: 0.01 USDC, charged only if it succeeds. Replace the handler with your own work, such as a model call,
+// summarize: {{price}} USDC, charged only if it succeeds. Replace the handler with your own work, such as a model call,
 // and keep the description, schemas and example in step with it: agents read them before they pay.
 
 import { defineService } from "@stellar-agent-services/provider-kit";
@@ -10,7 +10,7 @@ export const summarize = defineService({
   title: "Summarize",
   description:
     "Returns the first sentences of an English text, with its sentence and word counts. Use it to shorten text before passing it on. Accepts up to 20,000 characters; it does not paraphrase.",
-  price: "0.01",
+  price: "{{price}}",
   charge: "on-success",
   expectedDurationSeconds: 1,
   inputSchema: {

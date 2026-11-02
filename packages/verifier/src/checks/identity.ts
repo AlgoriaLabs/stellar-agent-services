@@ -15,10 +15,12 @@ import { isLoopback } from "../chain.js";
 import { Recorder, skipped, type RunContext } from "../context.js";
 import { answered } from "../http.js";
 import { shown } from "../jobs.js";
-import { isObject } from "../json.js";
+import { isObject, jsonDataUri } from "../json.js";
 
-const REGISTRATION_SERVICE = "stellar-agent-services";
-const REGISTRATION_MAX_BYTES = 64 * 1024;
+/** The registration's service entry that names the manifest [I1]. */
+export const REGISTRATION_SERVICE = "stellar-agent-services";
+/** The largest registration file read from an https: agent URI. */
+export const REGISTRATION_MAX_BYTES = 64 * 1024;
 
 export async function checkIdentity(ctx: RunContext): Promise<CheckResult> {
   const manifest = ctx.manifest;
@@ -82,14 +84,15 @@ export async function checkIdentity(ctx: RunContext): Promise<CheckResult> {
 async function readRegistration(ctx: RunContext, uri: string, recorder: Recorder): Promise<Record<string, unknown> | undefined> {
   let text: string;
   if (uri.startsWith("data:")) {
-    const data = /^data:application\/json(?:;charset=[^;,]+)?(;base64)?,(.*)$/is.exec(uri);
-    if (data === null) {
+    const data = jsonDataUri(uri);
+    if ("problem" in data && data.problem === "not-json") {
       recorder.fail("I1", "the agent URI is a data: URI that is not application/json");
       return undefined;
     }
     recorder.evidence["agentUri"] = "data:";
     try {
-      text = data[1] === undefined ? decodeURIComponent(data[2]!) : new TextDecoder("utf-8", { fatal: true }).decode(Buffer.from(data[2]!, "base64"));
+      if ("problem" in data) throw new TypeError(data.problem);
+      text = new TextDecoder("utf-8", { fatal: true }).decode(data.bytes);
     } catch {
       recorder.fail("I1", "the agent URI's data can't be decoded");
       return undefined;

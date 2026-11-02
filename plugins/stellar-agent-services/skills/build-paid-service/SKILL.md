@@ -28,9 +28,9 @@ In the user's project: `npm install "$REPO/packages/provider-kit"`. CLIs:
 
 For a new project, the fastest start is the scaffolder:
 `node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind typescript --description "<one sentence>"
---no-wallet`. It writes `src/server.ts`, an example service to replace (`src/services/summarize.ts`), `.env`, a
-Dockerfile and npm scripts (`dev`, `try`, `check`), packs the kit from the clone into `vendor/` and installs it.
-Ask the user before `--wallet` instead of `--no-wallet`: it opens the trustline approval page in their browser.
+--price <usdc>`. It writes `src/server.ts`, an example service to replace (`src/services/summarize.ts`), `.env`, a
+Dockerfile, `fly.toml` and npm scripts (`dev`, `try`, `check`, `status`, `launch`, `deploy`), packs the kit from the
+clone into `vendor/` and installs it. No wallet is needed to build and try it.
 `$REPO/examples/paid-service` is a fuller template: two services, SQLite jobs and `.env.example`.
 
 ## 2. Write each service
@@ -83,24 +83,27 @@ config. Don't work around the check.
 
 ## 4. Check it
 
+Run it with `npm run dev` (`provider-kit dev -- node dist/server.js`). With `PAY_TO` empty, `dev` makes a throwaway
+testnet account to be paid to and saves its public address in `.env`, so no wallet is needed yet.
+
 1. `provider-kit check --manifest http://localhost:8787/.well-known/stellar-agent-services.json --dev`. Before
-   8004 registration it reports a missing agent id. That is expected.
+   launch it notes that the provider isn't registered yet; that doesn't fail it.
 2. `verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev`. C1, C3, C6 and C7 must pass.
 3. Ask the user before paying: it spends test money only, but it is a payment. Once they agree, run
-   `provider-kit try translate '{"text":"Hello"}' --manifest http://localhost:8787/.well-known/stellar-agent-services.json --yes`.
-   It pays from a throwaway testnet account it funds itself, so the user needs no payer wallet, and shows the result
+   `provider-kit try translate '{"text":"Hello"}' --manifest http://localhost:8787/.well-known/stellar-agent-services.json --yes --json`.
+   It pays from a throwaway testnet account it funds itself, so the user needs no payer wallet, and reports the result
    and the transfer on chain. Without `--yes` it asks in the terminal, which you can't answer.
 
-The user needs a testnet `payTo` account with a USDC trustline: an account in the wallet they already use.
-`provider-kit trustline --network testnet` sets it up (`docs/provider-setup-guide.md` §2). It opens a page in the
-user's browser and waits: tell the user to connect their wallet and approve there, then use the printed `PAY_TO`.
+`provider-kit status --json` shows where the provider stands and the next command, at any point.
 
-## 5. Deploy and register
+## 5. Go live
 
-Follow `docs/provider-setup-guide.md` §7–§9: HTTPS `baseUrl`, a persistent SQLite file, a Soroban RPC for
-reconciliation, then `provider-kit register --config provider.config.json` (or `--manifest <url>`). It opens the same
-approval page, where the user approves from the `payTo` account, and saves the new `agentId` to `--config`. Then the
-verify-provider skill. In CI, `--source <key>` signs with the Stellar CLI keychain instead.
+`npm run launch` (`provider-kit launch --start 'node dist/server.js'`, with `--url <https origin>` when there is no
+`fly.toml`) does `docs/provider-setup-guide.md` §7: it builds the manifest the public address will serve, then opens
+one approval page where the user's own wallet signs the USDC trustline, the 8004 registration and a validation
+request. It saves `PAY_TO` and `AGENT_ID`, and with `--deploy` deploys to Fly.io and waits for the public manifest.
+Ask the user first, run it with `--no-open`, give them the link, and say what they will approve. Then
+`provider-kit status --json`. In CI, `register` and `request-validation` take `--source <key>` instead.
 
 ## Never
 

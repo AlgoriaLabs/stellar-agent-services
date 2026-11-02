@@ -1,11 +1,13 @@
 // JSON Schema 2020-12 validation (Ajv), for three kinds of schema:
-// - the manifest JSON Schema [M9] and the verification receipt schema, both from the protocol package;
+// - the manifest JSON Schema [M9], the verification receipt schema and the validation request schema, all
+//   from the protocol package;
 // - the providers' own inputSchema and outputSchema. Each compiles in its own Ajv instance, after a check
 //   against the 2020-12 meta-schema, so one schema can never refer to another, and a schema that doesn't
 //   compile is reported rather than thrown. Remote references never resolve [S5]: nothing is fetched.
 
 import type { JsonObject, JsonValue } from "@stellar-agent-services/protocol";
 import manifestSchema from "@stellar-agent-services/protocol/manifest.schema.json" with { type: "json" };
+import requestSchema from "@stellar-agent-services/protocol/validation-request.schema.json" with { type: "json" };
 import receiptSchema from "@stellar-agent-services/protocol/verification-receipt.schema.json" with { type: "json" };
 import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
 import { isObject, pointerSegment } from "./json.js";
@@ -13,6 +15,7 @@ import { isObject, pointerSegment } from "./json.js";
 const documents = new Ajv2020({ strict: false, allErrors: true, validateFormats: false });
 export const validateManifestSchema: ValidateFunction = documents.compile(manifestSchema as JsonObject);
 export const validateReceiptSchema: ValidateFunction = documents.compile(receiptSchema as JsonObject);
+export const validateRequestSchema: ValidateFunction = documents.compile(requestSchema as JsonObject);
 
 export interface SchemaError {
   /** JSON Pointer to the value; for a missing member, to where it belongs. */

@@ -5,7 +5,7 @@ import { CONFORMANCE_LEVELS, stellarAddressKind, type CheckId, type CheckResult,
 import { localKeyPayer, formatUsdc, parseUsdc, type Payer } from "../payments.js";
 import { issueReceipt, writeReceipt } from "../receipt.js";
 import { InvalidOptionsError, verifyProvider, type VerificationReport } from "../verify.js";
-import { UsageError, type CliFlags, type Io } from "./shared.js";
+import { UsageError, WATCH_FLAGS, type CliFlags, type Io } from "./shared.js";
 
 const NAMES: Readonly<Record<CheckId, string>> = {
   C1: "Manifest",
@@ -24,7 +24,10 @@ export async function runChecks(command: "check" | "verify", manifestUrl: string
     if (!verify && flags[flag] !== undefined) throw new UsageError(`--${flag} belongs to verify; check never pays and issues no receipt`);
   }
   for (const flag of ["request-hash", "response-uri", "source", "network", "max-age", "dry-run"] as const) {
-    if (flags[flag] !== undefined) throw new UsageError(`--${flag} belongs to ${flag === "request-hash" ? "badge or publish" : "publish"}`);
+    if (flags[flag] !== undefined) throw new UsageError(`--${flag} belongs to ${flag === "request-hash" ? "badge or publish" : flag === "source" || flag === "network" ? "publish or watch" : "publish"}`);
+  }
+  for (const flag of WATCH_FLAGS) {
+    if (flags[flag] !== undefined) throw new UsageError(`--${flag} belongs to watch`);
   }
   if (flags.input !== undefined && flags.service === undefined) throw new UsageError("--input needs --service");
   const input = flags.input === undefined ? undefined : parseInput(flags.input);
@@ -33,7 +36,7 @@ export async function runChecks(command: "check" | "verify", manifestUrl: string
   if (flags.validator !== undefined && flags.dev) throw new UsageError("receipts are never issued in development mode");
   const maxPrice = usdc(flags["max-price"], "--max-price");
   const maxSpend = usdc(flags["max-spend"], "--max-spend");
-  const payer = flags.pay ? testPayer(io, flags.rpc) : undefined;
+  const payer = flags.pay ? testPayer(io, flags.rpc, "--pay") : undefined;
 
   // With --json, standard output is the JSON alone, and the progress goes to standard error.
   const print = flags.json ? io.err : io.out;
@@ -102,19 +105,20 @@ function parseInput(text: string): JsonObject {
   return input as JsonObject;
 }
 
-function usdc(value: string | undefined, flag: string): bigint | undefined {
+/** --max-price or --max-spend, in base units. */
+export function usdc(value: string | undefined, flag: string): bigint | undefined {
   if (value === undefined) return undefined;
   const units = parseUsdc(value);
   if (units === undefined || units === 0n) throw new UsageError(`${flag} must be a USDC amount above zero, such as 0.10`);
   return units;
 }
 
-/** The test payer: the io's, or the key in VERIFIER_PAYER_SECRET. */
-function testPayer(io: Io, rpcUrl: string | undefined): Payer {
+/** The test payer: the io's, or the key in VERIFIER_PAYER_SECRET. `who` needs it: "--pay" or "watch". */
+export function testPayer(io: Io, rpcUrl: string | undefined, who: string): Payer {
   if (io.payer !== undefined) return io.payer;
   const secret = io.env["VERIFIER_PAYER_SECRET"];
   if (secret === undefined || secret === "") {
-    throw new UsageError("--pay needs the test payer's secret key in VERIFIER_PAYER_SECRET: a dedicated testnet account holding USDC");
+    throw new UsageError(`${who} needs the test payer's secret key in VERIFIER_PAYER_SECRET: a dedicated testnet account holding USDC`);
   }
   try {
     return localKeyPayer(secret.trim(), rpcUrl === undefined ? {} : { rpcUrl });

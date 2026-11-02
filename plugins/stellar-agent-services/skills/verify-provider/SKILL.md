@@ -36,24 +36,28 @@ For each failure: read the rule (`get_spec_rule` or `docs/provider-standard.md`)
 `docs/standard/README-AI.md` §15 maps common mistakes to rules. A kit or gateway provider that fails usually has a
 config problem. Fix the config, not the kit.
 
-## 2. Register on Stellar 8004 (the provider's owner does this)
+## 2. Register on Stellar 8004 and ask for validation (the provider's owner does this)
 
 Ask before running anything that signs. The owner signs in their own wallet, never with a key you handle:
 
 ```bash
-provider-kit register --config provider.config.json --dry-run    # what it would sign
-provider-kit register --config provider.config.json
+provider-kit launch --config provider.config.json --dry-run      # what it would sign
+provider-kit launch --config provider.config.json --no-open      # gives a link for the user to open
 ```
 
-It opens a page in the user's browser and waits. Tell the user to connect the wallet that holds `payTo` and approve
-there. Use `--manifest <url>` for a library or native provider. With `--config` the command saves the new agent id;
-otherwise put the printed id in the manifest as `provider.agentId`. Redeploy, and run step 1 again: C2 must pass.
-In CI, `--source <key>` signs with the Stellar CLI keychain instead.
+`launch` takes the public address from `fly.toml`, `--url` or an `https://` `PUBLIC_ORIGIN`, then opens one page
+where the user connects their wallet and approves the USDC trustline, the registration and a validation request to the
+verifier (`--validator <G...>`). Tell the user what they will approve. It saves `PAY_TO` and `AGENT_ID` where the
+provider reads them. Use `--start '<command>'` for a library provider, or `--manifest <url>` for one already deployed
+(then set the printed agent id as `provider.agentId` and redeploy). Run step 1 again: C2 must pass.
+`provider-kit status --json` shows each stage. In CI, `register` and `request-validation` take `--source <key>`.
 
 ## 3. Paid checks and a receipt (a verifier does this)
 
-Needs a dedicated testnet payer holding a little USDC in `VERIFIER_PAYER_SECRET`. Never use the user's own wallet.
-Ask before spending.
+A verifier that runs `verifier watch --source <validator key> --public-url <https url>` does this by itself for every
+request naming its account: it finds the manifest, checks it, serves the receipt and answers on chain
+(`docs/verification.md`, "Self-serve verification"). By hand, it needs a dedicated testnet payer holding a little USDC in
+`VERIFIER_PAYER_SECRET`. Never use the user's own wallet. Ask before spending.
 
 ```bash
 VERIFIER_PAYER_SECRET=S... verifier verify <manifest-url> --pay --validator <verifier G...> --out evidence/receipts
@@ -64,9 +68,9 @@ verifier publish evidence/receipts/<sha256>.json --request-hash <hex> --response
 The payer spends at most 0.10 USDC a job and 1.00 USDC a run by default, and never pays on pubnet without
 `--allow-pubnet`. Receipts are never issued in `--dev` mode.
 
-The provider asks for validation with
+The provider asks for validation with `provider-kit launch` (step 2), or on its own with
 `provider-kit request-validation --config provider.config.json --validator <verifier G...>`, approved in the owner's
-wallet like the registration, and sends the verifier the manifest URL and the printed request hash.
+wallet like the registration. Nothing else is sent: the request, with the manifest URL in it, is on chain.
 
 ## Levels
 

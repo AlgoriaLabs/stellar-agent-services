@@ -3,7 +3,7 @@
 //
 // - Identity: the agent's registration URI and wallet, for the identity check (C2) [I1]–[I3].
 // - Validation: a validation request's record, before publishing a response to it and before
-//   rendering the "8004 validated" badge.
+//   rendering the "8004 validated" badge; and, for `verifier watch`, the requests that name a validator.
 
 import type { StellarNetwork } from "@stellar-agent-services/protocol";
 import { IdentityClient, MAINNET_CONFIG, TESTNET_CONFIG, ValidationClient, type StellarConfig } from "@trionlabs/stellar8004";
@@ -35,12 +35,21 @@ export interface Registry {
   validation(requestHash: string): Promise<ValidationRecord | undefined>;
 }
 
+/** The Validation Registry's list of the requests that name one validator, which `verifier watch` follows. */
+export interface ValidatorIndex {
+  /**
+   * The hashes (64 hex characters) of the requests naming `validator`, in the order they were made, from
+   * position `start` (0 is the first one), at most `limit`. The list only grows.
+   */
+  validatorRequests(validator: string, start: number, limit: number): Promise<string[]>;
+}
+
 /** The 8004 deployment of a network: contract ids, passphrase and the SDK's default RPC. */
 export function registryConfig(network: StellarNetwork): StellarConfig {
   return network === "stellar:pubnet" ? MAINNET_CONFIG : TESTNET_CONFIG;
 }
 
-export function rpcRegistry(network: StellarNetwork, rpcUrl?: string): Registry {
+export function rpcRegistry(network: StellarNetwork, rpcUrl?: string): Registry & ValidatorIndex {
   const config = registryConfig(network);
   const options = { networkPassphrase: config.networkPassphrase, rpcUrl: rpcUrl ?? config.rpcUrl };
   const identity = new IdentityClient({ ...options, contractId: config.contracts.identity });
@@ -69,6 +78,10 @@ export function rpcRegistry(network: StellarNetwork, rpcUrl?: string): Registry 
         tag: status.tag,
         lastUpdate: Number(status.last_update),
       };
+    },
+    async validatorRequests(validator, start, limit) {
+      const hashes = (await validation.get_validator_requests_paginated({ validator_address: validator, start, limit })).result;
+      return hashes.map((hash) => Buffer.from(hash).toString("hex"));
     },
   };
 }

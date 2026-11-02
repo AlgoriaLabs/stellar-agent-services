@@ -101,6 +101,7 @@ export function fakeRegistry(network: StellarNetwork = "stellar:testnet") {
     agentApproved: async (agentId) => agents.get(agentId)?.approved,
     isOperator: async (owner, operator) => operators.has(`${owner} ${operator}`),
     validation: async (requestHash) => validations.get(requestHash),
+    agentValidations: async (agentId) => [...validations].filter(([, record]) => record.agentId === agentId).map(([requestHash, record]) => ({ ...record, requestHash })),
   };
   return { agents, operators, validations, registry };
 }

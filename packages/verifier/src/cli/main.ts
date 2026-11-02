@@ -4,16 +4,18 @@
 //   verify <manifest-url>    the same, plus the paid checks with --pay (C4, C5, C7), and a receipt
 //   badge <receipt.json>     the SVG badges a receipt earns
 //   publish <receipt.json>   validation_response in the Stellar 8004 Validation Registry
+//   watch                    answers validation requests by itself: verify, serve, publish, badge
 //
 // The test payer's key comes from VERIFIER_PAYER_SECRET: a dedicated testnet account, never a wallet
-// that holds anything else. The validator key never enters this process: publish signs through the
-// Stellar CLI keychain.
+// that holds anything else. The validator key never enters this process: publish and watch sign
+// through the Stellar CLI keychain.
 
 import { parseArgs } from "node:util";
 import { badge } from "./badge.js";
 import { publish } from "./publish.js";
 import { runChecks } from "./run.js";
 import { OPTIONS, UsageError, type Io } from "./shared.js";
+import { watch } from "./watch.js";
 
 export const USAGE = `verifier: check a provider against Provider Standard v1 (stellar-agent-services/provider@1)
 
@@ -26,6 +28,9 @@ Usage:
   verifier publish <receipt.json> --request-hash <hex> --response-uri <https url>
                    --source <stellar-cli key> [--network <stellar-cli network>] [--rpc <url>]
                    [--max-age <hours>] [--dry-run]
+  verifier watch --source <stellar-cli key> --public-url <https url> [--data <dir>] [--port <n>]
+                 [--interval <seconds>] [--retry-for <hours>] [--network testnet|mainnet]
+                 [--rpc <url>] [--max-price <usdc>] [--max-spend <usdc>] [--allow-pubnet]
 
 check    Runs the checks that need no payment and no key: C1 manifest, C2 identity, C3 challenge,
          C6 hygiene and C7 load. --dev also accepts a provider on http://localhost.
@@ -38,6 +43,13 @@ badge    Writes the SVG badges a receipt earns next to it, or to --out. With --r
 publish  Answers a validation request with the receipt: validation_response in the Stellar 8004
          Validation Registry, signed with a key from the Stellar CLI keychain (--source). The receipt
          must already be served at --response-uri. --dry-run prints the command instead.
+watch    Answers validation requests by itself, until stopped. Every --interval (default 60 s) it
+         reads the Validation Registry for requests naming the --source key's address, verifies each
+         provider with the test payer, as verify --pay does, and publishes the receipt as publish
+         does. It serves <public-url>/receipts/<sha256>.json, the badges next to each receipt,
+         /requests/<request hash>.json and /healthz on --port (default $PORT or 8080), and keeps its
+         state and receipts in --data (default ./verifier-data). A provider that is not reachable
+         yet is checked again for --retry-for hours (default 24), then answered with its result.
 
 --json prints the report, or the receipt, as JSON on standard output.
 Exit codes: 0 every check that ran passed, 1 a check or the command failed, 2 a usage error.
@@ -64,6 +76,9 @@ export async function main(argv: string[], io: Io): Promise<number> {
       case "publish":
         if (target === undefined) throw new UsageError("publish needs <receipt.json>");
         return await publish(target, values, io);
+      case "watch":
+        if (target !== undefined) throw new UsageError(`unexpected argument "${target}": watch finds its requests on chain`);
+        return await watch(values, io);
       default:
         throw new UsageError(`unknown command "${command}"`);
     }

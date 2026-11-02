@@ -34,11 +34,10 @@ alias verifier="node $REPO/packages/verifier/dist/cli/index.js"
 Docker works too: `docker build -f packages/provider-kit/Dockerfile -t provider-kit .` from the clone.
 
 For a new project around the API, the scaffolder does §3 and more:
-`node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind wrap --openapi <document> --no-wallet`
+`node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind wrap --openapi <document> --price <usdc>`
 (or `--upstream <url>` without a document). It runs `provider-kit init`, makes the config read `PUBLIC_ORIGIN`,
-`PAY_TO` and `JOB_DB_PATH` from `.env`, and writes a Dockerfile and npm scripts (`dev`, `try`, `check`,
-`register`). Read its output to the user, then review the config as §3 says. Ask the user before `--wallet`: it
-opens the trustline approval page in their browser.
+`PAY_TO`, `JOB_DB_PATH` and `AGENT_ID` from `.env`, and writes a Dockerfile, `fly.toml` and npm scripts (`dev`, `try`,
+`check`, `status`, `launch`, `deploy`). Read its output to the user, then review the config as §3 says.
 
 ## 3. Write the config
 
@@ -73,15 +72,16 @@ Stellar secret key never goes anywhere near the gateway.
 ## 4. Run and check
 
 ```bash
-provider-kit check --config provider.config.json                 # refuses, listing every problem
-PAY_TO=G... PUBLIC_ORIGIN=http://localhost:8787 provider-kit serve --config provider.config.json --dev
+provider-kit check --config provider.config.json --dev           # refuses, listing every problem
+provider-kit dev --config provider.config.json                   # PAY_TO empty: a throwaway testnet account is paid
 verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
 ```
 
-`PAY_TO` is a public testnet address with a USDC trustline, an account in the user's own wallet:
-`provider-kit trustline --network testnet` sets it up and prints it (`docs/provider-setup-guide.md` §2). It opens a
-page in the user's browser and waits for them to approve in their wallet. Before 8004 registration, `check` reports
-a missing agent id. That is expected.
+`dev` reads `.env`. With `PAY_TO` empty, it makes a throwaway testnet account to be paid to and saves its public
+address there, so no wallet is needed until the service goes live. `--with '<command>'` starts the API next to the
+gateway. Before launch, `check` notes that the provider isn't registered yet; that doesn't fail it. `check --fix`
+writes the service words a mainnet search would miss into `provider.description` (on testnet, search reads the
+manifest's services too).
 
 For a paid test call, ask the user first: it spends test money only, but it is a payment. Once they agree, run
 `provider-kit try <service> --manifest http://localhost:8787/.well-known/stellar-agent-services.json --yes`. It pays
@@ -89,12 +89,14 @@ from a throwaway testnet account it funds itself, so the user needs no payer wal
 transfer on chain (`docs/provider-setup-guide.md` §6). Without `--yes` it asks in the terminal, which you can't
 answer.
 
-## 5. Deploy and register
+## 5. Go live
 
-`docs/provider-setup-guide.md` §7–§9: HTTPS `baseUrl`, the SQLite store on a persistent volume, `rpcUrl` for
-reconciliation, `provider-kit register --config provider.config.json`, approved by the user in their wallet from the
-`payTo` account (it saves the new `agentId` to the config), then the verify-provider skill. Never ask the user for a
-secret key. In CI, `--source <key>` signs with the Stellar CLI keychain instead.
+`provider-kit launch --config provider.config.json` (`npm run launch`) does `docs/provider-setup-guide.md` §7: the
+public address from `fly.toml` or `--url`, one approval page where the user's own wallet signs the USDC trustline, the
+8004 registration and a validation request, then `PAY_TO` and `AGENT_ID` saved, the API's key staged as a Fly secret,
+and with `--deploy` the deploy and the live check. Ask the user first, run it with `--no-open`, give them the link,
+and say what they will approve. `provider-kit status --json` shows where it stands. Never ask the user for a secret
+key. In CI, `register` and `request-validation` take `--source <key>` instead.
 
 ## Done when
 

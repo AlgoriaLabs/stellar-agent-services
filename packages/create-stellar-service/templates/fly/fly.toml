@@ -1,0 +1,36 @@
+# {{name}} on Fly.io (https://fly.io/docs/reference/configuration/).
+#
+# Its public address is https://{{app}}.fly.dev, known before the first deploy, so `npm run launch` registers the service
+# with it, writes PUBLIC_ORIGIN, PAY_TO and AGENT_ID under [env], and deploys. If the name is taken, change "app" first.
+# Only public values go in this file. Your API's own key goes in Fly's secrets: launch stages it from .env.
+
+app = "{{app}}"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  JOB_DB_PATH = "/data/jobs.sqlite"
+
+# Paid jobs live in SQLite on this volume, so a client can still collect a result after a restart. Fly makes the volume
+# on the first deploy; one machine holds it.
+[[mounts]]
+  source = "jobs"
+  destination = "/data"
+  initial_size = "1gb"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  # Queued jobs run in the background, and uncertain payments are settled from the chain: keep the machine running.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    method = "GET"
+    path = "/healthz"
+    timeout = "5s"

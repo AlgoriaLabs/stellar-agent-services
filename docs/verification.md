@@ -14,7 +14,8 @@ The verifier is [`packages/verifier`](../packages/verifier).
 6. [Verification receipt](#verification-receipt)
 7. [Badges](#badges)
 8. [Stellar 8004 Validation Registry](#stellar-8004-validation-registry)
-9. [Security considerations](#security-considerations)
+9. [Self-serve verification: verifier watch](#self-serve-verification-verifier-watch)
+10. [Security considerations](#security-considerations)
 
 ## Commands
 
@@ -30,6 +31,7 @@ alias verifier="node $PWD/packages/verifier/dist/cli/index.js"
 | `verifier verify <manifest-url> --pay` | Runs every check, paying for C4, C5 and C7's paid part. With `--validator <G…> --out <dir>`, it writes the receipt. | test payer |
 | `verifier badge <receipt.json>` | Writes the SVG badges the receipt earns. With `--request-hash`, also "8004 validated", once the record is on chain. | none |
 | `verifier publish <receipt.json>` | Answers a validation request with the receipt (`validation_response`). | validator, through the Stellar CLI keychain |
+| `verifier watch` | Answers validation requests by itself: finds them on chain, runs every check, serves the receipt and badges, and publishes the answer. | test payer, and the validator through the Stellar CLI keychain |
 
 A provider tests itself before going live:
 
@@ -37,10 +39,18 @@ A provider tests itself before going live:
 verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
 ```
 
-A verifier answers a validation request, by the hash that the provider's `provider-kit request-validation` printed:
+A verifier answers validation requests by itself. It runs `verifier watch` on a server, with its validator key in the
+Stellar CLI keychain and HTTPS in front of it:
 
 ```bash
 export VERIFIER_PAYER_SECRET=S...        # the dedicated testnet test payer (see below)
+verifier watch --source verifier --public-url https://verifier.example.com --data /var/lib/verifier
+```
+
+It finds every request that names the `verifier` key's address, checks the provider and answers on chain
+([Self-serve verification](#self-serve-verification-verifier-watch)). The same steps by hand, for one request:
+
+```bash
 verifier verify https://api.example.com/.well-known/stellar-agent-services.json --pay \
   --validator $(stellar keys address verifier) --out evidence/receipts
 # Publish evidence/receipts/<sha256>.json at an HTTPS URL, exactly as written, then:
@@ -56,8 +66,14 @@ verifier badge evidence/receipts/<sha256>.json --request-hash <hex>
 | `--allow-pubnet` | Pay a provider on pubnet, which is real money. |
 | `--rpc <url>` | The Soroban RPC. Default: the public testnet RPC, or on pubnet the one the 8004 SDK uses. |
 | `--json` | The report, or the receipt, as JSON on standard output; progress goes to standard error. |
+| `--public-url <https url>` | watch: where its receipts are served. Each answer on chain links there. |
+| `--data <dir>` | watch: its state and its receipts. Default `./verifier-data`. |
+| `--port <n>`, `--interval <s>` | watch: the HTTP port (default `$PORT`, or 8080), and how often it reads the registry (default 60 s). |
+| `--retry-for <hours>` | watch: how long a provider that is not reachable yet is checked again (default 24). |
+| `--network testnet\|mainnet` | watch: the network whose registry it reads, as the Stellar CLI names it. Mainnet also needs `--allow-pubnet`. |
 
-**Exit codes:** `0` every check that ran passed, `1` a check or the command failed, `2` a usage error.
+**Exit codes:** `0` every check that ran passed, `1` a check or the command failed, `2` a usage error. `watch` runs
+until SIGINT or SIGTERM, then exits `0`.
 
 ## Conformance levels
 
@@ -332,10 +348,15 @@ The request document names what is to be verified (`ValidationRequest` in
 - **Never the provider itself.** The validator is not the agent's owner or its wallet. The registry would accept such a
   request, but its answer would prove nothing.
 - **Ready to verify.** The provider is served over HTTPS and its registration passes [I1]–[I3]. Otherwise C2 fails, and
-  the answer can never earn "8004 validated".
+  the answer can never earn "8004 validated". The request may go out before the deploy is live: `verifier watch` checks
+  a provider that is not reachable yet again for a day.
+- **Readable on chain.** The registry keeps `request_uri` in the `validation_request` event only, and RPC nodes keep
+  events for a limited window. A `data:` URI keeps the document there with nothing to host. Once the event is gone, a
+  verifier takes the manifest URL from the agent's registration instead [I1].
 
-`provider-kit request-validation` checks all of this before anything is signed, puts the document on chain as a
-`data:` URI and reads the registry back. The owner approves the request in their own wallet, on a page the command
+`provider-kit launch` sends the request on the same approval page as the registration, once the new agent id is
+known. `provider-kit request-validation` sends it on its own. Both check all of this before anything is signed, put the
+document on chain as a `data:` URI and read the registry back. The owner approves the request in their own wallet, on a page the command
 opens, and the account the wallet connects is checked as the one asking. With `--source <key>`, the Stellar CLI
 keychain signs instead, for scripts and CI:
 
@@ -344,9 +365,9 @@ provider-kit request-validation --config provider.config.json --validator <verif
 provider-kit request-validation --config provider.config.json --validator <verifier G…> --source owner --dry-run
 ```
 
-It prints the request hash, which the provider sends the verifier with its manifest URL. `--manifest <url>` instead of
-`--config` works for any provider, library or native. Without the kit, the owner sends the same request with the
-Stellar CLI:
+It prints the request hash. Nothing has to be sent to the verifier besides: a verifier running `verifier watch` finds
+the request on chain. `--manifest <url>` instead of `--config` works for any provider, library or native. Without the
+kit, the owner sends the same request with the Stellar CLI:
 
 ```bash
 stellar contract invoke --id CC5USZRO26MOIAVNYTTJDS63C2OBBLREOAOET4CPF2EZWO3YFKLMO3SL --source-account owner \
@@ -361,14 +382,15 @@ validation_response(caller = validator, request_hash, response = score, response
                     response_hash = sha256(receipt), tag = "provider-standard-v1")
 ```
 
-`verifier publish` checks everything before the Stellar CLI signs, and refuses when anything is off:
+`verifier watch` sends it by itself ([below](#self-serve-verification-verifier-watch)); `verifier publish` sends it by
+hand. Both check everything before the Stellar CLI signs, and refuse when anything is off:
 - the receipt is valid, and recent: checked within `--max-age` hours, default 24;
 - the request exists, names this validator and the receipt's agent, on the receipt's network;
 - `response_uri` is HTTPS and serves exactly the receipt's bytes;
 - the `--source` key is the receipt's validator.
 
-The validator key stays in the Stellar CLI keychain; the verifier never reads it. After sending, `publish` reads the
-record back to confirm it.
+The validator key stays in the Stellar CLI keychain; the verifier never reads it. After sending, both read the record
+back to confirm it.
 
 ### 3. Anyone reads it
 
@@ -376,6 +398,86 @@ record back to confirm it.
 `get_agent_validations_paginated(agent_id)` lists an agent's requests. Fetch the `response_uri`, check its SHA-256
 against `response_hash`, and read the receipt. `get_summary(agent_id, validators, "provider-standard-v1")` averages
 this standard's records without mixing in other kinds ([erc-compatibility.md](erc-compatibility.md), T2).
+
+## Self-serve verification: verifier watch
+
+`verifier watch` answers validation requests with no hand-off. The provider's owner sends `validation_request`, naming
+the verifier, and nothing else. The watcher runs on a server until it is stopped:
+
+```bash
+export VERIFIER_PAYER_SECRET=S...
+verifier watch --source verifier --public-url https://verifier.example.com --data /var/lib/verifier
+```
+
+### Each round
+
+Every `--interval` seconds (default 60):
+
+1. It reads the Validation Registry's list of the requests that name the validator, the `--source` key's address
+   (`get_validator_requests_paginated`). The list only grows, so each round reads only what is new. A request that
+   has a response already is left alone.
+2. It works on each request that is due, one at a time, oldest first:
+   - it finds the manifest to check (below);
+   - it runs every check, C1–C7, with the test payer, within the limits of `verifier verify --pay`;
+   - it writes the receipt to `<data>/receipts/<sha256>.json`, with its badges;
+   - it publishes `validation_response`, with `response_uri` set to `<public-url>/receipts/<sha256>.json`, as
+     `verifier publish` does: the same checks, then the Stellar CLI signs. Once the record shows the answer, it adds
+     the "8004 validated" badge if the receipt earns it.
+
+### Which manifest it checks
+
+- **The request document first.** The registry keeps no `request_uri`: the watcher reads it from the request's
+  `validation_request` event, at the ledger of the request (its `last_update`, while it has no response). The
+  document must hash to `request_hash`. One that does, but is not a Provider Standard v1 request for this agent, this
+  network and this validator, is refused.
+- **Else the registration.** RPC nodes keep events for a limited window, 7 days by default. For an older request, or a
+  document that can't be read, the manifest URL is the `stellar-agent-services` endpoint of the agent's registration
+  file [I1], from a `data:` or `https:` agent URI. A registration that lists several needs the document to choose.
+- **Never a URL the registration doesn't list.** The manifest URL the request names must be the registration's
+  endpoint, character for character, or the watcher doesn't check it. So a request can't point the test payer and the
+  load test at someone else's server.
+- Only an `https://` manifest URL without user info is checked [M1], [M6].
+
+### Retries
+
+| What happens | What the watcher does |
+| --- | --- |
+| The manifest URL gives no answer, or `404`, `408`, `425`, `429` or `5xx` | The provider is not reachable yet. It checks again after 1, 2, 4… minutes, at most an hour apart, for `--retry-for` hours (default 24) after it found the request. Then the failing result is the answer. |
+| A run fails no check but skips one, such as during an RPC outage | It runs again, three runs in all, then answers with the last. |
+| No manifest URL: the registration can't be read, or doesn't list the URL the request names | It waits as long, then refuses the request: no check, and no answer. |
+| The request document asks for something else, or the manifest names another agent or network | It refuses the request at once. |
+| The test payer holds less than `--max-spend` | Requests wait, and `/healthz` says so. A payer that can't pay never fails a provider. |
+| The registry, the Stellar CLI or `<public-url>` fails | It tries again later. |
+
+### Never twice
+
+- The registry is read before every step, and the checks before signing refuse a request that has a response. A
+  response sent with `verifier publish`, or by another watcher, is never overwritten.
+- The state records a response as sent before the Stellar CLI runs. After a crash, the response gets two minutes to
+  show in the registry. Only then is it sent again, with the same receipt.
+- `<data>/watch.lock` keeps a second watcher off the same data directory. Run one watcher per validator key.
+
+### What it serves
+
+| Path | What |
+| --- | --- |
+| `/receipts/<sha256>.json` | The receipt, exactly as written: the `response_uri` on chain |
+| `/receipts/<sha256>.<badge>.svg` | Its badges, such as `<sha256>.payment-verified.svg` |
+| `/requests/<request hash>.json` | Where a request stands: `waiting`, `publishing`, `answered` or `refused`, the next try, why it is not answered yet, and the receipt |
+| `/healthz` | `ok`, or `degraded` with the verifier's own problems, such as a test payer to fund |
+
+Receipts and badges are named by their content and never change. Everything is public, with CORS open.
+
+### Running it
+
+- A small server with Node.js 22.13 or later, the Stellar CLI and a persistent volume is enough. Create the validator
+  key there, with XLM for fees: `stellar keys generate verifier --network testnet --fund`.
+- Put HTTPS in front of `--port` at `--public-url`, with a reverse proxy or the platform's TLS. Before each answer,
+  the watcher checks that the receipt is served there.
+- Keep `--data` on the volume and back it up: the chain links to the receipts in it. Keep `--public-url` stable for
+  the same reason.
+- Keep at least `--max-spend` (default 1.00 USDC) in the test payer. A run with a 0.01 USDC service signs for 0.06.
+- On mainnet: `--network mainnet --allow-pubnet`. The test payer then pays real money.
 
 ## Security considerations
 
@@ -391,5 +493,10 @@ this standard's records without mixing in other kinds ([erc-compatibility.md](er
   process with a time limit.
 - **Address checks.** The verifier does not resolve host names to refuse private addresses. A verifier run as a
   shared service should run where it can reach only the public internet.
+- **The watcher is a shared service.** Any agent owner can name it, and it then fetches URLs the owner chose: the
+  manifest, an `https:` agent URI or `request_uri`. Run it where it can reach only the public internet. It checks one
+  provider at a time, and a run signs for at most `--max-spend`; keep only what you are willing to spend in the test
+  payer. `/requests/` and `/healthz` show no key. They quote the checks' reasons, as receipts do, and give the
+  verifier's own errors as one plain line; the details go to its log.
 - **No secrets in evidence.** Job tokens and signed payments are kept in memory to check that no response echoes
   them [E2], and never written to a receipt or a report.

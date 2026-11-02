@@ -110,7 +110,7 @@ describe("a FastAPI document", () => {
     expect(named(gateway, "classify-tree")).toMatchObject({ title: "Label a tree", description: "Label a tree" });
     expect(gateway.undescribed).toEqual(["classify-tree"]);
     // First guesses, the same as the starter config's.
-    expect(named(gateway, "translate")).toMatchObject({ price: "0.01", charge: "upfront", expectedDurationSeconds: 5, capacity: { concurrency: 2, maxQueueWaitSeconds: 60 } });
+    expect(named(gateway, "translate")).toMatchObject({ price: "0.01", charge: "on-success", expectedDurationSeconds: 5, capacity: { concurrency: 2, maxQueueWaitSeconds: 60 } });
   });
 
   it("sends the API's own key from the environment, never from the file", async () => {
@@ -441,7 +441,7 @@ describe("provider-kit init without --openapi", () => {
           title: "My service",
           description: "What it does, when to use it, and its limits (input size, languages, what it won't do).",
           price: "0.01",
-          charge: "upfront",
+          charge: "on-success",
           expectedDurationSeconds: 5,
           inputSchema: { type: "object", required: ["text"], properties: { text: { type: "string", minLength: 1, maxLength: 10000 } }, additionalProperties: false },
           outputSchema: { type: "object" },
@@ -473,3 +473,23 @@ async function upstream(answer: (request: IncomingMessage, body: string) => Json
     close: () => new Promise<void>((resolve) => http.close(() => resolve())),
   };
 }
+
+describe("provider-kit init --json", () => {
+  it("prints what it wrote and skipped as JSON, and nothing else", async () => {
+    const out = nextPath();
+    const printed: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation((line: string) => void printed.push(line));
+    try {
+      expect(await init({ out, openapi: FASTAPI, upstream: "http://127.0.0.1:8000", json: true })).toBe(0);
+    } finally {
+      log.mockRestore();
+    }
+    expect(printed).toHaveLength(1);
+    const report = JSON.parse(printed[0]!);
+    expect(report).toMatchObject({ ok: true, out, api: { title: "Text Tools API" } });
+    expect(report.services.map((service: { name: string }) => service.name)).toContain("translate");
+    expect(report.services.find((service: { name: string }) => service.name === "translate")).toMatchObject({ headers: ["X-API-Key"] });
+    expect(report.skipped).toContainEqual(expect.objectContaining({ method: "GET", path: "/health" }));
+    expect(report.credentials).toEqual([expect.objectContaining({ name: "UPSTREAM_X_API_KEY" })]);
+  });
+});

@@ -1,11 +1,12 @@
 // create-stellar-service, run as `npm create stellar-service`: a new project that sells an AI service on Stellar,
 // ready to run, try and deploy.
 //
-// It asks at most four questions: the folder; what to make (an API the developer already runs, behind the gateway, or
-// a new TypeScript or Python service); for an API, its OpenAPI document or the URL a paid call goes to; and one
-// sentence on what the service offers, which is what search matches. Then it writes the project (files.ts), installs
-// it, and, if the developer agrees, sets up the account clients pay with `provider-kit trustline`: a page where their
-// own wallet approves a USDC trustline. Flags answer every question, for scripts and coding agents.
+// It asks at most five questions: the folder; what to make (an API the developer already runs, behind the gateway, or
+// a new TypeScript or Python service); for an API, its OpenAPI document or the URL a paid call goes to; one sentence on
+// what the service offers, which is what search matches; and the price of a call. Then it writes the project
+// (files.ts), with fly.toml, and installs it. No wallet is needed to start: `npm run dev` makes a throwaway testnet
+// account to be paid to, and `npm run launch` sets up the developer's own wallet when the service goes live. --wallet
+// sets it up now instead, with `provider-kit trustline`. Flags answer every question, for scripts and coding agents.
 //
 // Testnet only. It never asks for, makes or stores a secret key, and never pays.
 
@@ -17,6 +18,7 @@ import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import {
   adaptInitConfig,
+  DEFAULT_PRICE,
   dockerignore,
   envFile,
   gitignore,
@@ -38,6 +40,7 @@ const OPTIONS = {
   upstream: { type: "string" },
   name: { type: "string" },
   description: { type: "string" },
+  price: { type: "string" },
   "pay-to": { type: "string" },
   wallet: { type: "boolean" },
   yes: { type: "boolean", short: "y" },
@@ -51,8 +54,8 @@ export const USAGE = `create-stellar-service: a new paid AI service on Stellar, 
 Usage:
   npm create stellar-service [<folder>] [-- <options>]
   create-stellar-service [<folder>] [--kind wrap|typescript|python] [--openapi <file | url>]
-                         [--upstream <url>] [--name <text>] [--description <text>]
-                         [--wallet | --no-wallet | --pay-to <G...>] [--yes]
+                         [--upstream <url>] [--name <text>] [--description <text>] [--price <usdc>]
+                         [--wallet | --pay-to <G...>] [--yes]
 
 --kind          wrap: an API you already run, in any language, behind the Provider Kit gateway. No
                 code changes: --openapi reads its OpenAPI document (FastAPI serves /openapi.json) and
@@ -62,9 +65,11 @@ Usage:
                 python: a new FastAPI service, behind the gateway.
 --description   One sentence on what it offers. Search matches it and the name: use the words buyers type.
 --name          The provider's name. Default: the folder's, or the OpenAPI document's title.
---wallet        Sets up the account clients pay: a page opens where your own wallet approves a USDC
+--price         What a call costs, in USDC. Default 0.01.
+--wallet        Sets up the account clients pay now: a page opens where your own wallet approves a USDC
                 trustline on testnet, and the address goes in .env as PAY_TO. --pay-to takes an address
-                you have; --no-wallet leaves it for later (npm run wallet).
+                you have. Without either, nothing is needed until npm run launch: npm run dev pays a
+                throwaway testnet account meanwhile.
 --yes           Takes the defaults for questions no flag answers. Without a terminal it never asks, and
                 --kind is needed.
 
@@ -74,6 +79,8 @@ const DEFAULT_FOLDER = "my-stellar-service";
 const MAKING: Record<Kind, string> = { wrap: "a gateway in front of your API", typescript: "a new TypeScript service", python: "a new Python service" };
 const DEFAULT_OPENAPI = "http://127.0.0.1:8000/openapi.json";
 const STELLAR_ACCOUNT = /^G[A-Z2-7]{55}$/;
+/** A price in USDC: up to 7 decimals, as Stellar counts USDC. */
+const PRICE = /^(?:0|[1-9]\d{0,8})(?:\.\d{1,7})?$/;
 
 /** A mistake in how it was called: printed with the usage text, exit code 2. */
 export class UsageError extends Error {
@@ -100,6 +107,8 @@ export interface CreateIo {
   ask(question: string): Promise<string>;
   /** Runs a program in `cwd`. With `echo`, its output also shows as it comes. */
   run(command: string, args: string[], options: { cwd: string; echo?: boolean }): Promise<RunResult>;
+  /** Whether a program, such as uv, is installed. */
+  has(program: string): Promise<boolean>;
   fetch: typeof fetch;
   kit: KitSource;
 }
@@ -126,6 +135,7 @@ export function createIo(): CreateIo {
       }
     },
     run: runProgram,
+    has: async (program) => (await runProgram(program, ["--version"], { cwd: process.cwd() }).catch(() => ({ code: 1, output: "" }))).code === 0,
     fetch: (input, init) => fetch(input, init),
     kit: kitSource(),
   };
@@ -140,6 +150,7 @@ export async function create(argv: string[], io: CreateIo = createIo()): Promise
   if (positionals.length > 1) throw new UsageError("give one folder");
   if (flags["pay-to"] !== undefined && !STELLAR_ACCOUNT.test(flags["pay-to"])) throw new UsageError("--pay-to must be a public Stellar account address, G...");
   if (flags["pay-to"] !== undefined && flags.wallet === true) throw new UsageError("--pay-to and --wallet both set the payout account: pick one");
+  if (flags.price !== undefined && !validPrice(flags.price)) throw new UsageError(`--price must be a price in USDC above zero, such as 0.05, not "${flags.price}"`);
   if (io.kit.from === "clone") {
     const missing = unbuilt(io.kit.packages);
     if (missing.length > 0) throw new Error(`the Provider Kit in ${dirname(io.kit.packages)} isn't built (no ${missing[0]}): run npm install && npm run build there first`);
@@ -165,7 +176,9 @@ interface Answers {
   source?: { openapi: string; upstream?: string } | { upstream: string };
   name?: string;
   description?: string;
-  /** Set up the payout account in the developer's wallet. */
+  /** Each service's price in USDC. */
+  price: string;
+  /** Set up the payout account in the developer's wallet now, rather than at launch. */
   wallet: boolean;
   payTo?: string;
 }
@@ -212,10 +225,9 @@ async function answer(flags: Flags, folder: string | undefined, io: CreateIo): P
     description = (await io.ask(`[${keep}]: `)) || undefined;
   }
 
-  let wallet = flags.wallet ?? false;
-  if (flags.wallet === undefined && flags["pay-to"] === undefined && asking) {
-    io.log("Set up the account clients pay now? A page opens where your wallet approves a USDC trustline on testnet.");
-    wallet = !/^n/i.test(await io.ask("[Y/n]: "));
+  let price = flags.price;
+  if (price === undefined && asking) {
+    price = await askUntil(io, true, undefined, `What does a call cost, in USDC? [${DEFAULT_PRICE}]: `, DEFAULT_PRICE, (value) => (validPrice(value) ? undefined : "a price in USDC above zero, such as 0.05"));
   }
   return {
     directory: resolve(directory),
@@ -223,9 +235,15 @@ async function answer(flags: Flags, folder: string | undefined, io: CreateIo): P
     ...(source === undefined ? {} : { source }),
     ...(flags.name === undefined ? {} : { name: flags.name }),
     ...(description === undefined ? {} : { description }),
-    wallet,
+    price: price ?? DEFAULT_PRICE,
+    wallet: flags.wallet ?? false,
     ...(flags["pay-to"] === undefined ? {} : { payTo: flags["pay-to"] }),
   };
+}
+
+/** A price in USDC above zero, with at most 7 decimals. */
+function validPrice(value: string): boolean {
+  return PRICE.test(value) && Number(value) > 0;
 }
 
 /** Writes and installs the project, then sets up the payout account if asked. */
@@ -240,9 +258,13 @@ async function build(answers: Answers, io: CreateIo): Promise<number> {
   const project: Project = {
     kind,
     package: packageName(folder),
+    app: flyAppName(folder),
     name: answers.name ?? titleCase(folder),
     description: answers.description ?? TEMPLATE_DESCRIPTION,
+    price: answers.price,
     vendored,
+    // uv runs a Python API with its packages, so there is no virtual environment to make first.
+    ...(kind === "python" ? { uv: await io.has("uv") } : {}),
   };
   const packed = vendored ? await step(io, "Packed the Provider Kit from your clone into vendor/", () => pack(io, directory)) : {};
   await write("package.json", packageJson(project, kitDependencies(io.kit, packed)));
@@ -279,7 +301,7 @@ async function build(answers: Answers, io: CreateIo): Promise<number> {
   await write(".env.example", envFile(project, { variables }, true));
   await write(".env", envFile(project, { ...(answers.payTo === undefined ? {} : { payTo: answers.payTo }), variables }));
   await write("README.md", readme(project, { services, ...(upstream === undefined ? {} : { upstream }) }));
-  io.log(`  ✓ Wrote ${kind === "typescript" ? "the service, " : "provider.config.json, "}.env, a Dockerfile and a README`);
+  io.log(`  ✓ Wrote ${kind === "typescript" ? "the service, " : "provider.config.json, "}.env, a Dockerfile, fly.toml and a README`);
 
   let payTo = answers.payTo;
   if (answers.wallet) {
@@ -289,19 +311,19 @@ async function build(answers: Answers, io: CreateIo): Promise<number> {
 
   io.log(`\n✓ Created ${folder} in ${directory}`);
   const first: string[] = [];
-  if (payTo === undefined) first.push("npm run wallet     sets up the account clients pay: put the address it prints in .env as PAY_TO");
   if (variables.length > 0) first.push(`set ${variables.join(", ")} in .env   the gateway sends ${variables.length === 1 ? "it" : "them"} to your API`);
-  // The Python packages are left to the developer's own shell: a Python started from here could pick packages for
-  // another processor, such as when Node runs under Rosetta on an Apple silicon Mac.
-  if (kind === "python") first.push("python3 -m venv .venv && .venv/bin/pip install -r requirements.txt", ".venv/bin/uvicorn app:app --port 8000 --reload   starts the API");
+  // Without uv, the Python packages are left to the developer's own shell: a Python started from here could pick
+  // packages for another processor, such as when Node runs under Rosetta on an Apple silicon Mac.
+  if (kind === "python" && !project.uv) first.push("python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   installs the API's packages, once");
+  const starts = { wrap: "the gateway in front of your API,", typescript: "the service", python: "the API and the gateway in front of it," }[kind];
   const steps = [
     `cd ${shellWord(folder)}`,
     ...first,
-    `npm run dev        starts ${kind === "typescript" ? "the service" : "the gateway"} at http://localhost:8787`,
+    `npm run dev        starts ${starts} at http://localhost:8787${payTo === undefined ? ": no wallet needed yet" : ""}`,
     "npm run try        pays for one call with test money, from another terminal",
-    "npm run check      checks it, and shows how agents see it",
+    "npm run launch     takes it live: one approval in your wallet, then Fly.io",
   ];
-  io.log(`\nNext:\n${steps.map((line) => `  ${line}`).join("\n")}\n\nREADME.md has the rest: making it yours, deploying, and getting found.`);
+  io.log(`\nNext:\n${steps.map((line) => `  ${line}`).join("\n")}\n\nnpm run status shows where it stands at any time. README.md has the rest.`);
   return 0;
 }
 
@@ -338,6 +360,7 @@ async function gatewayFromInit(answers: Answers, project: Project, io: CreateIo)
   const adapted = adaptInitConfig(await readFile(out, "utf8"), {
     ...(answers.name !== undefined || !fromDocument ? { name: project.name } : {}),
     ...(answers.description === undefined ? {} : { description: answers.description }),
+    price: project.price,
   });
   await writeFile(out, adapted.config);
   const config = JSON.parse(adapted.config) as { provider: { name: string; description?: string }; services: { name: string; upstream: { url: string } }[] };
@@ -385,7 +408,7 @@ async function connectWallet(io: CreateIo, directory: string): Promise<string | 
   } finally {
     process.off("SIGINT", ignore);
   }
-  io.log("  ! The account wasn't set up. npm run wallet tries again later.");
+  io.log("  ! The account wasn't set up. npm run launch sets it up when the service goes live.");
   return undefined;
 }
 
@@ -485,6 +508,12 @@ function runProgram(command: string, args: string[], options: { cwd: string; ech
 /** An npm package name from a folder name. */
 export function packageName(folder: string): string {
   return folder.toLowerCase().replace(/[^a-z0-9._~-]+/g, "-").replace(/^[._-]+|-+$/g, "") || "stellar-service";
+}
+
+/** A Fly.io app name from a folder name: lowercase letters, digits and dashes, starting with a letter. */
+export function flyAppName(folder: string): string {
+  const name = folder.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^[^a-z]+|-+$/g, "").slice(0, 63);
+  return name === "" ? "stellar-service" : name;
 }
 
 /** "my-stellar-service" as a name: "My Stellar Service". */

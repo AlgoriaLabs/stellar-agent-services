@@ -2,7 +2,8 @@
 //
 // Settings come from .env, public values only: this service never needs a Stellar secret key. Paid jobs are kept
 // in SQLite (JOB_DB_PATH), so they survive a restart, and a client that lost its response can still collect the
-// result. Add services in src/services/ and list them below.
+// result. Add services in src/services/ and list them below. `npm run launch` starts this file with PUBLIC_ORIGIN set
+// to the public address, to read the manifest it will serve there.
 
 import { createProvider, listen, sqliteStore, type ProviderConfig } from "@stellar-agent-services/provider-kit";
 import { summarize } from "./services/summarize.js";
@@ -10,7 +11,7 @@ import { summarize } from "./services/summarize.js";
 const port = Number(process.env["PORT"] ?? "8787");
 const origin = process.env["PUBLIC_ORIGIN"] ?? `http://localhost:${port}`;
 const payTo = process.env["PAY_TO"];
-if (!payTo) throw new Error("Set PAY_TO in .env to the public G... address that receives payments: npm run wallet sets one up.");
+if (!payTo) throw new Error("PAY_TO is empty: npm run dev makes a throwaway testnet account to be paid to, and npm run launch sets up your own wallet.");
 const agentId = process.env["AGENT_ID"];
 const rpcUrl = process.env["SOROBAN_RPC_URL"];
 

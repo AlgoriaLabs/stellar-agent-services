@@ -19,14 +19,13 @@ so a client that lost the response can collect it.
 From the repository root, after `npm install && npm run build`:
 
 ```bash
-python3 examples/python-upstream/app.py &          # the API, on 127.0.0.1:5000
-
-PUBLIC_ORIGIN=http://localhost:8787 PAY_TO=G... \
-  node packages/provider-kit/dist/cli/index.js serve --config examples/python-upstream/provider.config.json --dev
+PUBLIC_ORIGIN=http://localhost:8787 node packages/provider-kit/dist/cli/index.js dev \
+  --config examples/python-upstream/provider.config.json --with "python3 examples/python-upstream/app.py"
 ```
 
-`PAY_TO` is the public address that receives the USDC, an account in your own wallet. It needs a USDC trustline:
-`provider-kit trustline --network testnet` adds one, approved in your wallet (see the
+`dev` starts the API on 127.0.0.1:5000, waits until it takes connections, then serves the gateway in front of it.
+`PAY_TO` is the public address that receives the USDC. Without one, `dev` makes a throwaway testnet account to be paid
+to, whose key is dropped at once; set `PAY_TO=G...` to an account in your own wallet to be paid there instead (see the
 [setup guide](../../docs/provider-setup-guide.md)). Then pay it once from another terminal, with its example input:
 
 ```bash

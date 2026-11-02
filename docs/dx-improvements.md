@@ -8,6 +8,7 @@ repository, why, and how it was checked. A phase is added here when it lands.
 | 1 | [`provider-kit try`](#phase-1-provider-kit-try): the first paid call in one command | Done |
 | 2 | [`provider-kit init --openapi`](#phase-2-provider-kit-init---openapi): the gateway config from an OpenAPI document | Done |
 | 3 | [`npm create stellar-service`, and how agents see you](#phase-3-npm-create-stellar-service-and-how-agents-see-you): a ready project in one command, and what search sees | Done, in review |
+| 4 | [From nothing to live: `dev`, `launch`, `status`](#phase-4-from-nothing-to-live-dev-launch-status): no wallet until launch, one approval page, verification without a hand-off | Done, in review |
 
 Before these phases, the owner's transactions (the USDC trustline, 8004 registration, validation requests) moved
 from a key in the CLI to the developer's own wallet, approved on a page the CLI opens
@@ -417,3 +418,159 @@ How agents see you
   It doesn't read reviews: it states the ranking policy, and the live command shows the real profile.
 - **Not done:** stellar-agent-search's provider guide (`build-a-discoverable-agent.md`) still tells providers to
   register with their own key script. That change belongs to that repository.
+
+## Phase 4: from nothing to live: `dev`, `launch`, `status`
+
+### Why
+
+Phases 1–3 made the first paid call quick. Going live still took most of the work, and three separate wallet
+sessions:
+
+```bash
+npm run wallet                                   # 1st wallet session: the USDC trustline, before anything runs
+npm run dev && npm run try                       # two terminals
+# deploy it yourself: HTTPS, a volume, the environment
+PUBLIC_ORIGIN=https://… npm run register         # 2nd wallet session, then "deploy it again" with the agent id
+provider-kit request-validation --validator G…   # 3rd wallet session, then send the verifier the hash yourself
+# and on testnet, stellar-agent-search couldn't find the provider unless the searcher knew its id
+```
+
+Now:
+
+```bash
+npm run dev       # no wallet: a throwaway testnet account is paid until launch
+npm run try       # starts the service for the call when it isn't running
+npm run launch    # one page in your wallet: trustline, registration, verification request; then Fly.io
+npm run status    # where it stands, and the one command to run next (--json for agents)
+```
+
+### What changed
+
+1. **`provider-kit dev`** runs a provider on this computer: a gateway config in its own process, or any provider by its
+   command (`dev -- node dist/server.js`). It reads `.env`. With `PAY_TO` empty, it makes a **throwaway payout
+   account**: a new testnet key in memory gets test XLM from Friendbot and signs the account's USDC trustline, then
+   the key is dropped. Only the public address reaches the provider and `.env` (as `PAY_TO` and `DEV_PAY_TO`), and what
+   it receives is test money nobody can spend. `--with '<command>'` starts the API a gateway calls and waits until it
+   takes connections. `--tunnel` adds a temporary public HTTPS address through a Cloudflare quick tunnel.
+2. **`provider-kit launch`** takes the provider live:
+   - The public address comes first: `--url`, `fly.toml`'s app (`https://<app>.fly.dev`) or an `https://`
+     `PUBLIC_ORIGIN`. So the service is registered before its first deploy and deployed once, with its agent id.
+   - It builds the manifest that address will serve and checks it: from the gateway config, from the provider's own
+     command started with `PUBLIC_ORIGIN` set (`--start`), or from a deployed provider (`--manifest`).
+   - One approval page, one wallet: test XLM, the USDC trustline [P2], `register_with_uri` (or `set_agent_uri` when the
+     manifest moved) [I1]–[I3], and `validation_request`, which is built once the new agent id is known.
+   - It saves `PAY_TO` and `AGENT_ID` in `.env`, the agent id where the gateway config reads it, and the public
+     settings in `fly.toml`'s `[env]`. A new agent's id is saved even when a later step stops, so running `launch`
+     again never registers a second agent. Run again with everything in place, it signs nothing.
+   - With `fly.toml` and a yes, `flyctl` creates the app the first time, the API's key is staged as a Fly secret from
+     `.env`, `fly deploy` runs with one machine, and `launch` waits for the public manifest and checks [I1]–[I3] from
+     outside.
+3. **`provider-kit status`** reads this computer, the chain and the public address: running here, `payTo`, paid
+   once, registered, live, verified. It names the one command to run next, and finds the public manifest from the
+   registration itself when nothing else names it. `--json` for scripts and coding agents.
+4. **`check`:** `--fix` writes the service words search would miss into a gateway config's `provider.description`,
+   and `--json` prints the result. A provider on this computer that isn't registered yet passes, with a note that
+   `launch` registers it.
+5. **`try`:** when nothing answers, it starts the provider for the call and stops it after: the gateway config in its
+   own process (with a throwaway `payTo` when `PAY_TO` is empty), or `--start '<command>'`. `--json` prints the
+   outcome on standard output and the steps on standard error.
+6. **`npm create stellar-service`:** no wallet question; a price question (`--price`); `fly.toml`; the scripts `dev`,
+   `try`, `check`, `status`, `launch` and `deploy` (`wallet` and `register` are gone); gateway configs read the agent
+   id as `env:AGENT_ID`. The Python kind runs its API with `uv` when it is installed, so there is no virtual
+   environment to make, and `npm run dev` starts the API and the gateway together. Every Dockerfile, and the kit's
+   gateway image, gives `/data` to the `node` user when it starts as root, so a host's new volume works as it comes.
+7. **`provider-kit init`** guesses `on-success` for a call expected to take seconds, instead of `upfront`, and
+   `--json` prints what it wrote and skipped.
+8. **A gateway config's `provider.agentId`** may read an unset variable (`"env:AGENT_ID"` before launch): the provider
+   just isn't registered yet.
+9. **`verifier watch`** answers validation requests with no hand-off ([verification.md](verification.md#self-serve-verification-verifier-watch)).
+   It reads the Validation Registry's list of requests naming its key, finds each request's document in its
+   `validation_request` event (or, once the RPC no longer has it, the agent's registration) and checks only a manifest
+   URL the agent's registration lists [I1]. Then it runs C1–C7 with its test payer, serves the receipt and badges over
+   HTTP, and answers with `validation_response`, signed by the Stellar CLI keychain. A provider that isn't live yet is
+   checked again for 24 hours, so `launch` can ask before the deploy. Its state survives restarts, and a request is
+   never answered twice. `/requests/<request hash>.json` shows where a request stands.
+10. **stellar-agent-search finds testnet providers** (in that repository, for its 0.2.0 release). With
+    `STELLAR_NETWORK=testnet` and nothing else, it reads the newest 50 agents straight from the Identity contract
+    (ids are given in order, so `total_agents` names the window; `REGISTRY_SCAN_LIMIT` changes it), with honest
+    coverage and short caches, and never mixes in mainnet's explorer. A search there also matches a provider's
+    services: when the registration lists one `stellar-agent-services` manifest that is live and bound to the agent
+    [I1]–[I3], their names, titles, descriptions and tags count, and each result says which field matched. `check`'s
+    "How agents see you" follows it: on testnet the missing service words are a note, on mainnet, where the explorer
+    lists no services, still a warning; and it prints the 0.2.0 command that shows the live profile.
+
+### How it stays safe
+
+- **No key is kept.** The throwaway payout account's key lives in memory for one transaction, its own trustline,
+  and is never written; the provider, like any provider, knows only the public address ([AGENTS.md](../AGENTS.md)
+  rule 1, [SECURITY.md](../SECURITY.md)). It is never made on Mainnet: there, an empty `PAY_TO` stops `dev`.
+- **The owner signs, once, in their wallet.** `launch` builds each transaction when it is due, and the page checks
+  that what the wallet signed is that very transaction (as in Phase 3's approval page). A provider's own account is
+  never asked to validate it.
+- **Nothing twice.** A registration that landed is saved before anything else can stop the run. A re-run reads the
+  chain: a registration that names the manifest isn't sent again, and a verifier that was asked isn't asked again.
+- **Fail closed.** `launch` refuses an `http://` address, a quick tunnel's (it changes every run), an `AGENT_ID` that
+  doesn't exist, and a `PAY_TO` that isn't the agent's wallet [I3], before anything is signed.
+- **Secrets stay secret.** `fly.toml` gets public values only. The API's key goes to Fly's secrets through `flyctl`'s
+  standard input, never on a command line.
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `packages/provider-kit/src/cli/dev.ts`, `dev-account.ts` | New: `provider-kit dev`, and the throwaway payout account |
+| `packages/provider-kit/src/cli/launch.ts`, `fly.ts`, `validators.ts` | New: `provider-kit launch`, `fly.toml` and `flyctl`, the default verifier |
+| `packages/provider-kit/src/cli/status.ts` | New: `provider-kit status` |
+| `packages/provider-kit/src/cli/env-file.ts`, `processes.ts`, `tunnel.ts` | New: `.env` reading and writing, the provider's own command, the quick tunnel |
+| `packages/provider-kit/src/cli/serve.ts` | `serveGateway()`, shared by `serve`, `dev` and `try` |
+| `packages/provider-kit/src/cli/check.ts`, `discovery.ts` | `--fix`, `--json`, `describedWithServices()`; an unregistered local provider passes |
+| `packages/provider-kit/src/cli/try.ts` | Starts the provider when nothing answers; `--start`, `--json` |
+| `packages/provider-kit/src/cli/owner-steps.ts` | A validation request step prepared when it is due |
+| `packages/provider-kit/src/registration.ts` | `agentValidations()`: an agent's validation requests |
+| `packages/provider-kit/src/gateway/config.ts`, `openapi.ts`, `schemas/gateway-config.schema.json` | An unset `env:` agent id; the `baseUrl` override; `on-success` first guess |
+| `packages/provider-kit/src/cli/main.ts`, `shared.ts`, `init.ts` | The commands, their flags and usage; `init`'s next steps |
+| `packages/provider-kit/Dockerfile` | The `/data` hand-over; the missing `create-stellar-service` workspace manifest |
+| `packages/create-stellar-service/` | No wallet question, `--price`, `fly.toml`, the new scripts, `uv`, the Dockerfiles' `/data` hand-over |
+| `packages/verifier/src/watch.ts`, `watch-state.ts`, `requests.ts`, `cli/watch.ts`, `cli/serve.ts` | New: `verifier watch`, its state, how a request becomes a manifest URL, and the receipts it serves |
+| `packages/verifier/src/registry.ts`, `chain.ts`, `json.ts`, `schemas.ts`, `cli/` | The validator's request list, the payer's balance, the shared `data:` URI reader, the request schema, the command |
+| `packages/provider-kit/src/cli/request-validation.ts` | Says that nothing needs sending: a watching verifier finds the request |
+| `packages/provider-kit/src/cli/discovery.ts` | Search as stellar-agent-search 0.2.0 does it: services on testnet, the registration's services, the 0.2.0 command |
+| stellar-agent-search (its own repository) | The registry scan for testnet, matching manifest services, `match.fields` in results, docs and its changelog |
+| Tests | `dev.test.ts`, `launch.test.ts`, `status.test.ts`, `check.test.ts`, `tools.test.ts`, the verifier's `watch.test.ts` and `requests.test.ts` (new); `try`, `openapi`, `create` and the registry fakes |
+| Docs | The [setup guide](provider-setup-guide.md) (a quick start, then §5–§10 rewritten), [verification.md](verification.md) (self-serve verification), the provider-kit, create-stellar-service and verifier READMEs, [AGENTS.md](../AGENTS.md), the root README, [SECURITY.md](../SECURITY.md), README-AI §2 and §13, three skills, both examples, `llms-full.txt` |
+
+### How it was checked
+
+- **Tests:** `npm run typecheck` and `npm test` pass: 1,020 tests. `launch` is tested end to end against a fake
+  chain, registry, wallet and `flyctl`: one page from a throwaway `PAY_TO` to agent 42 with its validation request; a
+  re-run that signs nothing; a page closed after registering, then a re-run that asks only for the validation; a
+  provider's own command; the deploy, the staged secret and the live check; a gateway on 127.0.0.1 that isn't
+  deployed; and every refusal. `verifier watch` has 50 tests with a fake registry, RPC, Stellar CLI and provider: a
+  request found, checked, served and answered; one not live yet, retried, then answered with its failure; a URL the
+  registration doesn't list, never checked; a restart in the middle; and no second answer, which mutation checks
+  confirmed the tests guard.
+- **Live, on testnet,** a Python project made from the clone: `npm run dev` made the throwaway account (Friendbot,
+  then its trustline), started the API with `uv` and waited for it, then served the gateway. `npm run status` and
+  `npm run check` read the running provider, Horizon and the registry, and `npm run launch -- --dry-run` planned a
+  new registration against the testnet registry. Ctrl+C stopped the gateway and the API together.
+- **Not run here:** a paid `try` and a live `launch` (they spend test money and register a test agent: they wait
+  for the maintainer's go), a Fly.io deploy (no Fly account), the Docker images (no Docker daemon) and `--tunnel` (no
+  `cloudflared`). Those parts are tested with fakes only.
+
+### Limits
+
+- **The default verifier is empty** (`src/cli/validators.ts`) until a verifier runs `verifier watch` with a known
+  account. Until then, `launch --validator <G…>` or `STELLAR_VALIDATOR` names one, and without either no validation is
+  requested.
+- **Deploying is Fly.io only.** Elsewhere, `launch --url <https origin> --no-deploy` registers the address and prints
+  the settings to deploy with.
+- **A hosted gateway**, where `launch` would upload the config and get an address without deploying anything, is not
+  built: whoever ran it would hold the API's key and the job database.
+- **`launch --start`** runs the provider's command here for a few seconds, so its startup checks (such as the
+  facilitator's) must pass on this computer.
+- **Search reaches the newest 50 testnet agents** (and any one by id). Of today's newest 50, 35 registrations can't be
+  read, as they point at `http://`, `localhost` or pages that are gone. The kit's printed search command needs the
+  stellar-agent-search 0.2.0 release; until then it runs from a checkout of that repository
+  (`STELLAR_NETWORK=testnet node dist/index.js profile <id>`).
+- **`verifier watch` has no container image**: it signs through the Stellar CLI keychain, which would have to be
+  installed in the image. Its README describes running it on a small server. It hasn't run against testnet here.

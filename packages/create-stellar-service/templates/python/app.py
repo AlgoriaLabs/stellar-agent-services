@@ -4,8 +4,7 @@ The Provider Kit gateway (provider.config.json) stands in front of it. It publis
 payment, queues jobs and keeps them for recovery, and POSTs only validated input here. Keep the models below in step
 with the schemas in provider.config.json: agents read those before they pay.
 
-    python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-    .venv/bin/uvicorn app:app --port 8000 --reload
+`npm run dev` starts it next to the gateway: {{apiCommand}}
 """
 
 import re
