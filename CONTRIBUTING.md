@@ -74,11 +74,12 @@ The first release needs three things done once:
 
 1. Remove `"private": true` from each package under `packages/`. `npm run packages:check` lists the ones left;
    the publish refuses to start while any is.
-2. Publish the first version with an npm token: an automation token with publish rights to the
-   `@stellar-agent-services` scope and `create-stellar-service`, saved as the repository secret `NPM_TOKEN`.
+2. Publish the first version with a token, since npm only trusts a workflow for a package that exists: an npm
+   granular access token with read and write access to your packages, new ones included, saved as the repository
+   secret `NPM_TOKEN`. The `@stellar-agent-services` organization must exist on npm, with you able to publish to it.
 3. Then make npm trust the workflow instead: on npmjs.com, each package's settings → Trusted publishing → GitHub
-   Actions, repository `AlgoriaLabs/stellar-agent-services`, workflow `release.yml`, environment `npm`. Delete the
-   `NPM_TOKEN` secret.
+   Actions, organization `AlgoriaLabs`, repository `stellar-agent-services`, workflow `release.yml`, environment `npm`.
+   Delete the `NPM_TOKEN` secret and the token. Later versions publish with no token at all.
 
 The `npm` environment can require an approval before each publish (Settings → Environments → npm).
 
