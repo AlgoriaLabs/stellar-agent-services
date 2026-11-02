@@ -5,6 +5,11 @@
   "description": "Checks a provider against Provider Standard v1, issues verification receipts and badges, and publishes Stellar 8004 Validation Registry responses.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
+    "directory": "packages/verifier"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

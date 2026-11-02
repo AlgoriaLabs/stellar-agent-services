@@ -5,6 +5,11 @@
   "description": "Provider Standard v1 as code: manifest, job, receipt and header definitions shared by every package.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
+    "directory": "packages/protocol"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

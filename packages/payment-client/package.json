@@ -5,6 +5,11 @@
   "description": "Buyer-side payment client: approval, spending policy, hash-chained journal, payment and job recovery (PoC).",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
+    "directory": "packages/payment-client"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

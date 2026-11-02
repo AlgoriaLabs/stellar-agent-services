@@ -13,9 +13,10 @@
 //    payTo, unless PAY_TO already names an account of yours. Nothing is registered twice: a new agent's id is saved
 //    even when a later step stops.
 // 4. Saves what it settled: PAY_TO and AGENT_ID in .env, the agent id in the gateway config (or its env:AGENT_ID), and
-//    the public settings in fly.toml's [env].
-// 5. With fly.toml and your yes (--deploy), deploys with flyctl, waits until the public manifest serves the agent id,
-//    and checks the registration from outside.
+//    the public settings in fly.toml's [env], with a command-run provider's STELLAR_NETWORK.
+// 5. With fly.toml and your yes (--deploy), stages the variables that may hold keys as Fly secrets (the ones a gateway
+//    config reads; FACILITATOR_AUTH and SOROBAN_RPC_URL for a command), deploys with flyctl, waits until the public
+//    manifest serves the agent id on the network it registered on, and checks the registration from outside.
 // No key reaches provider-kit: the wallet signs on a page on this computer (approval.ts). Scripts and CI use `register`
 // and `request-validation` with --source instead.
 
@@ -45,6 +46,11 @@ import { defaultValidator } from "./validators.js";
 
 /** Settings the gateway config and the deploy read from the environment, which launch settles itself. */
 const SETTINGS = new Set(["PAY_TO", "PUBLIC_ORIGIN", "JOB_DB_PATH", "AGENT_ID", DEV_PAY_TO, "PORT"]);
+/**
+ * What a provider run by its own command may read that holds a key, as the TypeScript template does: the facilitator's
+ * Authorization header (mainnet's facilitator wants an API key) and a Soroban RPC URL, which often carries one.
+ */
+const COMMAND_SECRETS = ["FACILITATOR_AUTH", "SOROBAN_RPC_URL"];
 /** How long launch waits for a deploy to serve the new manifest. */
 const LIVE_WAIT_MS = 5 * 60_000;
 const LIVE_POLL_MS = 5000;
@@ -97,6 +103,10 @@ interface Launchable {
   manifestUrl: string;
   /** Where the agent id is saved: a gateway config's provider.agentId (literal, or the variable it reads), or AGENT_ID. */
   agentIdGoes: { config: string } | { variable: string };
+  /** Public settings the deployed provider reads too, for fly.toml's [env]: a command-run provider's network. */
+  settings: Record<string, string>;
+  /** Variables that may hold keys, staged as Fly secrets from .env. `required`: the provider can't start without them. */
+  secrets: { names: string[]; required: boolean };
 }
 
 export async function launch(flags: CliFlags, io: LaunchIo = launchIo(flags)): Promise<number> {
@@ -320,7 +330,7 @@ export async function launch(flags: CliFlags, io: LaunchIo = launchIo(flags)): P
     return 1;
   }
   if (deploying) {
-    await stageSecrets(io, fly!, config);
+    await stageSecrets(io, fly!, target);
     const problem = await flyDeploy(io.fly, fly!, io.log);
     if (problem !== undefined) {
       io.log(`  ✗ ${problem}`);
@@ -328,7 +338,7 @@ export async function launch(flags: CliFlags, io: LaunchIo = launchIo(flags)): P
       return 1;
     }
   } else {
-    printDeploy(io, { fly, origin, payTo: payTo!, agentId, agentIdGoes: target.agentIdGoes });
+    printDeploy(io, { fly, origin, payTo: payTo!, agentId, target });
   }
   if (!deploying || flags["no-wait"]) {
     io.log(`\n${nextCommand("status")} shows where it stands: live, registered, verified.`);
@@ -383,10 +393,14 @@ async function gatewayTarget(config: string, origin: string, payTo: string, env:
     throw new ManifestProblems([(error as Error).message]);
   }
   const agentId = parsed.provider?.agentId;
+  const secrets = new Set(variablesRead(parsed).map(({ name }) => name).filter((name) => !SETTINGS.has(name) && name !== agentIdVariable));
   return {
     manifest: built.manifest,
     manifestUrl: built.manifestUrl,
     agentIdGoes: typeof agentId === "string" && agentId.startsWith("env:") ? { variable: agentId.slice("env:".length) } : { config },
+    // The image carries the config, network and all.
+    settings: {},
+    secrets: { names: [...secrets], required: true },
   };
 }
 
@@ -405,7 +419,16 @@ async function commandTarget(command: string, origin: string, payTo: string, age
       problems.push(`its baseUrl is ${manifest.baseUrl}, not under ${origin}: have it read PUBLIC_ORIGIN, as the template's src/server.ts does`);
     }
     if (problems.length > 0) throw new ManifestProblems(problems);
-    return { manifest, manifestUrl, agentIdGoes: { variable: "AGENT_ID" } };
+    const facilitatorUrl = io.env["FACILITATOR_URL"];
+    return {
+      manifest,
+      manifestUrl,
+      agentIdGoes: { variable: "AGENT_ID" },
+      // The deployed provider must take payments on the network registered here: it reads STELLAR_NETWORK, as this one
+      // did from .env (the TypeScript template's default is testnet).
+      settings: { STELLAR_NETWORK: manifest.payment.accepts[0].network, ...(facilitatorUrl ? { FACILITATOR_URL: facilitatorUrl } : {}) },
+      secrets: { names: COMMAND_SECRETS, required: false },
+    };
   } catch (error) {
     if (error instanceof ManifestProblems) throw error;
     const output = started.output().trim().split("\n").slice(-12).join("\n");
@@ -447,7 +470,7 @@ async function deployedTarget(url: string, fetcher: typeof fetch): Promise<Launc
   }
   const violations = checkManifest(manifest, url, false);
   if (violations.length > 0) return { problems: violations.map((violation) => `[${violation.rule}] ${violation.pointer || "/"}: ${violation.message}`) };
-  return { manifest, manifestUrl: url, agentIdGoes: { variable: "AGENT_ID" } };
+  return { manifest, manifestUrl: url, agentIdGoes: { variable: "AGENT_ID" }, settings: {}, secrets: { names: [], required: false } };
 }
 
 /** Every "env:NAME" a gateway config reads, with the field it fills. */
@@ -509,6 +532,7 @@ async function save(
     const settings: Record<string, string> = { PUBLIC_ORIGIN: options.origin };
     if (payTo !== undefined) settings["PAY_TO"] = payTo;
     if (agentId !== undefined && "variable" in target.agentIdGoes) settings[target.agentIdGoes.variable] = String(agentId);
+    Object.assign(settings, target.settings);
     await setFlyEnv(fly.path, settings);
     io.log(`  ✓ Saved ${Object.keys(settings).join(", ")} in ${fly.path}'s [env], for every deploy`);
   }
@@ -524,28 +548,45 @@ async function shouldDeploy(flags: CliFlags, io: LaunchIo, fly: FlyApp): Promise
   return io.confirm(`\nDeploy to Fly.io now (fly deploy, app ${fly.app})? [Y/n] `);
 }
 
-/** The API's own variables that a gateway config reads, such as its key, staged as Fly secrets from .env for the deploy. */
-async function stageSecrets(io: LaunchIo, fly: FlyApp, config: string | undefined): Promise<void> {
-  if (config === undefined) return;
+/**
+ * The provider's variables that may hold keys, such as its API's key or the facilitator's, staged as Fly secrets from
+ * .env for the deploy. A required one that isn't set here is named: the deployed provider can't start without it.
+ */
+async function stageSecrets(io: LaunchIo, fly: FlyApp, target: Launchable): Promise<void> {
   const secrets: Record<string, string> = {};
-  for (const { name } of variablesRead(JSON.parse(await readFile(config, "utf8")))) {
+  const unset: string[] = [];
+  for (const name of target.secrets.names) {
     const value = io.env[name];
-    if (!SETTINGS.has(name) && value !== undefined && value !== "") secrets[name] = value;
+    if (value !== undefined && value !== "") secrets[name] = value;
+    else if (target.secrets.required) unset.push(name);
   }
   const names = Object.keys(secrets);
-  if (names.length === 0) return;
-  if (await flySecrets(io.fly, fly.app, secrets)) io.log(`  ✓ Staged ${names.join(", ")} as Fly secrets, from your environment`);
-  else io.log(`  ! ${names.join(", ")} couldn't be staged as Fly secrets: fly secrets set them before the service can call your API`);
+  if (names.length > 0) {
+    if (await flySecrets(io.fly, fly.app, secrets)) io.log(`  ✓ Staged ${names.join(", ")} as Fly secrets, from your environment`);
+    else io.log(`  ! ${names.join(", ")} couldn't be staged as Fly secrets: fly secrets set them, or the service can't start`);
+  }
+  if (unset.length > 0) {
+    io.log(`  ! ${unset.join(", ")} ${unset.length === 1 ? "isn't" : "aren't"} set here, so not staged: unless Fly has ${unset.length === 1 ? "it" : "them"} already, the service can't start. fly secrets set ${unset[0]}=...`);
+  }
 }
 
-function printDeploy(io: LaunchIo, options: { fly: FlyApp | undefined; origin: string; payTo: string; agentId: number; agentIdGoes: Launchable["agentIdGoes"] }): void {
+function printDeploy(io: LaunchIo, options: { fly: FlyApp | undefined; origin: string; payTo: string; agentId: number; target: Launchable }): void {
   if (options.fly !== undefined) {
     io.log(`\nDeploy when you're ready: ${nextCommand("deploy", "fly deploy --ha=false")}. fly.toml has the settings.`);
     return;
   }
-  const settings = [`PUBLIC_ORIGIN=${options.origin}`, `PAY_TO=${options.payTo}`, ...("variable" in options.agentIdGoes ? [`${options.agentIdGoes.variable}=${options.agentId}`] : [])];
+  const { agentIdGoes, settings: more, secrets } = options.target;
+  const settings = [
+    `PUBLIC_ORIGIN=${options.origin}`,
+    `PAY_TO=${options.payTo}`,
+    ...("variable" in agentIdGoes ? [`${agentIdGoes.variable}=${options.agentId}`] : []),
+    ...Object.entries(more).map(([name, value]) => `${name}=${value}`),
+  ];
   io.log(`\nDeploy it at ${options.origin} with these settings, and a persistent volume for its job database (JOB_DB_PATH):`);
   io.log(`  ${settings.join(" ")}`);
+  // Only the names: their values stay in .env, to be set as secrets where it runs.
+  const kept = secrets.names.filter((name) => io.env[name] !== undefined && io.env[name] !== "");
+  if (kept.length > 0) io.log(`  and, as secrets there, ${kept.join(", ")} from .env`);
 }
 
 /** Waits for the public manifest to serve the agent id, then checks the registration from outside [I1]–[I3]. */
@@ -572,6 +613,13 @@ async function checkLive(io: LaunchIo, options: { manifestUrl: string; agentId: 
   }
   if (served === undefined) {
     io.log(`  ! It doesn't serve agent ${options.agentId} yet. ${nextCommand("status")} checks again later.`);
+    return 1;
+  }
+  // Testnet and mainnet never mix: an agent registered on one network must take payments on that network.
+  const servedNetwork = served.payment.accepts[0]?.network;
+  if (servedNetwork !== options.network) {
+    io.log(`  ✗ It serves agent ${options.agentId} with payments on ${JSON.stringify(servedNetwork)}, but the agent is registered on ${options.network}.`);
+    io.log(`    Its deployed settings must name ${options.network}: fix them, deploy again, then ${nextCommand("status")}.`);
     return 1;
   }
   io.log(`  ✓ Live: ${options.manifestUrl}`);

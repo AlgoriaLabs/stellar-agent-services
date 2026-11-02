@@ -275,6 +275,86 @@ describe("provider-kit launch", () => {
     expect(t.output()).toContain("✓ 8004 [I3]: the agent wallet is the manifest's payTo");
   });
 
+  it("deploys a command-run provider with its network in fly.toml, and the facilitator's key and the RPC as Fly secrets", async () => {
+    const directory = project({ env: "PAY_TO=\nAGENT_ID=\n" });
+    const { chain, registry } = world();
+    const wallet = Keypair.random();
+    const service = defineService({ name: "echo", description: "Echoes its input back, for testing launch.", price: "0.01", inputSchema: { type: "object" }, outputSchema: { type: "object" }, handler: (input) => input });
+    const build = (baseUrl: string, payTo: string, agentId: string | undefined) =>
+      createProvider({
+        baseUrl,
+        network: "stellar:testnet",
+        payTo,
+        provider: { name: "Command provider", ...(agentId ? { agentId: Number(agentId) } : {}) },
+        services: [service],
+        facilitator: { verify: async () => ({ isValid: true }), settle: async () => ({ success: false, errorReason: "test" }) },
+        rpc: false,
+      });
+    let local: typeof fetch = async () => new Response("", { status: 503 });
+    const start = (_command: string, env: NodeJS.ProcessEnv): Started => {
+      const provider = build(env["PUBLIC_ORIGIN"]!, env["PAY_TO"]!, env["AGENT_ID"]);
+      local = async (input, init) => provider.fetch(new Request(input, init));
+      return { exited: new Promise(() => {}), output: () => "", stop: () => provider.close() };
+    };
+    let deployed = false;
+    const fetcher: typeof fetch = async (input, init) => {
+      if (String(input).startsWith("http://127.0.0.1:")) return local(input, init);
+      if (!deployed || String(input) !== MANIFEST_URL) return new Response("", { status: 404 });
+      return Response.json(build(ORIGIN, wallet.publicKey(), "42").manifest);
+    };
+    const calls: { args: string[]; input?: string }[] = [];
+    const fly: LaunchIo["fly"] = async (args, options = {}) => {
+      calls.push({ args, ...(options.input === undefined ? {} : { input: options.input }) });
+      if (args[0] === "deploy") deployed = true;
+      return { code: 0, output: "" };
+    };
+    const t = io({ chain, registry: registry.registry, approve: walletApproves(wallet).approve, start, fetch: fetcher, fly });
+    Object.assign(t.io.env, { FACILITATOR_URL: "https://facilitator.example", FACILITATOR_AUTH: "Bearer test-key", SOROBAN_RPC_URL: "https://rpc.example" });
+
+    expect(await launch({ start: "node dist/server.js", validator: VALIDATOR, deploy: true }, t.io)).toBe(0);
+    // Deployed, it takes payments on the network it was registered on, through the same facilitator.
+    expect(readFileSync(join(directory, "fly.toml"), "utf8")).toContain(
+      `  PUBLIC_ORIGIN = "${ORIGIN}"\n  PAY_TO = "${wallet.publicKey()}"\n  AGENT_ID = "42"\n  STELLAR_NETWORK = "stellar:testnet"\n  FACILITATOR_URL = "https://facilitator.example"\n`,
+    );
+    expect(calls[0]).toEqual({ args: ["secrets", "import", "--stage", "--app", "launch-test"], input: "FACILITATOR_AUTH=Bearer test-key\nSOROBAN_RPC_URL=https://rpc.example" });
+    expect(t.output()).toContain(`✓ Live: ${MANIFEST_URL}`);
+  });
+
+  it("names a key it couldn't stage, and doesn't call a deploy live when it takes payments on another network", async () => {
+    project({ upstream: "https://api.example.com/summarize", env: "PAY_TO=\nAGENT_ID=\n" });
+    const { chain, registry } = world();
+    const wallet = Keypair.random();
+    let deployed = false;
+    const calls: string[] = [];
+    const fly: LaunchIo["fly"] = async (args) => {
+      calls.push(args[0]!);
+      if (args[0] === "deploy") deployed = true;
+      return { code: 0, output: "" };
+    };
+    // The deploy serves agent 42 and its payTo, but takes payments on mainnet: the agent is registered on testnet.
+    const fetcher: typeof fetch = async (input) => {
+      if (!deployed || String(input) !== MANIFEST_URL) return new Response("", { status: 404 });
+      const config = JSON.parse(readFileSync("provider.config.json", "utf8"));
+      const provider = createProvider({
+        baseUrl: ORIGIN,
+        network: "stellar:pubnet",
+        payTo: wallet.publicKey(),
+        provider: { name: config.provider.name, description: config.provider.description, agentId: 42 },
+        services: [defineService({ ...config.services[0], handler: () => ({}) })],
+        facilitator: { verify: async () => ({ isValid: true }), settle: async () => ({ success: false, errorReason: "test" }) },
+        rpc: false,
+      });
+      return Response.json(provider.manifest);
+    };
+    const t = io({ chain, registry: registry.registry, approve: walletApproves(wallet).approve, fly, fetch: fetcher });
+
+    expect(await launch({ validator: VALIDATOR, deploy: true }, t.io)).toBe(1);
+    expect(calls).not.toContain("secrets");
+    expect(t.output()).toContain("! UPSTREAM_KEY isn't set here, so not staged: unless Fly has it already, the service can't start.");
+    expect(t.output()).toContain('✗ It serves agent 42 with payments on "stellar:pubnet", but the agent is registered on stellar:testnet.');
+    expect(t.output()).not.toContain("✓ Live");
+  });
+
   it("doesn't deploy a gateway whose API is on 127.0.0.1, which a container can't reach", async () => {
     project();
     const { chain, registry } = world();

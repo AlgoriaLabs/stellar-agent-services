@@ -5,6 +5,11 @@
   "description": "npm create stellar-service: a new paid AI service on Stellar, or an existing API made one, ready to run, try and deploy (Provider Standard v1, x402 USDC).",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
+    "directory": "packages/create-stellar-service"
+  },
   "engines": {
     "node": ">=22.13"
   },

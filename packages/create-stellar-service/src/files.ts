@@ -1,16 +1,35 @@
 // The files a new project gets. Code, Dockerfiles and fly.toml come from templates/, with {{placeholders}} filled in;
 // the files that depend on the answers (package.json, .env, the README, the Python kind's gateway config) are built here.
 //
-// Every kind runs on testnet with settings from .env: PAY_TO (the account clients pay), PUBLIC_ORIGIN (where clients
-// reach the service), JOB_DB_PATH (the job database) and AGENT_ID (its Stellar 8004 agent id, once launched). A gateway
-// config reads them as "env:NAME", so the same file runs on a laptop and in a container. PAY_TO starts empty:
-// `npm run dev` makes a throwaway testnet account to be paid to, and `npm run launch` replaces it with the developer's
-// own. No file holds a Stellar secret key.
+// Every kind runs with settings from .env: PAY_TO (the account clients pay), PUBLIC_ORIGIN (where clients reach the
+// service), JOB_DB_PATH (the job database) and AGENT_ID (its Stellar 8004 agent id, once launched). A gateway config
+// reads them as "env:NAME", so the same file runs on a laptop and in a container. PAY_TO starts empty: on testnet,
+// `npm run dev` makes a throwaway account to be paid to, and `npm run launch` replaces it with the developer's own.
+// A mainnet project (--network mainnet) also reads FACILITATOR_AUTH, the API key of mainnet's facilitator, and
+// SOROBAN_RPC_URL. No file holds a Stellar secret key.
 
 import { readFileSync } from "node:fs";
 import { KIT_CLI, OVERRIDES } from "./kit.js";
 
 export type Kind = "wrap" | "typescript" | "python";
+
+/** The network a project takes payments on, as its CAIP-2 id: testnet's test money, or mainnet's (pubnet) real USDC. */
+export type Network = "stellar:testnet" | "stellar:pubnet";
+
+/** The facilitator that verifies and settles a project's payments: x402.org's on testnet, OpenZeppelin's on mainnet. */
+export const FACILITATORS: Record<Network, string> = {
+  "stellar:testnet": "https://x402.org/facilitator",
+  "stellar:pubnet": "https://channels.openzeppelin.com/x402",
+};
+
+/** Where mainnet's facilitator gives out API keys. */
+export const FACILITATOR_KEYS = "https://channels.openzeppelin.com/gen";
+
+/** The Soroban RPC a mainnet project starts with: the one the Stellar 8004 SDK reads the registry through. */
+export const MAINNET_RPC = "https://mainnet.sorobanrpc.com";
+
+/** What a mainnet project also reads from .env, kept as secrets: the facilitator's API key, and an RPC URL, which may hold one. */
+export const MAINNET_SETTINGS = ["FACILITATOR_AUTH", "SOROBAN_RPC_URL"] as const;
 
 export const KINDS: Record<Kind, string> = {
   wrap: "Wrap an API you already run, in any language (no code changes)",
@@ -69,6 +88,7 @@ export interface Project {
   description: string;
   /** Each service's price in USDC, such as "0.01". */
   price: string;
+  network: Network;
   /** Whether the kit's packages are in vendor/, packed from a clone. */
   vendored: boolean;
   /** Python: whether uv runs the API, so no virtual environment has to be made first. */
@@ -147,6 +167,8 @@ export function packageJson(project: Project, dependencies: Record<string, strin
           deploy,
           start: kit("serve --config provider.config.json"),
         };
+  // try pays with test money, which only testnet has.
+  const { try: _try, ...mainnetScripts } = scripts;
   const file = {
     name: project.package,
     version: "0.1.0",
@@ -154,7 +176,7 @@ export function packageJson(project: Project, dependencies: Record<string, strin
     description: project.description,
     type: "module",
     engines: { node: ">=22.13" },
-    scripts,
+    scripts: project.network === "stellar:pubnet" ? mainnetScripts : scripts,
     dependencies,
     ...(project.kind === "typescript" ? { devDependencies: { "@types/node": "22.20.5", typescript: "6.0.3" } } : {}),
     overrides: OVERRIDES,
@@ -164,32 +186,53 @@ export function packageJson(project: Project, dependencies: Record<string, strin
 
 /** The Python kind's gateway config: the template service in front of app.py, at the project's price. */
 export function pythonGatewayConfig(project: Project): string {
-  return `${JSON.stringify(gatewayConfig(project.name, project.description, [{ ...SUMMARIZE, price: project.price }]), null, 2)}\n`;
+  return `${JSON.stringify(gatewayConfig(project.name, project.description, [{ ...SUMMARIZE, price: project.price }], project.network), null, 2)}\n`;
 }
 
-function gatewayConfig(name: string, description: string, services: object[]): object {
+function gatewayConfig(name: string, description: string, services: object[], network: Network): object {
   return {
     $schema: "./node_modules/@stellar-agent-services/provider-kit/schemas/gateway-config.schema.json",
     baseUrl: "env:PUBLIC_ORIGIN",
-    network: "stellar:testnet",
+    network,
     payTo: "env:PAY_TO",
-    facilitator: "https://x402.org/facilitator",
+    ...facilitatorSettings(network),
     provider: { name, description, agentId: "env:AGENT_ID", dataUse: { storesInputs: false, trainsOnInputs: false } },
     store: "env:JOB_DB_PATH",
     services,
   };
 }
 
+/** A gateway config's facilitator: on mainnet with its API key, and the RPC that decides uncertain payments, from .env. */
+function facilitatorSettings(network: Network): Record<string, unknown> {
+  if (network !== "stellar:pubnet") return { facilitator: FACILITATORS["stellar:testnet"] };
+  return { facilitator: FACILITATORS[network], facilitatorHeaders: { Authorization: "env:FACILITATOR_AUTH" }, rpcUrl: "env:SOROBAN_RPC_URL" };
+}
+
 /**
  * A config `provider-kit init` wrote, made to run anywhere: baseUrl, store and the agent id from .env, no "dev" (npm run
- * dev runs in development), and the name, description and price given. Returns the config and the other variables it
- * reads, such as the API key init named for an upstream header.
+ * dev runs in development), the name, description and price given, and on mainnet its facilitator, key and RPC. Returns
+ * the config and the other variables it reads, such as the API key init named for an upstream header.
  */
-export function adaptInitConfig(text: string, provider: { name?: string; description?: string; price?: string }): { config: string; variables: string[] } {
-  const config = JSON.parse(text) as Record<string, unknown> & { provider: Record<string, unknown>; services?: Record<string, unknown>[] };
+export function adaptInitConfig(
+  text: string,
+  provider: { name?: string; description?: string; price?: string },
+  network: Network = "stellar:testnet",
+): { config: string; variables: string[] } {
+  type Config = Record<string, unknown> & { provider: Record<string, unknown>; services?: Record<string, unknown>[] };
+  let config = JSON.parse(text) as Config;
   config["baseUrl"] = "env:PUBLIC_ORIGIN";
   config["store"] = "env:JOB_DB_PATH";
   delete config["dev"];
+  // init writes a testnet config: the network and facilitator settings change in their places.
+  const facilitator = facilitatorSettings(network);
+  if (!("facilitator" in config)) config["facilitator"] = facilitator["facilitator"];
+  config = Object.fromEntries(
+    Object.entries(config).flatMap(([key, value]): [string, unknown][] => {
+      if (key === "network") return [[key, network]];
+      if (key === "facilitator") return Object.entries(facilitator);
+      return key in facilitator ? [] : [[key, value]];
+    }),
+  ) as Config;
   if (provider.name !== undefined) config.provider["name"] = provider.name;
   if (provider.description !== undefined) config.provider["description"] = provider.description;
   config.provider["agentId"] = "env:AGENT_ID";
@@ -200,19 +243,23 @@ export function adaptInitConfig(text: string, provider: { name?: string; descrip
     return value;
   });
   for (const setting of SETTINGS) variables.delete(setting);
+  // A mainnet project's .env has these with their own notes (envFile).
+  if (network === "stellar:pubnet") for (const setting of MAINNET_SETTINGS) variables.delete(setting);
   return { config: `${JSON.stringify(config, null, 2)}\n`, variables: [...variables] };
 }
 
 /** .env, or .env.example with `example`: the settings, and the variables a gateway config also reads. */
 export function envFile(project: Project, values: { payTo?: string; variables?: string[] }, example = false): string {
+  const testnet = project.network !== "stellar:pubnet";
   const lines = [
     example
       ? "# The settings npm run dev and the other scripts read. Copy this file to .env and fill it in; .env stays out of git."
       : "# The settings npm run dev and the other scripts read. This file stays out of git; .env.example lists the same.",
     "# No Stellar secret key goes here, or anywhere else in this project.",
     "",
-    "# The account clients pay, in USDC: a public G... address. Leave it empty: npm run dev makes a throwaway testnet",
-    "# account to be paid to, and npm run launch sets up one in your own wallet.",
+    ...(testnet
+      ? ["# The account clients pay, in USDC: a public G... address. Leave it empty: npm run dev makes a throwaway testnet", "# account to be paid to, and npm run launch sets up one in your own wallet."]
+      : ["# The account clients pay, in USDC: a public G... address in your own wallet. Leave it empty: npm run launch sets", "# one up. Mainnet has no throwaway accounts."]),
     `PAY_TO=${example ? "" : (values.payTo ?? "")}`,
     "# Where clients reach this service on this computer. npm run launch takes the public one from fly.toml.",
     "PUBLIC_ORIGIN=http://localhost:8787",
@@ -221,7 +268,22 @@ export function envFile(project: Project, values: { payTo?: string; variables?: 
     "# Your Stellar 8004 agent id: npm run launch saves it.",
     "AGENT_ID=",
   ];
-  if (project.kind === "typescript") lines.push("# A Soroban RPC, to decide uncertain payments from the chain. Testnet has a default.", "# SOROBAN_RPC_URL=");
+  if (project.kind === "typescript") {
+    // A gateway's network is in provider.config.json; the TypeScript service reads it here, as provider-kit does.
+    lines.push("# The network: stellar:testnet takes test money, stellar:pubnet is mainnet, real USDC.", `STELLAR_NETWORK=${project.network}`);
+    if (testnet) lines.push("# A Soroban RPC, to decide uncertain payments from the chain. Testnet has a default.", "# SOROBAN_RPC_URL=");
+  }
+  if (!testnet) {
+    lines.push(
+      "",
+      `# Mainnet's facilitator settles payments with an API key: get one at ${FACILITATOR_KEYS}, and write it here`,
+      '# as "Bearer <key>". npm run launch stages it, and SOROBAN_RPC_URL, as Fly secrets.',
+      "FACILITATOR_AUTH=",
+      "# A Soroban RPC, to decide uncertain payments from the chain: mainnet has no default. This is the one the Stellar",
+      "# 8004 SDK uses; for production traffic, a provider's is safer: https://developers.stellar.org/docs/data/apis/rpc/providers",
+      `SOROBAN_RPC_URL=${MAINNET_RPC}`,
+    );
+  }
   const variables = values.variables ?? [];
   if (variables.length > 0) lines.push("", "# What provider.config.json sends your API, such as its key. npm run launch stages it as a Fly secret.", ...variables.map((name) => `${name}=`));
   return `${lines.join("\n")}\n`;
@@ -262,6 +324,17 @@ export function readme(project: Project, options: { services: string; upstream?:
           "3. `npm run try` pays for one call with test money, from another terminal. It starts both itself when they aren't running.",
         ],
   }[project.kind];
+  const testnet = project.network !== "stellar:pubnet";
+  // Mainnet has no test money and no throwaway account: launch sets up the account clients pay before anything runs.
+  const starts = { wrap: "the gateway, in front of your API,", typescript: "the service", python: "the API and the gateway in front of it," }[project.kind];
+  const steps = testnet
+    ? run
+    : [
+        ...(project.kind === "python" && !project.uv ? ["`python3 -m venv .venv && .venv/bin/pip install -r requirements.txt` installs the API's packages, once."] : []),
+        `Set \`FACILITATOR_AUTH\` in \`.env\`: mainnet's facilitator settles payments with an API key, from ${FACILITATOR_KEYS}.`,
+        "`npm run launch` sets up the account clients pay in your own wallet, registers the service and deploys it: see below.",
+        `\`npm run dev\` then runs ${starts} at http://localhost:8787 too.${project.kind === "wrap" ? " Start your API first." : ""}`,
+      ].map((line, index) => `${index + 1}. ${line}`);
   const yours = {
     wrap: [
       "`provider.config.json` describes each service: its price in USDC, when it's charged (`on-success` or `upfront`),",
@@ -303,22 +376,27 @@ A paid service on Stellar: agents pay for each call in USDC, through x402, under
 
 ## Run it
 
-${run.join("\n")}
+${steps.join("\n")}
 
-No wallet yet: while \`PAY_TO\` in \`.env\` is empty, \`npm run dev\` makes a throwaway testnet account to be paid to. Its
-key is dropped at once, so the test money it receives can't be spent. \`npm run check\` checks the service against the
+${
+  testnet
+    ? `No wallet yet: while \`PAY_TO\` in \`.env\` is empty, \`npm run dev\` makes a throwaway testnet account to be paid to. Its
+key is dropped at once, so the test money it receives can't be spent.`
+    : `This project takes real USDC on Stellar mainnet, so there is no throwaway account and no test money: to try paid
+calls first, make a testnet project.`
+} \`npm run check\` checks the service against the
 standard and shows how agents see it.
 
 ## Take it live
 
-\`npm run launch\` does the rest, on testnet:
+\`npm run launch\` does the rest, on ${testnet ? "testnet" : "mainnet"}:
 
 1. It reads your service's public address from \`fly.toml\`: https://${project.app}.fly.dev.
 2. A page opens where your own wallet (Freighter, xBull, Albedo and others) approves, in one go: a USDC trustline, so
    the account can be paid; the registration in the Stellar 8004 registry, where agents find you; and a request to a
-   verifier to check the service.
+   verifier to check the service.${testnet ? "" : " The account needs a few XLM, for the trustline's reserve and the fees."}
 3. It saves \`PAY_TO\` and \`AGENT_ID\` in \`.env\` and \`fly.toml\`, deploys to Fly.io with \`flyctl\` if you say yes, and
-   waits until the service answers at its public address.
+   waits until the service answers at its public address.${testnet ? "" : " `FACILITATOR_AUTH` and `SOROBAN_RPC_URL` go to\n   Fly as secrets."}
 
 \`npm run status\` shows where it stands at any time, from running here to verified, and the command to run next.
 \`npm run deploy\` deploys again after a change.

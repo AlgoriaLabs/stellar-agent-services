@@ -30,6 +30,7 @@ Facts to get right:
 - **Asset:** USDC only. Take its contract address from `USDC_ASSET[network]` in `@stellar-agent-services/protocol`
   instead of retyping it.
 - **Facilitator:** `https://x402.org/facilitator` on testnet. It verifies and settles payments with sponsored fees.
+  On mainnet, OpenZeppelin's `https://channels.openzeppelin.com/x402`, which wants an API key (`FACILITATOR_AUTH`).
 - **Identity:** a provider registers in the Stellar 8004 identity registry. Its `agentId` goes in the manifest, and
   its registered wallet must equal `payTo` (`[I1]`–`[I3]`).
 - **Node.js 22.13 or later.** `.node-version` pins 24.
@@ -71,7 +72,8 @@ alias create-stellar-service="node $REPO/packages/create-stellar-service/dist/in
 the clone into the project's `vendor/` folder, installs it, and writes `.env`, a Dockerfile, `fly.toml` and npm
 scripts: `dev` (runs it, paid to a throwaway testnet account, so no wallet is needed), `try`, `check`, `status`,
 `launch` (goes live) and `deploy`. Pass every answer as a flag (`--openapi`, `--upstream`, `--description`, `--price`):
-without a terminal it asks nothing.
+without a terminal it asks nothing. `--network mainnet` makes a project that takes real USDC: use it only when the user
+asked for mainnet.
 
 `npm run launch` (`provider-kit launch`) opens an approval page in the user's browser, where their wallet signs the
 trustline, the 8004 registration and a validation request in one go, and it may deploy to Fly.io. Ask the user

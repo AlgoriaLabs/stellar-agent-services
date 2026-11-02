@@ -5,6 +5,11 @@
   "description": "Turn a function, or an existing HTTP API in any language, into a paid Stellar service: Provider Standard v1 manifest, x402 USDC payments, job recovery, capacity.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
+    "directory": "packages/provider-kit"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

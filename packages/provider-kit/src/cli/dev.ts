@@ -1,5 +1,5 @@
-// provider-kit dev: runs a provider on this computer, on testnet, with nothing to set up first
-// (docs/provider-setup-guide.md §2).
+// provider-kit dev: runs a provider on this computer, on testnet with nothing to set up first
+// (docs/provider-setup-guide.md §2). On mainnet it runs too, paid to the PAY_TO set: there is no throwaway account there.
 //
 //   provider-kit dev [--config <file>] [--port <n>] [--with '<command>'] [--tunnel]   a gateway, in this process
 //   provider-kit dev [--port <n>] [--tunnel] -- <command> [args...]                   any other provider, by its command
@@ -20,7 +20,7 @@ import type { StellarNetwork } from "@stellar-agent-services/protocol";
 import { DEFAULT_PORT } from "../gateway/config.js";
 import { devPayTo, type DevPayTo } from "./dev-account.js";
 import { ENV_FILE, loadEnvFile } from "./env-file.js";
-import { rpcOwnerChain, shortAddress, type OwnerChain } from "./owner-chain.js";
+import { networkName, rpcOwnerChain, shortAddress, type OwnerChain } from "./owner-chain.js";
 import { startCommand, startForeground, type Started } from "./processes.js";
 import { serveGateway, stopOnSignals } from "./serve.js";
 import { DEFAULT_CONFIG, nextCommand, UsageError, type CliFlags } from "./shared.js";
@@ -107,12 +107,15 @@ export async function dev(flags: CliFlags, command: string[], io: DevIo = devIo(
     io.log(`  ✓ Public address ${tunnel.url}: it changes every run, so it is for trying things out, not for registering`);
   }
 
-  if (config === undefined) return runCommand(command, { io, payTo, tunnel, port: port ?? DEFAULT_PORT });
-  return runGateway(config, { io, payTo, tunnel, port, with: flags.with });
+  if (config === undefined) return runCommand(command, { io, network, payTo, tunnel, port: port ?? DEFAULT_PORT });
+  return runGateway(config, { io, network, payTo, tunnel, port, with: flags.with });
 }
 
 /** The gateway, in this process, with the --with command next to it. Keeps running: -1. */
-async function runGateway(config: string, options: { io: DevIo; payTo: DevPayTo; tunnel: Tunnel | undefined; port: number | undefined; with: string | undefined }): Promise<number> {
+async function runGateway(
+  config: string,
+  options: { io: DevIo; network: StellarNetwork; payTo: DevPayTo; tunnel: Tunnel | undefined; port: number | undefined; with: string | undefined },
+): Promise<number> {
   const { io, tunnel } = options;
   let companion: Started | undefined;
   if (options.with !== undefined) {
@@ -146,7 +149,7 @@ async function runGateway(config: string, options: { io: DevIo; payTo: DevPayTo;
     throw error;
   }
   const { server } = served;
-  printNext(io, options.payTo);
+  printNext(io, options.payTo, options.network);
 
   let stopped = false;
   const stop = async () => {
@@ -169,10 +172,10 @@ async function runGateway(config: string, options: { io: DevIo; payTo: DevPayTo;
 }
 
 /** The provider's own command, with PAY_TO (and the tunnel's PUBLIC_ORIGIN) in its environment. Its exit code. */
-async function runCommand(command: string[], options: { io: DevIo; payTo: DevPayTo; tunnel: Tunnel | undefined; port: number }): Promise<number> {
+async function runCommand(command: string[], options: { io: DevIo; network: StellarNetwork; payTo: DevPayTo; tunnel: Tunnel | undefined; port: number }): Promise<number> {
   const { io, payTo, tunnel } = options;
   const env: NodeJS.ProcessEnv = { ...io.env, PAY_TO: payTo.payTo, PORT: String(options.port), ...(tunnel === undefined ? {} : { PUBLIC_ORIGIN: tunnel.url }) };
-  printNext(io, payTo);
+  printNext(io, payTo, options.network);
   const child = io.start(command[0]!, command.slice(1), { env, shell: false });
   // Ctrl+C reaches the command too: it stops, and so does this, with its exit code.
   const ignore = () => {};
@@ -188,12 +191,14 @@ async function runCommand(command: string[], options: { io: DevIo; payTo: DevPay
   }
 }
 
-function printNext(io: DevIo, payTo: DevPayTo): void {
+function printNext(io: DevIo, payTo: DevPayTo, network: StellarNetwork): void {
   if (payTo.kind === "throwaway") {
     io.log(`  payTo      ${shortAddress(payTo.payTo)} is a throwaway testnet account: test payments land there, and nobody can spend them.`);
     io.log(`             ${nextCommand("launch")} connects your own wallet and takes the service live.`);
   }
-  io.log(`\nNext, from another terminal: ${nextCommand("try")} pays for one call with test money.\n`);
+  // try pays with test money, which only testnet has.
+  if (network === "stellar:testnet") io.log(`\nNext, from another terminal: ${nextCommand("try")} pays for one call with test money.\n`);
+  else io.log(`\nThis is ${networkName(network)}: clients pay real USDC, to ${shortAddress(payTo.payTo)}. ${nextCommand("check")} checks the service against the standard.\n`);
 }
 
 /** The network of a gateway config, as written in it. */

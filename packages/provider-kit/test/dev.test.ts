@@ -155,6 +155,24 @@ describe("provider-kit dev", () => {
     expect(fake.output()).toContain("it changes every run");
   });
 
+  it("points to check, not try, on Mainnet, where clients pay real USDC", async () => {
+    const yours = Keypair.random().publicKey();
+    const gateway = fakeDev({ PAY_TO: yours });
+    const config = file("provider.config.json", JSON.stringify({ ...JSON.parse(CONFIG), network: "stellar:pubnet" }));
+    expect(await dev({ config, "env-file": file(".env", "") }, [], gateway.io)).toBe(-1);
+    expect(gateway.output()).toContain("This is Stellar Mainnet: clients pay real USDC");
+    expect(gateway.output()).not.toMatch(/\btry\b/);
+
+    // A provider's own command says its network in STELLAR_NETWORK, as the TypeScript template reads it.
+    const command = fakeDev({ PAY_TO: yours, STELLAR_NETWORK: "stellar:pubnet" });
+    const running = dev({ "env-file": file(".env", "") }, ["node", "dist/server.js"], command.io);
+    await vi.waitFor(() => expect(command.started).toHaveLength(1));
+    expect(command.output()).toContain("This is Stellar Mainnet: clients pay real USDC");
+    command.exit(0);
+    expect(await running).toBe(0);
+    expect([...gateway.chain.sent, ...command.chain.sent]).toEqual([]);
+  });
+
   it("refuses what it can't run", async () => {
     const fake = fakeDev();
     await expect(dev({ config: "x.json", "env-file": file(".env", "") }, ["node", "server.js"], fake.io)).rejects.toThrow(UsageError);

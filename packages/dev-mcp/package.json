@@ -5,6 +5,11 @@
   "description": "MCP server for coding agents building on Provider Standard v1: spec rules, docs, manifest validation and unpaid provider checks. It never pays.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
+    "directory": "packages/dev-mcp"
+  },
   "exports": {
     ".": {
       "types": "./dist/server.d.ts",

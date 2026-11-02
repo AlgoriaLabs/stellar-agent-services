@@ -104,6 +104,14 @@ describe("provider-kit status", () => {
     expect(found.next.command).toBe("provider-kit launch");
   });
 
+  it("goes straight to launch on Mainnet, which has no test money and no throwaway account", async () => {
+    project("PAY_TO=\nSTELLAR_NETWORK=stellar:pubnet\n");
+    const found = await findStatus({}, setup({ payTo: Keypair.random().publicKey() }).io);
+    expect(found.network).toBe("stellar:pubnet");
+    expect(found.stages.find((stage) => stage.id === "payTo")?.detail).toBe("PAY_TO is empty: launch connects your wallet");
+    expect(found.next.command).toBe("provider-kit launch");
+  });
+
   it("says to deploy once registered, finds the public manifest from fly.toml, and is done once a verifier answered", async () => {
     const yours = Keypair.random().publicKey();
     project(`PAY_TO=${yours}\nAGENT_ID=42\n`, { fly: true });
