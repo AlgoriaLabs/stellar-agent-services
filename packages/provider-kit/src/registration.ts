@@ -79,7 +79,12 @@ export interface RegistryReader {
   isOperator(owner: string, operator: string): Promise<boolean>;
   /** The validation request with this hash (64 hex characters), or undefined when there is none. */
   validation(requestHash: string): Promise<ValidationRecord | undefined>;
+  /** The agent's validation requests, newest last: each one's hash and record, at most AGENT_VALIDATIONS_READ. */
+  agentValidations(agentId: number): Promise<(ValidationRecord & { requestHash: string })[]>;
 }
+
+/** The most validation requests agentValidations() reads for one agent. */
+export const AGENT_VALIDATIONS_READ = 100;
 
 export function rpcRegistry(network: StellarNetwork, rpcUrl?: string): RegistryReader {
   const config = registryConfig(network);
@@ -106,21 +111,34 @@ export function rpcRegistry(network: StellarNetwork, rpcUrl?: string): RegistryR
     async isOperator(owner, operator) {
       return (await identity.is_approved_for_all({ owner, operator })).result;
     },
-    async validation(requestHash) {
-      const result = (await validation.get_validation_status({ request_hash: Buffer.from(requestHash, "hex") })).result;
-      if (!result.isOk()) return undefined;
-      const status = result.unwrap();
-      return {
-        validator: status.validator_address,
-        agentId: status.agent_id,
-        hasResponse: status.has_response,
-        response: status.response,
-        responseHash: Buffer.from(status.response_hash).toString("hex"),
-        tag: status.tag,
-        lastUpdate: Number(status.last_update),
-      };
+    validation: readValidation,
+    async agentValidations(agentId) {
+      const hashes: string[] = [];
+      const page = 25;
+      while (hashes.length < AGENT_VALIDATIONS_READ) {
+        const found = (await validation.get_agent_validations_paginated({ agent_id: agentId, start: hashes.length, limit: page })).result;
+        hashes.push(...found.map((hash) => Buffer.from(hash).toString("hex")));
+        if (found.length < page) break;
+      }
+      const records = await Promise.all(hashes.slice(0, AGENT_VALIDATIONS_READ).map(async (requestHash) => ({ requestHash, record: await readValidation(requestHash) })));
+      return records.flatMap(({ requestHash, record }) => (record === undefined ? [] : [{ ...record, requestHash }]));
     },
   };
+
+  async function readValidation(requestHash: string): Promise<ValidationRecord | undefined> {
+    const result = (await validation.get_validation_status({ request_hash: Buffer.from(requestHash, "hex") })).result;
+    if (!result.isOk()) return undefined;
+    const status = result.unwrap();
+    return {
+      validator: status.validator_address,
+      agentId: status.agent_id,
+      hasResponse: status.has_response,
+      response: status.response,
+      responseHash: Buffer.from(status.response_hash).toString("hex"),
+      tag: status.tag,
+      lastUpdate: Number(status.last_update),
+    };
+  }
 }
 
 /**
@@ -159,7 +177,7 @@ export async function inspectRegistration(
 ): Promise<{ findings: RegistrationFinding[]; file?: Record<string, unknown> }> {
   const agentId = manifest.provider.agentId;
   if (agentId === undefined) {
-    return { findings: [{ rule: "I2", ok: false, message: "provider.agentId is not set: run `provider-kit register`, then add the agent id to the config" }] };
+    return { findings: [{ rule: "I2", ok: false, message: "provider.agentId is not set: `provider-kit launch` registers the provider and saves its agent id" }] };
   }
   const network = manifest.payment.accepts[0].network;
   const registry = options.registry ?? rpcRegistry(network, options.rpcUrl);

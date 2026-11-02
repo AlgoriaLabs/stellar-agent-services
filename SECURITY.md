@@ -8,7 +8,10 @@ These boundaries apply to every package in this repository.
    operations are signed in the owner's own wallet, on an approval page the CLI serves on 127.0.0.1 behind a
    one-time token, or with `--source` through the Stellar CLI keychain; never through environment variables. The
    CLI checks that a signed transaction is the one it built before sending it. In gateway mode, the only
-   credential is the upstream API's own key, if it has one, and never a Stellar secret key.
+   credential is the upstream API's own key, if it has one, and never a Stellar secret key. The only keys the CLI
+   makes are throwaway testnet ones, held in memory and never written: `provider-kit try`'s payer, and the payout
+   account `provider-kit dev` makes while `PAY_TO` is empty. That key signs the account's USDC trustline and is
+   dropped; the provider gets only the public address.
 3. **Only the payment client signs payments**, once per approved job, after the user approves the exact
    price, recipient, asset and network.
 4. **Never pay twice.** The job identity is fixed before payment. Recovery never re-sends a payment

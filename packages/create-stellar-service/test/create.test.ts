@@ -64,7 +64,7 @@ interface Fake {
 }
 
 /** An io with scripted answers and programs: npm pack and install succeed, init writes INIT_CONFIG, trustline prints PAY_TO. */
-function fakeIo(options: { answers?: string[]; interactive?: boolean; kit?: KitSource; programs?: Partial<Record<string, (args: string[], cwd: string) => RunResult>>; fetch?: typeof fetch } = {}): Fake {
+function fakeIo(options: { answers?: string[]; interactive?: boolean; kit?: KitSource; programs?: Partial<Record<string, (args: string[], cwd: string) => RunResult>>; fetch?: typeof fetch; installed?: string[] } = {}): Fake {
   const output: string[] = [];
   const runs: Fake["runs"] = [];
   const questions: string[] = [];
@@ -96,6 +96,7 @@ function fakeIo(options: { answers?: string[]; interactive?: boolean; kit?: KitS
       if (program === undefined) throw new Error(`unexpected program: ${command} ${args.join(" ")}`);
       return program(args, cwd);
     },
+    has: async (program) => (options.installed ?? []).includes(program),
     fetch: options.fetch ?? (async () => new Response("{}")),
     kit: options.kit ?? fakeClone(),
   };
@@ -139,18 +140,30 @@ describe("create-stellar-service, from flags", () => {
     expect(init).toMatchObject({ command: process.execPath, cwd: directory });
     expect(init.args).toEqual([KIT_CLI, "init", "--openapi", FIXTURE, "--upstream", "http://127.0.0.1:8000", "--out", "provider.config.json"]);
     const config = JSON.parse(read(directory, "provider.config.json"));
-    expect(config).toMatchObject({ baseUrl: "env:PUBLIC_ORIGIN", store: "env:JOB_DB_PATH", provider: { name: "Text Tools API" } });
+    expect(config).toMatchObject({ baseUrl: "env:PUBLIC_ORIGIN", store: "env:JOB_DB_PATH", provider: { name: "Text Tools API", agentId: "env:AGENT_ID" } });
     expect(config).not.toHaveProperty("dev");
-    expect(env(directory)).toMatchObject({ PAY_TO: "", UPSTREAM_X_API_KEY: "" });
+    expect(env(directory)).toMatchObject({ PAY_TO: "", AGENT_ID: "", UPSTREAM_X_API_KEY: "" });
 
     const text = fake.output.join("\n");
     expect(text).toContain("    Wrote provider.config.json with 2 services:");
     expect(text.match(/^Next:$/gm)).toHaveLength(1);
     expect(text).not.toContain("Review provider.config.json");
     expect(text).toContain("set UPSTREAM_X_API_KEY in .env   the gateway sends it to your API");
-    expect(text).toContain("npm run wallet     sets up the account clients pay");
+    // No wallet until launch: dev pays a throwaway testnet account meanwhile.
+    expect(text).toContain("npm run dev        starts the gateway in front of your API, at http://localhost:8787: no wallet needed yet");
+    expect(text).toContain("npm run launch     takes it live: one approval in your wallet, then Fly.io");
+    expect(text).not.toContain("npm run wallet");
     expect(read(directory, "README.md")).toContain("The gateway calls it at http://127.0.0.1:8000.");
-    expect(JSON.parse(read(directory, "package.json")).scripts.dev).toBe(`node --env-file-if-exists=.env ${KIT_CLI} serve --config provider.config.json --dev`);
+    const { scripts } = JSON.parse(read(directory, "package.json"));
+    expect(scripts).toMatchObject({
+      dev: `node --env-file-if-exists=.env ${KIT_CLI} dev --config provider.config.json`,
+      try: `node --env-file-if-exists=.env ${KIT_CLI} try --config provider.config.json`,
+      launch: `node --env-file-if-exists=.env ${KIT_CLI} launch --config provider.config.json`,
+      status: `node --env-file-if-exists=.env ${KIT_CLI} status --config provider.config.json`,
+      deploy: "fly deploy --ha=false",
+    });
+    expect(scripts).not.toHaveProperty("wallet");
+    expect(read(directory, "fly.toml")).toContain(`app = "${directory.split("/").at(-1)}"`);
   });
 
   it("writes a starter for one URL, named after the folder", async () => {
@@ -190,14 +203,29 @@ describe("create-stellar-service, from flags", () => {
   it("makes a Python project whose gateway config passes Provider Standard v1, as provider-kit serve loads it", async () => {
     const directory = folder();
     const fake = fakeIo();
-    expect(await create([directory, "--kind", "python", "--name", "Quick Summaries", "--no-wallet"], fake.io)).toBe(0);
+    expect(await create([directory, "--kind", "python", "--name", "Quick Summaries", "--price", "0.05", "--no-wallet"], fake.io)).toBe(0);
     for (const [, file] of TEMPLATE_FILES.python) expect(existsSync(join(directory, file))).toBe(true);
     expect(read(directory, "app.py")).toContain('app = FastAPI(title="Quick Summaries")');
     const { config } = await loadGatewayConfig(join(directory, "provider.config.json"), { env: { PAY_TO, PUBLIC_ORIGIN: "http://localhost:8787", JOB_DB_PATH: "memory" }, openStore: false, overrides: { dev: true } });
     const provider = createProvider({ ...config, rpc: false });
-    expect(provider.manifest.services.map((service) => service.name)).toEqual(["summarize"]);
+    expect(provider.manifest.services.map((service) => [service.name, service.price.amount])).toEqual([["summarize", "500000"]]);
     await provider.close();
+    // Without uv, the API's packages are installed in a virtual environment first; dev then starts the API too.
     expect(fake.output.join("\n")).toContain("python3 -m venv .venv && .venv/bin/pip install -r requirements.txt");
+    expect(JSON.parse(read(directory, "package.json")).scripts.dev).toBe(`node --env-file-if-exists=.env ${KIT_CLI} dev --config provider.config.json --with ".venv/bin/uvicorn app:app --port 8000 --reload"`);
+  });
+
+  it("runs a Python project's API with uv when it is installed, so there is no virtual environment to make", async () => {
+    const directory = folder();
+    const fake = fakeIo({ installed: ["uv"] });
+    expect(await create([directory, "--kind", "python"], fake.io)).toBe(0);
+    const command = "uv run --no-project --with-requirements requirements.txt -- uvicorn app:app --port 8000 --reload";
+    expect(JSON.parse(read(directory, "package.json")).scripts).toMatchObject({
+      dev: `node --env-file-if-exists=.env ${KIT_CLI} dev --config provider.config.json --with "${command}"`,
+      try: `node --env-file-if-exists=.env ${KIT_CLI} try --config provider.config.json --start "npm run dev"`,
+    });
+    expect(fake.output.join("\n")).not.toContain("python3 -m venv");
+    expect(read(directory, "app.py")).toContain(command);
   });
 
   it("depends on the released kit when it doesn't run from a clone", async () => {
@@ -255,17 +283,20 @@ describe("the account clients pay", () => {
     const fake = fakeIo({ programs: { trustline: () => ({ code: 1, output: "Cancelled in the browser. Nothing was signed." }) } });
     expect(await create([directory, "--kind", "typescript", "--wallet"], fake.io)).toBe(0);
     expect(env(directory)["PAY_TO"]).toBe("");
-    expect(fake.output.join("\n")).toContain("The account wasn't set up. npm run wallet tries again later.");
+    expect(fake.output.join("\n")).toContain("The account wasn't set up. npm run launch sets it up when the service goes live.");
   });
 });
 
 describe("create-stellar-service, on a terminal", () => {
-  it("asks the four questions, with defaults", async () => {
+  it("asks its questions, with defaults, and no wallet question: launch sets the wallet up", async () => {
     const directory = folder();
-    const fake = fakeIo({ interactive: true, answers: [directory, "3", "Fast summaries of English text.", "n"] });
+    const fake = fakeIo({ interactive: true, answers: [directory, "3", "Fast summaries of English text.", "free", "0.02"] });
     expect(await create([], fake.io)).toBe(0);
-    expect(fake.questions).toEqual(["Project folder [my-stellar-service]: ", "Pick 1, 2 or 3 [1]: ", "[Summarizes English text for agents: the…]: ", "[Y/n]: "]);
-    expect(read(directory, "provider.config.json")).toContain('"description": "Fast summaries of English text."');
+    expect(fake.questions).toEqual(["Project folder [my-stellar-service]: ", "Pick 1, 2 or 3 [1]: ", "[Summarizes English text for agents: the…]: ", "What does a call cost, in USDC? [0.01]: ", "What does a call cost, in USDC? [0.01]: "]);
+    expect(fake.output).toContain("  a price in USDC above zero, such as 0.05");
+    const config = JSON.parse(read(directory, "provider.config.json"));
+    expect(config.provider.description).toBe("Fast summaries of English text.");
+    expect(config.services[0].price).toBe("0.02");
     expect(fake.runs.some((run) => run.args[1] === "trustline")).toBe(false);
   });
 
@@ -274,7 +305,7 @@ describe("create-stellar-service, on a terminal", () => {
     const fetched: string[] = [];
     const fake = fakeIo({
       interactive: true,
-      answers: [directory, "1", "", "http://127.0.0.1:5000/caption", "", "y"],
+      answers: [directory, "1", "", "http://127.0.0.1:5000/caption", "", ""],
       fetch: async (url) => {
         fetched.push(String(url));
         throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNREFUSED" } });
@@ -284,7 +315,7 @@ describe("create-stellar-service, on a terminal", () => {
     expect(fetched).toEqual(["http://127.0.0.1:8000/openapi.json"]);
     expect(fake.output.join("\n")).toContain("Can't read it: nothing answers there.");
     expect(fake.runs.find((run) => run.args[1] === "init")!.args).toContain("http://127.0.0.1:5000/caption");
-    expect(fake.runs.some((run) => run.args[1] === "trustline")).toBe(true);
+    expect(fake.runs.some((run) => run.args[1] === "trustline")).toBe(false);
   });
 
   it("writes nothing when cancelled at a question", async () => {
@@ -303,7 +334,7 @@ describe("create-stellar-service, on a terminal", () => {
 });
 
 describe("the files", () => {
-  const project = (kind: Kind, vendored = true): Project => ({ kind, package: "demo", name: 'Demo "Quoted"', description: "Does things.", vendored });
+  const project = (kind: Kind, vendored = true): Project => ({ kind, package: "demo", app: "demo", name: 'Demo "Quoted"', description: "Does things.", price: "0.03", vendored });
 
   it("fills every placeholder in every template", () => {
     for (const kind of ["wrap", "typescript", "python"] as const) {

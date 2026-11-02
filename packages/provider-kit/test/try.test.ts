@@ -281,3 +281,62 @@ describe("the throwaway payer's test USDC", () => {
     });
   });
 });
+
+describe("provider-kit try, starting the provider and printing JSON", () => {
+  it("starts the gateway config for the call when nothing answers, and stops it after", async () => {
+    const t = setup();
+    let up = false;
+    const stop = vi.fn(async () => {
+      up = false;
+    });
+    t.fetch.mockImplementation(async (input, init) => {
+      if (!up) throw new TypeError("fetch failed");
+      return t.provider.fetch(new Request(input, init));
+    });
+    const startProvider = vi.fn<NonNullable<TryIo["startProvider"]>>(async () => {
+      up = true;
+      return { stop };
+    });
+    const config = join(directory, "started.config.json");
+    writeFileSync(config, JSON.stringify({ baseUrl: "http://localhost:8787" }));
+
+    expect(await run({ config, yes: true }, ["text-stats"], { ...t.io, startProvider })).toBe(0);
+    expect(startProvider).toHaveBeenCalledWith({ config }, MANIFEST);
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(t.output()).toContain(`✓ Started the gateway from ${config} for this call`);
+
+    // --start runs a command instead, such as a TypeScript project's npm run dev.
+    startProvider.mockClear();
+    expect(await run({ start: "npm run dev", yes: true }, ["text-stats"], { ...t.io, startProvider })).toBe(0);
+    expect(startProvider).toHaveBeenCalledWith({ command: "npm run dev" }, MANIFEST);
+    await expect(run({ start: "npm run dev", manifest: MANIFEST, yes: true }, ["text-stats"], { ...t.io, startProvider })).rejects.toThrow(UsageError);
+  });
+
+  it("prints the outcome as JSON on standard output with --json, and the steps on standard error", async () => {
+    const t = setup();
+    const printed: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation((line: string) => void printed.push(line));
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(await run({ manifest: MANIFEST, yes: true, json: true }, ["text-stats"], t.io)).toBe(0);
+      expect(stderr.mock.calls.map(([chunk]) => String(chunk)).join("")).toContain("✓ Test XLM from Friendbot");
+      expect(JSON.parse(printed.join("\n"))).toMatchObject({
+        ok: true,
+        manifest: MANIFEST,
+        service: "text-stats",
+        status: "succeeded",
+        payment: { amount: "0.01 USDC", payTo, confirmed: true, url: expect.stringContaining("stellar.expert") },
+        output: { words: 2 },
+      });
+
+      printed.length = 0;
+      t.fetch.mockRejectedValue(new TypeError("fetch failed"));
+      expect(await run({ manifest: MANIFEST, yes: true, json: true }, ["text-stats"], t.io)).toBe(1);
+      expect(JSON.parse(printed.join("\n"))).toMatchObject({ ok: false, error: expect.stringContaining("nothing answers") });
+    } finally {
+      log.mockRestore();
+      stderr.mockRestore();
+    }
+    expect(t.output()).toBe("");
+  });
+});

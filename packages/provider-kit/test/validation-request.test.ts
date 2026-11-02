@@ -67,6 +67,7 @@ function registered(manifest: ProviderManifest, manifestUrl: string) {
     agentApproved: async (agentId) => agents.get(agentId)?.approved,
     isOperator: async (agentOwner, operator) => operators.has(`${agentOwner} ${operator}`),
     validation: async (requestHash) => validations.get(requestHash),
+    agentValidations: async (agentId) => [...validations].filter(([, record]) => record.agentId === agentId).map(([requestHash, record]) => ({ ...record, requestHash })),
   };
   return { agents, operators, validations, registry };
 }

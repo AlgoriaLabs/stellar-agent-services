@@ -17,6 +17,7 @@ COPY packages/provider-kit/package.json packages/provider-kit/
 COPY packages/payment-client/package.json packages/payment-client/
 COPY packages/verifier/package.json packages/verifier/
 COPY packages/dev-mcp/package.json packages/dev-mcp/
+COPY packages/create-stellar-service/package.json packages/create-stellar-service/
 COPY examples/paid-service/package.json examples/paid-service/
 COPY apps/wallet/package.json apps/wallet/
 RUN npm ci --workspace @stellar-agent-services/provider-kit --include-workspace-root --ignore-scripts
@@ -35,6 +36,7 @@ COPY packages/provider-kit/package.json packages/provider-kit/
 COPY packages/payment-client/package.json packages/payment-client/
 COPY packages/verifier/package.json packages/verifier/
 COPY packages/dev-mcp/package.json packages/dev-mcp/
+COPY packages/create-stellar-service/package.json packages/create-stellar-service/
 COPY examples/paid-service/package.json examples/paid-service/
 COPY apps/wallet/package.json apps/wallet/
 RUN npm ci --omit=dev --workspace @stellar-agent-services/provider-kit --ignore-scripts && npm cache clean --force
@@ -45,9 +47,11 @@ COPY --from=build /repo/packages/provider-kit/dist packages/provider-kit/dist
 COPY --from=build /repo/packages/provider-kit/schemas packages/provider-kit/schemas
 
 RUN mkdir -p /config /data && chown node:node /data
-USER node
 VOLUME /data
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 8787) + '/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
-ENTRYPOINT ["node", "/app/packages/provider-kit/dist/cli/index.js"]
+# The arguments are provider-kit's, such as `serve --config <file>`. A host's new volume may belong to root, as
+# Fly.io's do: started as root, the container only gives /data to the node user, then runs provider-kit as node.
+# Started as another user, it runs as that user.
+ENTRYPOINT ["sh", "-c", "if [ \"$(id -u)\" = 0 ]; then chown node:node /data 2>/dev/null || true; exec setpriv --reuid=node --regid=node --init-groups -- node /app/packages/provider-kit/dist/cli/index.js \"$@\"; fi; exec node /app/packages/provider-kit/dist/cli/index.js \"$@\"", "sh"]
 CMD ["serve", "--config", "/config/provider.config.json"]

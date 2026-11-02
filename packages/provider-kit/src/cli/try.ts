@@ -12,6 +12,10 @@
 //      allows this one payment only: the manifest's price, to the manifest's payTo.
 //
 // Testnet only: a provider on Mainnet is refused before anything is signed.
+//
+// When nothing answers, try starts the provider for this one call: a gateway config in this process (with a throwaway
+// payTo when PAY_TO is empty, as `provider-kit dev` makes one), or --start's command, such as 'npm run dev'. --json
+// prints the outcome as JSON on standard output, and the steps on standard error.
 
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -36,11 +40,12 @@ import {
 import { DEFAULT_MANIFEST_PATH, type JsonObject, type ProviderManifest, type ServiceDescriptor, type StellarNetwork } from "@stellar-agent-services/protocol";
 import { Keypair } from "@stellar/stellar-sdk";
 import { DEFAULT_PORT, gatewayManifestUrl } from "../gateway/config.js";
+import { devPayTo } from "./dev-account.js";
+import { ENV_FILE, loadEnvFile } from "./env-file.js";
 import { ApprovalError, explorerUrl, formatUsdc, networkName, rpcOwnerChain, shortAddress, type OwnerChain } from "./owner-chain.js";
-import { plain, quote as shellQuote, UsageError, type CliFlags } from "./shared.js";
-
-/** The config file read when neither --config nor --manifest is given: the one `provider-kit init` writes. */
-const DEFAULT_CONFIG = "provider.config.json";
+import { startCommand, waitForManifest } from "./processes.js";
+import { serveGateway } from "./serve.js";
+import { DEFAULT_CONFIG, plain, quote as shellQuote, UsageError, type CliFlags } from "./shared.js";
 /** The most of a job's output printed, in characters. */
 const OUTPUT_LIMIT = 10_000;
 
@@ -59,6 +64,24 @@ export interface TryIo {
   payer(): Keypair;
   /** How the payment client reaches providers and pays: fetch and x402 `exact` unless a test says otherwise. */
   client: Pick<PaymentClientOptions, "fetch" | "methods" | "pollMs">;
+  /**
+   * Starts the provider for this call when nothing answers at `manifestUrl`: a gateway config in this process, or a
+   * command. Without it, try only says to start the provider.
+   */
+  startProvider?(how: { config: string } | { command: string }, manifestUrl: string): Promise<{ stop(): Promise<void> }>;
+}
+
+/** What `try --json` prints: how the call went. */
+export interface TrySummary {
+  ok: boolean;
+  manifest: string;
+  service?: string;
+  jobId?: string;
+  status?: string;
+  charged?: boolean;
+  payment?: { amount: string; payTo: string; transaction: string; url: string; confirmed: boolean };
+  output?: JsonObject;
+  error?: string;
 }
 
 export function tryIo(): TryIo {
@@ -99,29 +122,85 @@ export function tryIo(): TryIo {
     chain: rpcOwnerChain,
     payer: () => Keypair.random(),
     client: {},
+    startProvider: startForTry,
   };
+}
+
+/** The provider, started for one call: a gateway in this process, or a command in the background until its manifest answers. */
+async function startForTry(how: { config: string } | { command: string }, manifestUrl: string): Promise<{ stop(): Promise<void> }> {
+  if ("command" in how) {
+    const started = startCommand(how.command);
+    try {
+      await waitForManifest(manifestUrl, { exited: started.exited, timeoutMs: 120_000 });
+    } catch (error) {
+      await started.stop();
+      const output = started.output().trim().split("\n").slice(-12).join("\n");
+      throw new Error(`${how.command} didn't start the provider: ${(error as Error).message}${output === "" ? "" : `\nIts output:\n${output}`}`);
+    }
+    return started;
+  }
+  await loadEnvFile(ENV_FILE);
+  const network = (JSON.parse(await readFile(how.config, "utf8")) as { network?: StellarNetwork }).network ?? "stellar:testnet";
+  await devPayTo({ env: process.env, network, chain: () => rpcOwnerChain(network), envFile: ENV_FILE });
+  const { server } = await serveGateway(how.config, { dev: true, log: () => {} });
+  return { stop: () => server.close() };
 }
 
 /** provider-kit try [<service>] ['<input JSON>' | @<file>] */
 export async function tryCall(flags: CliFlags, args: string[], io: TryIo = tryIo()): Promise<number> {
   if (args.length > 2) throw new UsageError("try takes a service and its input: provider-kit try <service> ['<input JSON>' | @<file>]");
   if (!flags.yes && !io.interactive) throw new UsageError("try asks before it pays, and nobody can answer here: add --yes to pay without asking");
+  if (flags.start !== undefined && flags.manifest !== undefined) throw new UsageError("--start runs a provider on this computer: leave out --manifest, or start it yourself");
+  const summary: TrySummary = { ok: false, manifest: "" };
+  // With --json, standard output holds only the JSON: the steps go to standard error.
+  const steps: TryIo = flags.json ? { ...io, log: (line) => void process.stderr.write(`${line}\n`), status: () => {} } : io;
+  let code: number;
   try {
-    return await payOnce(flags, args, io);
+    code = await payOnce(flags, args, steps, summary);
+  } catch (error) {
+    if (!flags.json) throw error;
+    summary.error = plain(error instanceof Error ? error.message : String(error), 400);
+    code = error instanceof UsageError ? 2 : 1;
   } finally {
     io.status("");
   }
+  if (flags.json) console.log(JSON.stringify({ ...summary, ok: code === 0 }, null, 2));
+  return code;
 }
 
-async function payOnce(flags: CliFlags, args: string[], io: TryIo): Promise<number> {
+async function payOnce(flags: CliFlags, args: string[], io: TryIo, summary: TrySummary): Promise<number> {
   const manifestUrl = await providerManifestUrl(flags);
-  const manifest = await readManifest(manifestUrl, io.client.fetch ?? fetch);
+  summary.manifest = manifestUrl;
+  const fetcher = io.client.fetch ?? fetch;
+  let started: { stop(): Promise<void> } | undefined;
+  let manifest: ProviderManifest;
+  try {
+    manifest = await readManifest(manifestUrl, fetcher);
+  } catch (error) {
+    const config = flags.manifest === undefined ? (flags.config ?? (existsSync(DEFAULT_CONFIG) ? DEFAULT_CONFIG : undefined)) : undefined;
+    const how = flags.start !== undefined ? { command: flags.start } : config !== undefined ? { config } : undefined;
+    if (!(error instanceof NothingAnswers) || how === undefined || io.startProvider === undefined) throw error;
+    started = await step(io, "command" in how ? `Started ${how.command} for this call` : `Started the gateway from ${how.config} for this call`, () => io.startProvider!(how, manifestUrl));
+    manifest = await readManifest(manifestUrl, fetcher);
+  }
+  try {
+    return await payStarted(flags, args, io, summary, manifestUrl, manifest);
+  } finally {
+    await started?.stop();
+  }
+}
+
+async function payStarted(flags: CliFlags, args: string[], io: TryIo, summary: TrySummary, manifestUrl: string, manifest: ProviderManifest): Promise<number> {
   const network = manifest.payment.accepts[0].network;
   if (network !== "stellar:testnet") {
     throw new Error(`${plain(manifest.provider.name)} is on ${networkName(network)}. try pays from a throwaway testnet account, so it runs on testnet only. Nothing was signed.`);
   }
   const service = pickService(manifest, args[0], flags, io);
-  if (service === undefined) return 2;
+  if (service === undefined) {
+    summary.error = `name a service: ${manifest.services.map((each) => each.name).join(", ")}`;
+    return 2;
+  }
+  summary.service = service.name;
   const { input, example } = await readInput(service, args[1]);
 
   const payer = io.payer();
@@ -153,14 +232,17 @@ async function payOnce(flags: CliFlags, args: string[], io: TryIo): Promise<numb
     throw new Error(`${service.name} didn't quote a price: ${problem(error)}. Nothing was signed.`);
   }
   showTerms(io, offer, network, payer.publicKey(), example);
+  summary.jobId = offer.jobId;
   if (!client.payable(offer)) {
     io.log("Nothing was signed or paid.");
+    summary.error = "the challenge or the spending policy refused this payment; nothing was signed";
     return 1;
   }
   if (!flags.yes) {
     if (!(await io.confirm(`Pay ${formatUsdc(offer.requirements.amount)} in test money? [Y/n] `))) {
       await client.decline(offer);
       io.log("Not paid. Nothing was signed.");
+      summary.error = "declined; nothing was signed";
       return 1;
     }
     io.log("");
@@ -178,8 +260,27 @@ async function payOnce(flags: CliFlags, args: string[], io: TryIo): Promise<numb
   try {
     result = await client.pay(offer, { approved: true });
   } catch (error) {
+    summary.error = problem(error);
     return notPaid(io, error, offer, journal);
   }
+  const { job, confirmed } = result;
+  Object.assign(summary, {
+    status: job.status,
+    ...(job.charged === undefined ? {} : { charged: job.charged }),
+    ...(job.payment === undefined
+      ? {}
+      : {
+          payment: {
+            amount: formatUsdc(job.payment.amount),
+            payTo: offer.requirements.payTo,
+            transaction: job.payment.transaction,
+            url: explorerUrl(job.payment.network, "tx", job.payment.transaction),
+            confirmed,
+          },
+        }),
+    ...(job.output === undefined ? {} : { output: job.output }),
+    ...(job.error === undefined ? {} : { error: plain(`${job.error.code}${job.error.detail === undefined ? "" : `: ${job.error.detail}`}`, 400) }),
+  });
   return report(io, offer, result, (Date.now() - started) / 1000);
 }
 
@@ -202,9 +303,14 @@ async function readManifest(url: string, fetcher: typeof fetch): Promise<Provide
     return await loadManifest(url, { fetch: fetcher, allowLocalhost: true });
   } catch (error) {
     if (error instanceof ManifestError) throw new Error(`the manifest at ${url} isn't valid: ${error.message}. provider-kit check lists every problem.`);
-    if (unreachable(error)) throw new Error(`nothing answers at ${url}. Start the provider first, such as with provider-kit serve --config provider.config.json.`);
+    if (unreachable(error)) throw new NothingAnswers(`nothing answers at ${url}. Start the provider first, such as with provider-kit dev, or pass --start '<command>'.`);
     throw error;
   }
+}
+
+/** No provider listens at the manifest's address. */
+class NothingAnswers extends Error {
+  override name = "NothingAnswers";
 }
 
 /** The service named on the command line, or the only one there is. Lists them when there are several to pick from. */

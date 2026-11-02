@@ -6,6 +6,20 @@ export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * The bytes of an application/json data: URI (RFC 2397), base64 or percent-encoded, such as an 8004
+ * registration file or a validation request kept on chain. A problem instead when it is not one.
+ */
+export function jsonDataUri(uri: string): { bytes: Uint8Array } | { problem: "not-json" | "undecodable" } {
+  const data = /^data:application\/json(?:;charset=[^;,]+)?(;base64)?,(.*)$/is.exec(uri);
+  if (data === null) return { problem: "not-json" };
+  try {
+    return { bytes: data[1] === undefined ? new TextEncoder().encode(decodeURIComponent(data[2]!)) : new Uint8Array(Buffer.from(data[2]!, "base64")) };
+  } catch {
+    return { problem: "undecodable" };
+  }
+}
+
 /** Whether two JSON values are equal, member order aside. */
 export function sameJson(a: unknown, b: unknown): boolean {
   try {

@@ -18,7 +18,7 @@ This repository holds the standard and everything needed to use it:
 | Protocol | [packages/protocol](packages/protocol) | The standard as TypeScript with no runtime dependencies, plus JSON Schemas and test vectors |
 | Provider Kit | [packages/provider-kit](packages/provider-kit) | Library (`defineService`, `createProvider`), gateway for an existing API, `provider-kit` CLI |
 | Payment client | [packages/payment-client](packages/payment-client) | Buyer side: approval, spending policy, journal, payment, recovery. `stellar-pay` CLI. |
-| Verifier | [packages/verifier](packages/verifier) | Checks a provider against the standard (C1–C7), issues receipts and badges |
+| Verifier | [packages/verifier](packages/verifier) | Checks a provider against the standard (C1–C7), issues receipts and badges. `verifier watch` answers validation requests by itself. |
 | MCP server | [packages/dev-mcp](packages/dev-mcp) | Spec rules, docs, manifest validation and provider checks as MCP tools. It never pays. |
 | Scaffolder | [packages/create-stellar-service](packages/create-stellar-service) | `npm create stellar-service`: a new project around an existing API, a TypeScript service or a Python service, ready to run, try and deploy |
 | Agent Wallet | [apps/wallet](apps/wallet) | Web page where a person approves and pays |
@@ -42,7 +42,7 @@ Facts to get right:
 | Make an **existing HTTP API** paid, in any language | Gateway: a JSON config, no code. `provider-kit init --openapi <url>` writes it from the API's OpenAPI document; `create-stellar-service --kind wrap` makes a whole project around it. | [provider-setup-guide.md §3a](docs/provider-setup-guide.md#3a-gateway-an-existing-api), [packages/provider-kit](packages/provider-kit#gateway-mode), [examples/python-upstream](examples/python-upstream) | `provider-kit check --config provider.config.json` passes and the gateway starts |
 | Implement the standard in **another language** | Native | [docs/standard/README-AI.md §3–§13](docs/standard/README-AI.md), the [spec](docs/provider-standard.md), the [test vectors](packages/protocol/test-vectors) | Every test vector passes, and `verifier check <url>` passes |
 | Build an **agent, wallet or app that pays** providers | Client: an adapter for `payment-client`, or your own client | [docs/client-integration/README-AI.md](docs/client-integration/README-AI.md), spec §14 rules in [docs/standard/README-AI.md](docs/standard/README-AI.md#14-client-rules-agents-wallets-apps) | The conformance checks in `@stellar-agent-services/payment-client/conformance` pass, or for a native client the client rules hold |
-| **Verify** a provider, or get one verified | Verifier | [docs/verification.md](docs/verification.md), [packages/verifier](packages/verifier), [provider-setup-guide.md §8–§9](docs/provider-setup-guide.md#8-register-on-stellar-8004) | `verifier check` passes; with a funded test payer, `verifier verify --pay` reaches the level you need |
+| **Verify** a provider, or get one verified | Verifier | [docs/verification.md](docs/verification.md), [packages/verifier](packages/verifier), [provider-setup-guide.md §7–§9](docs/provider-setup-guide.md#7-go-live-provider-kit-launch) | `verifier check` passes; with a funded test payer, `verifier verify --pay` reaches the level you need |
 | **Change this repository** | Contributor | §6 below, [CONTRIBUTING.md](CONTRIBUTING.md), and for recovery code [docs/recovery/README-AI.md](docs/recovery/README-AI.md) | `npm run typecheck` and `npm test` pass |
 
 Follow one path. Don't mix the Kit with a hand-written job flow.
@@ -68,9 +68,15 @@ alias create-stellar-service="node $REPO/packages/create-stellar-service/dist/in
 ```
 
 `create-stellar-service <folder> --kind wrap|typescript|python` makes a new project instead: it packs the kit from
-the clone into the project's `vendor/` folder, installs it, and writes `.env`, a Dockerfile and npm scripts (`dev`,
-`try`, `check`). Pass every answer as a flag (`--openapi`, `--upstream`, `--description`, `--no-wallet`): without a
-terminal it asks nothing. `--wallet` opens the trustline approval page in the user's browser, so ask the user first.
+the clone into the project's `vendor/` folder, installs it, and writes `.env`, a Dockerfile, `fly.toml` and npm
+scripts: `dev` (runs it, paid to a throwaway testnet account, so no wallet is needed), `try`, `check`, `status`,
+`launch` (goes live) and `deploy`. Pass every answer as a flag (`--openapi`, `--upstream`, `--description`, `--price`):
+without a terminal it asks nothing.
+
+`npm run launch` (`provider-kit launch`) opens an approval page in the user's browser, where their wallet signs the
+trustline, the 8004 registration and a validation request in one go, and it may deploy to Fly.io. Ask the user
+first, run it with `--no-open`, and give them the link. `provider-kit status --json` tells you where a provider stands
+and the one command to run next.
 
 `npm install <path>` links the package, so a later `git pull && npm run build` in the clone updates it. A native
 implementation needs no package: it needs the spec, `packages/protocol/schemas/manifest.schema.json` and the
@@ -89,9 +95,11 @@ These come from the spec and [SECURITY.md](SECURITY.md). Breaking one loses or d
 
 1. **No secret keys in a provider.** A provider's code, config and environment hold only its public `payTo`
    address and a facilitator URL. Owner actions (the USDC trustline, 8004 registration, validation requests) are
-   signed in the owner's own wallet: `provider-kit trustline`, `register` and `request-validation` open a local
-   approval page for it. In scripts and CI, `--source <key name>` signs through the Stellar CLI keychain. Never
-   ask the user for a secret key or seed phrase, and never write one to a file.
+   signed in the owner's own wallet: `provider-kit launch` opens a local approval page for all of them, and
+   `trustline`, `register` and `request-validation` do one each. In scripts and CI, `--source <key name>` signs through
+   the Stellar CLI keychain. Never ask the user for a secret key or seed phrase, and never write one to a file. The
+   only keys the kit makes are throwaway testnet ones, held in memory and never written: `try`'s payer, and the
+   payout account `dev` makes while `PAY_TO` is empty, whose key is dropped once its trustline is signed.
 2. **Never charge twice.** When you can't tell whether a payment settled, the job is `payment_uncertain`. It is
    never `failed` and never charged again. It is decided from the chain `[J13]`. Check-status and get-result
    never charge `[J11]`.
@@ -111,7 +119,10 @@ These come from the spec and [SECURITY.md](SECURITY.md). Breaking one loses or d
   `validate_manifest`). `provider-kit check` and `verifier check` pass. A paid testnet call succeeds and the
   transfer is on chain: `provider-kit try <service> --manifest <url> --yes`, after the user agreed to pay, pays from
   a throwaway testnet account (or `stellar-pay pay` from a payer wallet). Go through the "How agents see you" hints
-  at the end of `provider-kit check` with the user: search matches only `provider.name` and `provider.description`.
+  at the end of `provider-kit check` with the user: on mainnet, search matches only `provider.name` and
+  `provider.description` (`check --fix` writes the missing words in); on testnet it also reads the manifest's
+  services. `provider-kit status --json` shows each stage, from running to
+  verified.
   The checklist is in [docs/standard/README-AI.md §13](docs/standard/README-AI.md#13-testing-and-conformance).
 - **Client or adapter:** the conformance checks pass, and tests use `Keypair.random()` and never the network.
 - **Any change here:** `npm run typecheck` and `npm test` pass. If you changed a document that

@@ -2,7 +2,7 @@
 
 `npm create stellar-service` makes a project that sells an AI service on Stellar: agents pay per call in USDC through
 x402, under [Provider Standard v1](../../docs/provider-standard.md). The project runs, takes a paid testnet call and
-builds a Docker image as it comes.
+goes live as it comes, with no wallet needed until it goes live.
 
 ```text
 $ npm create stellar-service
@@ -16,14 +16,22 @@ Pick 1, 2 or 3 [1]: 1
 Your API's OpenAPI document, or the URL a paid call goes to [http://127.0.0.1:8000/openapi.json]:
 In one sentence, what does it offer? Agents search for it by these words and its name.
 [Enter: the document's]: Captions for product photos, in English and Turkish.
-Set up the account clients pay now? A page opens where your wallet approves a USDC trustline on testnet.
-[Y/n]:
+What does a call cost, in USDC? [0.01]: 0.05
 ```
 
-Then it writes the project, installs it, and opens the approval page of `provider-kit trustline`, where your own
-wallet (Freighter, xBull, Albedo and others) adds a USDC trustline. The account's address goes in `.env` as `PAY_TO`.
-Next: `npm run dev`, then `npm run try` pays for one call with test money, and `npm run check` shows
-[how agents see you](../provider-kit/README.md#how-agents-see-you).
+Then it writes the project and installs it. Next:
+
+```bash
+cd captioner
+npm run dev       # runs it here, paid to a throwaway testnet account: no wallet needed yet
+npm run try       # pays for one call with test money, from another terminal
+npm run launch    # goes live: one approval in your wallet, then Fly.io
+```
+
+`npm run launch` opens a page where your own wallet (Freighter, xBull, Albedo and others) approves the USDC trustline,
+the Stellar 8004 registration and a request for verification, in one go. Then it saves `PAY_TO` and `AGENT_ID`,
+deploys to Fly.io if you say yes, and waits until the service answers at its public address. `npm run status` shows
+where it stands at any time.
 
 **Until the packages are on npm,** run it from a clone, built once (`npm install && npm run build`):
 
@@ -43,19 +51,29 @@ itself, in Docker too. Once published, the project depends on the kit's released
 | `python` | A new FastAPI app, `app.py`, with the gateway in front of it, and one container that runs both. |
 
 Every project has `.env` (the settings, kept out of git) and `.env.example`, a `Dockerfile` that keeps the job
-database on a volume at `/data`, a `README.md`, and these scripts:
+database on a volume at `/data`, a `fly.toml` for Fly.io, a `README.md`, and these scripts:
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` | Starts the service, or the gateway, at http://localhost:8787 |
-| `npm run try` | Pays for one call with test money, from a throwaway testnet account ([`provider-kit try`](../provider-kit/README.md#trying-a-paid-call)) |
+| `npm run dev` | Starts the service, or the gateway (and the Python kind's API), at http://localhost:8787. With `PAY_TO` empty it is paid to a throwaway testnet account ([`provider-kit dev`](../provider-kit/README.md#the-throwaway-payout-account)) |
+| `npm run try` | Pays for one call with test money, from a throwaway testnet account, and starts the service for it when it isn't running ([`provider-kit try`](../provider-kit/README.md#trying-a-paid-call)) |
 | `npm run check` | Checks the provider against the standard and shows how agents see it |
-| `npm run wallet` | Sets up the account clients pay, in your wallet |
+| `npm run launch` | Takes it live: one page in your wallet for the trustline, the 8004 registration and verification, then the deploy ([`provider-kit launch`](../provider-kit/README.md#launching)) |
+| `npm run status` | Where it stands, from running here to verified, and the command to run next |
+| `npm run deploy` | Deploys again to Fly.io (`fly deploy`) |
 | `npm start` | Starts it for production: `PUBLIC_ORIGIN` must be your HTTPS origin |
-| `npm run register` | Registers it in the Stellar 8004 registry, once deployed (gateway kinds) |
 
-A gateway config reads `baseUrl`, `payTo` and `store` from `.env` (`env:PUBLIC_ORIGIN`, `env:PAY_TO`,
-`env:JOB_DB_PATH`), so the same file runs on a laptop and in a container.
+A gateway config reads `baseUrl`, `payTo`, `store` and the agent id from `.env` (`env:PUBLIC_ORIGIN`, `env:PAY_TO`,
+`env:JOB_DB_PATH`, `env:AGENT_ID`), so the same file runs on a laptop and in a container.
+
+**Fly.io.** `fly.toml` names the app after the folder, so the public address, `https://<app>.fly.dev`, is known before
+the first deploy: `launch` registers the service with it, writes `PUBLIC_ORIGIN`, `PAY_TO` and `AGENT_ID` under
+`[env]`, and deploys once. The job database lives on a volume Fly makes on the first deploy. Another host works too:
+`npm run launch -- --url https://your.domain --no-deploy`.
+
+**Python.** With [uv](https://docs.astral.sh/uv/) installed, `npm run dev` starts the API with
+`uv run --with-requirements requirements.txt`, so there is no virtual environment to make. Without it, the next steps
+give the two commands that make `.venv`.
 
 ## For scripts and coding agents
 
@@ -63,7 +81,7 @@ Flags answer every question. Without a terminal it asks nothing, and `--kind` is
 
 ```bash
 create-stellar-service captioner --kind wrap --openapi http://127.0.0.1:8000/openapi.json \
-  --description "Captions for product photos, in English and Turkish." --no-wallet
+  --description "Captions for product photos, in English and Turkish." --price 0.05
 ```
 
 | Flag | Answers |
@@ -73,15 +91,18 @@ create-stellar-service captioner --kind wrap --openapi http://127.0.0.1:8000/ope
 | `--upstream <url>` | Without `--openapi`: the URL a paid call goes to (`wrap`) |
 | `--description <text>` | One sentence on what it offers: search matches it and the name |
 | `--name <text>` | The provider's name. Default: the folder's, or the document's title. |
-| `--wallet`, `--no-wallet`, `--pay-to <G…>` | Set up the payout account now in your wallet, later, or use an address you have |
+| `--price <usdc>` | What a call costs, in USDC. Default `0.01`. |
+| `--wallet`, `--pay-to <G…>` | Set up the payout account now in your wallet, or use an address you have. Without either, nothing is needed until `npm run launch`. |
 | `--yes` | Take the defaults for the questions no flag answers |
 
-`--wallet` opens a page in the user's browser, so a coding agent asks the user first. It signs nothing itself.
+`--wallet` opens a page in the user's browser, so a coding agent asks the user first. It signs nothing itself. So
+does `npm run launch` later: a coding agent runs it with `--no-open` and gives the user the link.
 
 ## Safety
 
 - **No secret key, anywhere.** It never asks for one, makes one or writes one. The payout account is set up in the
-  developer's own wallet, on `provider-kit trustline`'s approval page, and only its public address is saved.
+  developer's own wallet, on `provider-kit launch`'s approval page, and only its public address is saved. Until then,
+  `npm run dev`'s throwaway testnet account has no key anyone keeps.
 - **It never pays.** `npm run try` pays later, when the developer runs it, from a throwaway account with test money.
 - **Testnet only.** Every project starts on `stellar:testnet`.
 - **Nothing is overwritten.** It refuses a folder that already has files in it.
@@ -90,8 +111,8 @@ create-stellar-service captioner --kind wrap --openapi http://127.0.0.1:8000/ope
 
 | File | Contents |
 | --- | --- |
-| `src/main.ts` | The questions, the flags, and the run: write, install, the gateway config, the payout account |
-| `src/files.ts` | The files each kind writes: `package.json`, `.env`, the README, the Python kind's gateway config, and the templates filled in |
+| `src/main.ts` | The questions, the flags, and the run: write, install, the gateway config, the payout account if asked |
+| `src/files.ts` | The files each kind writes: `package.json` and its scripts, `.env`, the README, the Python kind's gateway config, and the templates filled in |
 | `src/kit.ts` | Where the Provider Kit comes from: a clone (packed into `vendor/`) or npm, and the npm overrides a project needs |
 | `src/index.ts` | The command |
-| `templates/` | The code and Dockerfiles each kind starts from |
+| `templates/` | The code and Dockerfiles each kind starts from, and `fly.toml` |

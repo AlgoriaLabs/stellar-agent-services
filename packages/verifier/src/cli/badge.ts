@@ -9,10 +9,10 @@ import { badgesFor } from "../badges.js";
 import { anchorProblems } from "../publish.js";
 import { readReceipt } from "../receipt.js";
 import { rpcRegistry } from "../registry.js";
-import { UsageError, type CliFlags, type Io } from "./shared.js";
+import { UsageError, WATCH_FLAGS, type CliFlags, type Io } from "./shared.js";
 
 export async function badge(path: string, flags: CliFlags, io: Io): Promise<number> {
-  for (const flag of ["pay", "service", "input", "validator", "response-uri", "source", "network", "max-age", "dry-run", "max-price", "max-spend"] as const) {
+  for (const flag of ["pay", "service", "input", "validator", "response-uri", "source", "network", "max-age", "dry-run", "max-price", "max-spend", ...WATCH_FLAGS] as const) {
     if (flags[flag] !== undefined) throw new UsageError(`--${flag} does not apply to badge`);
   }
   const { receipt, sha256 } = await readReceipt(path);

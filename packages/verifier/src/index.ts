@@ -2,7 +2,7 @@
 //
 // Checks a provider against Provider Standard v1 (checks C1–C7, docs/verification.md), issues a
 // verification receipt, renders badges from that receipt, and publishes it to the Stellar 8004
-// Validation Registry.
+// Validation Registry. The watcher (watch.ts) does all of it by itself for each validation request.
 //
 // The checks are written from the standard, not from the Provider Kit, so a fault the kit shares with
 // its providers can't pass unnoticed. They cite the standard's rule ids.
@@ -19,4 +19,7 @@ export * from "./publish.js";
 export * from "./payments.js";
 export * from "./chain.js";
 export * from "./registry.js";
+export * from "./requests.js";
+export * from "./watch.js";
+export * from "./watch-state.js";
 export { TOOL } from "./tool.js";

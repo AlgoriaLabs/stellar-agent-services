@@ -27,8 +27,8 @@ afterEach(async () => {
   await Promise.all(opened.splice(0).map((provider) => provider.close()));
 });
 
-function manifestOf(services: ReturnType<typeof service>[], provider: { name: string; description?: string; agentId?: number }) {
-  const { provider: created } = testProvider(services, { provider });
+function manifestOf(services: ReturnType<typeof service>[], provider: { name: string; description?: string; agentId?: number }, network: "stellar:testnet" | "stellar:pubnet" = "stellar:testnet") {
+  const { provider: created } = testProvider(services, { provider, network });
   opened.push(created);
   return created.manifest;
 }
@@ -53,22 +53,29 @@ describe("matching like stellar-agent-search", () => {
 });
 
 describe("howAgentsSeeYou", () => {
-  it("shows the name and description search matches, says words from services aren't searched, and how ranking works", () => {
-    const manifest = manifestOf([service(), service({ name: "classify-sentiment", title: "Classify sentiment", tags: ["sentiment"] })], {
-      name: "Text Tools",
-      description: "Summaries of English text.",
-    });
-    const lines = howAgentsSeeYou(manifest);
+  it("shows the name and description search matches on mainnet, says words from services aren't searched there, and how ranking works", () => {
+    const services = [service(), service({ name: "classify-sentiment", title: "Classify sentiment", tags: ["sentiment"] })];
+    const lines = howAgentsSeeYou(manifestOf(services, { name: "Text Tools", description: "Summaries of English text." }, "stellar:pubnet"));
     expect(lines.slice(0, 4)).toEqual([
       "How agents see you",
-      "  Search matches only this name and description, which provider-kit register publishes:",
+      "  Search matches only this name and description, which provider-kit launch publishes:",
       "    Text Tools",
       "    Summaries of English text.",
     ]);
-    expect(section(lines)).toContain('agents searching for "summarize", "classify" or "sentiment" won\'t find you');
+    expect(section(lines)).toContain('! Search reads no service names, titles or tags on mainnet, so agents searching for "summarize", "classify" or "sentiment" won\'t find you');
+    expect(section(lines)).toContain("provider-kit check --fix does");
     expect(section(lines)).toContain("Ranking counts reviews from distinct paying clients only");
-    expect(section(lines)).toContain("· Not registered yet: provider-kit register publishes this name and description.");
+    expect(section(lines)).toContain("· Not registered yet: provider-kit launch publishes this name and description.");
     expect(lines.every((line) => line.length <= 110)).toBe(true);
+  });
+
+  it("says that search on testnet also reads the services, and only notes the words mainnet would miss", () => {
+    const services = [service(), service({ name: "classify-sentiment", title: "Classify sentiment", tags: ["sentiment"] })];
+    const lines = howAgentsSeeYou(manifestOf(services, { name: "Text Tools", description: "Summaries of English text." }));
+    expect(lines[1]).toBe("  Search matches this name and description, which provider-kit launch publishes:");
+    expect(section(lines)).toContain("· On testnet it also matches your services' names, titles, descriptions and tags, once the manifest is live and names the agent [I1]–[I3].");
+    expect(lines.filter((line) => line.startsWith("  !"))).toEqual([]);
+    expect(section(lines)).toContain('· On mainnet, search reads no service names, titles or tags: agents searching there for "summarize", "classify" or "sentiment" wouldn\'t find you.');
   });
 
   it("has no hint for a provider whose services are described, have an example, and are named in its description", () => {
@@ -101,12 +108,12 @@ describe("howAgentsSeeYou", () => {
     const manifest = manifestOf([service()], { name: "Summarizer", description: "Summarize English text for agents.", agentId: 42 });
     const current = registrationFile(manifest, "http://localhost:8787/.well-known/stellar-agent-services.json");
     const inSync = howAgentsSeeYou(manifest, current);
-    expect(inSync[1]).toBe("  Search matches only this name and description, as registered:");
+    expect(inSync[1]).toBe("  Search matches this name and description, as registered:");
     expect(section(inSync)).not.toContain("older");
-    expect(section(inSync)).toContain("· Live: STELLAR_NETWORK=testnet REGISTRY_AGENT_IDS=42 npx -y stellar-agent-search@0.1.0 profile 42");
+    expect(section(inSync)).toContain("· Live: STELLAR_NETWORK=testnet npx -y stellar-agent-search@0.2.0 profile 42");
 
     const old = howAgentsSeeYou(manifest, { ...current, description: "Old words.‮" });
     expect(old[3]).toBe("    Old words.");
-    expect(section(old)).toContain("! The registry still has an older name or description: provider-kit register updates it.");
+    expect(section(old)).toContain("! The registry still has an older name or description: provider-kit launch updates it.");
   });
 });

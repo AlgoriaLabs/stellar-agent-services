@@ -35,7 +35,7 @@
         "name": { "type": "string", "minLength": 1, "maxLength": 120 },
         "description": { "type": "string", "maxLength": 500 },
         "homepage": { "type": "string" },
-        "agentId": { "description": "Your Stellar 8004 agent id, after `provider-kit register`. May be \"env:NAME\".", "type": ["integer", "string"] },
+        "agentId": { "description": "Your Stellar 8004 agent id, after `provider-kit launch` or `register`. May be \"env:NAME\": an unset or empty variable leaves it out, as before registering.", "type": ["integer", "string"] },
         "termsUrl": { "type": "string" },
         "dataUse": {
           "type": "object",

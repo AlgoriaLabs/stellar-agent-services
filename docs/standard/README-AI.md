@@ -74,6 +74,15 @@ paid jobs survive restarts, and processes on one machine share one queue
 ([kit README](../../packages/provider-kit/README.md#restarts-several-processes-separate-workers)). For an existing
 API, gateway mode (`provider-kit serve --config <file>`) does all of this from a JSON config.
 
+The kit's CLI runs the rest, with no secret key anywhere:
+
+| Step | Command | What it does |
+| --- | --- | --- |
+| Run | `provider-kit dev --config <file>`, or `provider-kit dev -- <your server command>` | Runs it on this computer. With `PAY_TO` empty, it is paid to a throwaway testnet account whose key is dropped at once. |
+| Pay once | `provider-kit try [<service>] --yes` | One paid testnet call from a throwaway payer, after the user agreed to pay. Starts the provider when nothing answers (`--start '<command>'` for a library provider). |
+| Go live | `provider-kit launch --config <file>` or `--start '<command>' --url <https origin>` | One approval page in the user's wallet: USDC trustline, 8004 registration [I1]–[I3], validation request. Saves `PAY_TO` and `AGENT_ID`, deploys with `flyctl` when there is a `fly.toml`. Ask the user first; run it with `--no-open` and give them the link. |
+| Where it stands | `provider-kit status --json` | Each stage, from running here to verified, and the command to run next |
+
 ## 3. Constants
 
 | Name | Value |
@@ -420,7 +429,7 @@ itself in its `description`.
 
 **A real paid call on testnet** against a local provider, in any language. `provider-kit try` pays once from a
 throwaway testnet account it funds itself, then confirms the transfer on chain. It shows the payment and asks
-first; `--yes` skips the question:
+first; `--yes` skips the question, and `--json` prints the outcome as JSON:
 
 ```bash
 npx provider-kit try text-stats '{"text":"Hello agents."}' --manifest http://localhost:8787/.well-known/stellar-agent-services.json

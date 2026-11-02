@@ -5,6 +5,7 @@
 //                                                         a service per POST endpoint of an OpenAPI document,
 //                                                         such as FastAPI's /openapi.json (gateway/openapi.ts),
 //                                                         then loaded as `provider-kit serve` loads it
+// --json prints what it wrote and skipped as JSON, for scripts and coding agents.
 
 import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
@@ -21,7 +22,7 @@ const SKIPPED_SHOWN = 15;
 
 export async function init(flags: CliFlags): Promise<number> {
   const out = flags.out ?? DEFAULT_OUT;
-  if (flags.openapi !== undefined) return initFromOpenApi(flags.openapi, out, flags.upstream);
+  if (flags.openapi !== undefined) return initFromOpenApi(flags.openapi, out, flags.upstream, flags.json === true);
 
   const service: GatewayService = {
     name: "my-service",
@@ -41,50 +42,70 @@ export async function init(flags: CliFlags): Promise<number> {
     upstream: { url: flags.upstream ?? "http://127.0.0.1:5000/run" },
   };
   await write(out, gatewayConfig({ name: "My provider", description: PROVIDER_DESCRIPTION_TO_WRITE }, [service]));
+  if (flags.json) {
+    console.log(JSON.stringify({ ok: true, out, services: [{ name: service.name, url: service.upstream.url, headers: [] }], skipped: [], warnings: [], credentials: [] }, null, 2));
+    return 0;
+  }
   console.log(`Wrote ${out}. Next:
   1. Edit the service: name, description, price, schemas and upstream URL.
-  2. PAY_TO=G... provider-kit check --config ${out}
-  3. PAY_TO=G... provider-kit serve --config ${out}
-  4. provider-kit try my-service '{"text":"Hello"}' --config ${out}   (one paid testnet call, from another terminal)
-  For production, set baseUrl to your public HTTPS URL and remove "dev".`);
+  2. provider-kit dev --config ${out}   runs it here. With PAY_TO empty, a throwaway testnet account is paid.
+  3. provider-kit try my-service '{"text":"Hello"}' --config ${out}   one paid testnet call, from another terminal
+  4. provider-kit launch --config ${out} --url https://your.domain   registers it from your wallet, to go live
+  Where it runs in production, set baseUrl to your public HTTPS URL and remove "dev".`);
   return 0;
 }
 
 /** init --openapi: a service per POST endpoint the gateway can call, and every other operation with the reason. */
-async function initFromOpenApi(source: string, out: string, upstream: string | undefined): Promise<number> {
+async function initFromOpenApi(source: string, out: string, upstream: string | undefined, json: boolean): Promise<number> {
+  // With --json, standard output holds only the JSON at the end.
+  const say = json ? () => {} : (line: string) => console.log(line);
   // Checked first, so nothing is read for a file that won't be written.
   if (existsSync(out)) throw new Error(`${out} already exists; nothing was written`);
   const { document, url } = await readOpenApi(source);
   const gateway = await gatewayFromOpenApi(document, { ...(url === undefined ? {} : { url }), ...(upstream === undefined ? {} : { upstream }) });
   const { api, services } = gateway;
-  console.log(`Read ${api.title}${api.version === undefined ? "" : ` ${api.version}`} (OpenAPI ${api.openapi}) from ${source}`);
+  say(`Read ${api.title}${api.version === undefined ? "" : ` ${api.version}`} (OpenAPI ${api.openapi}) from ${source}`);
   if (services.length === 0) {
-    printSkipped(gateway.skipped);
+    printSkipped(gateway.skipped, say);
     throw new Error("none of its operations can be a service: the gateway POSTs a JSON object to the API and takes a JSON object back. Nothing was written.");
   }
 
   await write(out, gatewayConfig({ name: gateway.provider.name, description: gateway.provider.description ?? PROVIDER_DESCRIPTION_TO_WRITE }, services));
-  console.log(`\nWrote ${out} with ${count(services.length, "service")}:`);
+  say(`\nWrote ${out} with ${count(services.length, "service")}:`);
   const width = Math.max(...services.map((service) => service.name.length));
   for (const service of services) {
     const headers = Object.keys(service.upstream.headers ?? {});
-    console.log(`  ${service.name.padEnd(width)}  POST ${service.upstream.url}${headers.length === 0 ? "" : `  with ${headers.join(", ")}`}`);
+    say(`  ${service.name.padEnd(width)}  POST ${service.upstream.url}${headers.length === 0 ? "" : `  with ${headers.join(", ")}`}`);
   }
-  if (gateway.skipped.length > 0) printSkipped(gateway.skipped);
-  for (const warning of gateway.warnings) console.log(`\n! ${warning}`);
+  if (gateway.skipped.length > 0) printSkipped(gateway.skipped, say);
+  for (const warning of gateway.warnings) say(`\n! ${warning}`);
 
   const problem = await loadAsServeWould(out, ["PAY_TO", ...gateway.credentials.map((credential) => credential.name)]);
-  if (problem === undefined) console.log("\n✓ The config passes Provider Standard v1, checked as provider-kit serve checks it.");
-  else console.log(`\n✗ The config doesn't load yet:\n  ${problem.split("\n").join("\n  ")}`);
+  if (problem === undefined) say("\n✓ The config passes Provider Standard v1, checked as provider-kit serve checks it.");
+  else say(`\n✗ The config doesn't load yet:\n  ${problem.split("\n").join("\n  ")}`);
 
   const steps = [
     `Review ${out}: each service's price (${FIRST_GUESS.price} USDC for now), charge and description, which agents choose by.` +
       (gateway.undescribed.length === 0 ? "" : `\n     Write one for ${gateway.undescribed.join(", ")}: the document gives only a summary, or nothing.`),
     ...gateway.credentials.map((credential) => `export ${credential.name}=...   ${credential.holds}`),
-    `PAY_TO=G... provider-kit serve --config ${quote(out)}`,
+    `provider-kit dev --config ${quote(out)}   runs it here. With PAY_TO empty, a throwaway testnet account is paid.`,
     `${tryCommand(services, out)}   one paid testnet call, from another terminal`,
+    `provider-kit launch --config ${quote(out)} --url https://your.domain   registers it from your wallet, to go live`,
   ];
-  console.log(`\nNext:\n${steps.map((step, index) => `  ${index + 1}. ${step}`).join("\n")}`);
+  say(`\nNext:\n${steps.map((step, index) => `  ${index + 1}. ${step}`).join("\n")}`);
+  if (json) {
+    const report = {
+      ok: problem === undefined,
+      out,
+      api: { title: api.title, ...(api.version === undefined ? {} : { version: api.version }), openapi: api.openapi },
+      services: services.map((service) => ({ name: service.name, url: service.upstream.url, headers: Object.keys(service.upstream.headers ?? {}), described: !gateway.undescribed.includes(service.name) })),
+      skipped: gateway.skipped,
+      warnings: gateway.warnings,
+      credentials: gateway.credentials.map(({ name, holds }) => ({ name, holds })),
+      ...(problem === undefined ? {} : { problem }),
+    };
+    console.log(JSON.stringify(report, null, 2));
+  }
   return problem === undefined ? 0 : 1;
 }
 
@@ -131,13 +152,13 @@ async function loadAsServeWould(path: string, variables: string[]): Promise<stri
   }
 }
 
-function printSkipped(skipped: SkippedOperation[]): void {
-  console.log(`\nSkipped ${count(skipped.length, "operation")}:`);
+function printSkipped(skipped: SkippedOperation[], say: (line: string) => void): void {
+  say(`\nSkipped ${count(skipped.length, "operation")}:`);
   const shown = skipped.slice(0, SKIPPED_SHOWN);
   const methods = Math.max(...shown.map((operation) => operation.method.length));
   const paths = Math.min(40, Math.max(...shown.map((operation) => operation.path.length)));
-  for (const { method, path, reason } of shown) console.log(`  ${method.padEnd(methods)}  ${path.padEnd(paths)}  ${reason}`);
-  if (skipped.length > shown.length) console.log(`  … and ${skipped.length - shown.length} more`);
+  for (const { method, path, reason } of shown) say(`  ${method.padEnd(methods)}  ${path.padEnd(paths)}  ${reason}`);
+  if (skipped.length > shown.length) say(`  … and ${skipped.length - shown.length} more`);
 }
 
 /** How to try the first service: with its example input when it has one. */

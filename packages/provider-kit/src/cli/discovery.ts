@@ -1,18 +1,24 @@
 // How agents see you: the provider as agents meet it, printed by `provider-kit check`, with hints that never fail it.
 //
-//   search    Stellar 8004 search (stellar-agent-search's find_agent, and explorers) matches a query against the
-//             registration's name and description only: provider.name and provider.description, as
-//             `provider-kit register` publishes them. Service names, titles and tags are never searched.
+//   search    stellar-agent-search's find_agent (and 8004 explorers) matches a query against the registration: its name
+//             and description, which `provider-kit launch` (or `register`) publishes from provider.name and
+//             provider.description, and its services' names and endpoints. On testnet, stellar-agent-search 0.2.0
+//             reads agents straight from the registry, and also matches a bound manifest's services [I1]–[I3]: their
+//             names, titles, descriptions and tags. On mainnet the explorer's list has no services, so only the name
+//             and description count there.
 //   ranking   in stellar-agent-search, reviews from distinct paying clients only. Declarations add nothing.
 //   services  an agent picks a service by its description, and an example shows it what to send [§3.4].
 //
-// Words are matched as stellar-agent-search 0.1.0 matches them (src/lib/nlparse.ts and matchAgentsByQuery in
-// src/lib/explorer.ts): accents and case folded, words of two or more characters that aren't its stopwords, a
-// crude suffix stem, then a substring test on the name and description.
+// Words are matched as stellar-agent-search 0.2.0 matches them (src/lib/text-match.ts and src/lib/nlparse.ts): accents
+// and case folded, words of two or more characters that aren't its stopwords, a crude suffix stem, then a substring
+// test on each field.
 
-import type { ProviderManifest, ServiceDescriptor } from "@stellar-agent-services/protocol";
+import { DEFAULT_MANIFEST_PATH, type ProviderManifest, type ServiceDescriptor } from "@stellar-agent-services/protocol";
 import { DESCRIPTION_TO_WRITE, PROVIDER_DESCRIPTION_TO_WRITE } from "../gateway/openapi.js";
 import { plain } from "./shared.js";
+
+/** The stellar-agent-search release whose matching this follows, and whose CLI shows the live profile. */
+export const SEARCH_PACKAGE = "stellar-agent-search@0.2.0";
 
 /** stellar-agent-search's stopwords: query framing and filter triggers, which it never searches for. */
 const STOPWORDS = new Set([
@@ -51,23 +57,32 @@ export function howAgentsSeeYou(manifest: ProviderManifest, registered?: Record<
   const { provider, services } = manifest;
   const agentId = provider.agentId;
   const description = provider.description ?? "";
+  const testnet = manifest.payment.accepts[0].network === "stellar:testnet";
   const shown = registered === undefined ? { name: provider.name, description } : { name: text(registered["name"]), description: text(registered["description"]) };
   const lines = [
     "How agents see you",
-    `  Search matches only this name and description${registered === undefined ? ", which provider-kit register publishes" : ", as registered"}:`,
+    `  Search matches ${testnet ? "" : "only "}this name and description${registered === undefined ? ", which provider-kit launch publishes" : ", as registered"}:`,
     `    ${plain(shown.name, 100) || "(no name)"}`,
     `    ${plain(shown.description, 100) || "(no description)"}`,
   ];
+  if (testnet) {
+    lines.push(...wrap("· On testnet it also matches your services' names, titles, descriptions and tags, once the manifest is live and names the agent [I1]–[I3].", "  ", "    "));
+  }
 
   const hints: string[] = [];
   if (registered !== undefined && (shown.name !== provider.name || shown.description !== description)) {
-    hints.push("The registry still has an older name or description: provider-kit register updates it.");
+    hints.push("The registry still has an older name or description: provider-kit launch updates it.");
   }
   if (description.trim() === "") hints.push("provider.description is empty, so search matches only your name.");
   else if (description === PROVIDER_DESCRIPTION_TO_WRITE) hints.push("provider.description is still init's placeholder: say what you offer, in the words buyers type.");
-  const missing = missingWords(`${provider.name} ${description}`, services);
-  if (missing.length > 0) {
-    hints.push(`Search reads no service names, titles or tags, so agents searching for ${wordList(missing)} won't find you. Put those words in provider.description.`);
+  // The registration lists the manifest and baseUrl as its services, whose names and endpoints search matches too.
+  const listed = `stellar-agent-services ${new URL(DEFAULT_MANIFEST_PATH, manifest.baseUrl).toString()} web ${manifest.baseUrl}`;
+  const missing = missingWords(`${provider.name} ${description} ${listed}`, services);
+  const notes: string[] = [];
+  if (missing.length > 0 && testnet) {
+    notes.push(`On mainnet, search reads no service names, titles or tags: agents searching there for ${wordList(missing)} wouldn't find you. provider-kit check --fix puts those words in provider.description.`);
+  } else if (missing.length > 0) {
+    hints.push(`Search reads no service names, titles or tags on mainnet, so agents searching for ${wordList(missing)} won't find you. Put those words in provider.description: provider-kit check --fix does.`);
   }
 
   const thin = services.flatMap((service) => {
@@ -81,14 +96,40 @@ export function howAgentsSeeYou(manifest: ProviderManifest, registered?: Record<
     lines.push(...wrap("An agent picks a service by its description: what it does, when to use it, its limits, with no price or URL [§3.4]. An example shows it what to send, and provider-kit try pays with it.", "    ", "    "));
   }
 
+  for (const note of notes) lines.push(...wrap(`· ${note}`, "  ", "    "));
   lines.push(...wrap("· Ranking counts reviews from distinct paying clients only. Until the first, search lists you as new and unrated.", "  ", "    "));
   if (agentId === undefined) {
-    lines.push("  · Not registered yet: provider-kit register publishes this name and description.");
+    lines.push("  · Not registered yet: provider-kit launch publishes this name and description.");
   } else {
-    const testnet = manifest.payment.accepts[0].network === "stellar:testnet" ? `STELLAR_NETWORK=testnet REGISTRY_AGENT_IDS=${agentId} ` : "";
-    lines.push(`  · Live: ${testnet}npx -y stellar-agent-search@0.1.0 profile ${agentId}`);
+    lines.push(`  · Live: ${testnet ? "STELLAR_NETWORK=testnet " : ""}npx -y ${SEARCH_PACKAGE} profile ${agentId}`);
   }
   return lines;
+}
+
+/** The most provider.description may hold (the gateway config's schema, and the manifest's). */
+const DESCRIPTION_MAX = 500;
+
+/**
+ * provider.description with the words search would miss written in, for `provider-kit check --fix`: a sentence naming
+ * the services, then any tag words still missing. Undefined when search already finds every word.
+ */
+export function describedWithServices(manifest: ProviderManifest): string | undefined {
+  const { provider, services } = manifest;
+  const description = (provider.description ?? "").trim();
+  if (missingWords(`${provider.name} ${description}`, services).length === 0) return undefined;
+  const base = description === "" || description === PROVIDER_DESCRIPTION_TO_WRITE ? "" : `${description.replace(/([^.!?])$/, "$1.")} `;
+  const titles = services.map((service) => plain(service.title ?? service.name.replace(/[-_]+/g, " "), 60));
+  let text = `${base}Services: ${titles.join(", ")}.`;
+  const still = missingWords(`${provider.name} ${text}`, services);
+  if (still.length > 0) text += ` Keywords: ${still.join(", ")}.`;
+  if (text.length <= DESCRIPTION_MAX) return text;
+  // Too long: as many service titles as fit.
+  const kept: string[] = [];
+  for (const title of titles) {
+    if (`${base}Services: ${[...kept, title].join(", ")}, and more.`.length > DESCRIPTION_MAX) break;
+    kept.push(title);
+  }
+  return kept.length === 0 ? undefined : `${base}Services: ${kept.join(", ")}${kept.length < titles.length ? ", and more" : ""}.`;
 }
 
 /** Words from the services' names, titles and tags that a search for them wouldn't match in `text`. */

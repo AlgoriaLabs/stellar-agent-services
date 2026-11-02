@@ -18,7 +18,7 @@ import { signTestPayment } from "@stellar-agent-services/provider-kit/testing";
 import { Address, Keypair, nativeToScVal, Networks, rpc, scValToNative, StrKey, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 import { TESTNET_CONFIG } from "@trionlabs/stellar8004";
 import { afterEach } from "vitest";
-import type { ChainReader, Payer, Registry, TrustlineState, ValidationRecord, VerifyOptions } from "../../src/index.js";
+import type { ChainReader, Payer, Registry, TrustlineState, ValidationRecord, ValidatorIndex, VerifyOptions } from "../../src/index.js";
 import { verifyProvider } from "../../src/index.js";
 
 export const payTo = Keypair.random().publicKey();
@@ -92,10 +92,17 @@ export function transferEvent(options: { asset: string; from: string; to: string
 
 /**
  * A Soroban RPC over in-memory transactions. Every getLatestLedger call closes a ledger, so time passes
- * as the verifier polls. `trustline` is what payTo holds; "down" makes every call fail.
+ * as the verifier polls. `trustline` is what payTo holds; "down" makes every call fail. Every USDC trustline
+ * holds `balance` (100 USDC), the test payer's included.
  */
 export function fakeChain(options: { trustline?: TrustlineState | "down"; latestLedger?: number } = {}) {
-  const state = { latestLedger: options.latestLedger ?? 1000, trustline: options.trustline ?? ("authorized" as TrustlineState | "down"), transactions: [] as FakeTransaction[], down: false };
+  const state = {
+    latestLedger: options.latestLedger ?? 1000,
+    trustline: options.trustline ?? ("authorized" as TrustlineState | "down"),
+    transactions: [] as FakeTransaction[],
+    down: false,
+    balance: 1_000_000_000n,
+  };
   const fail = () => {
     if (state.down) throw new Error("the RPC is down");
   };
@@ -140,7 +147,9 @@ export function fakeChain(options: { trustline?: TrustlineState | "down"; latest
     async getLedgerEntries() {
       fail();
       if (state.trustline === "down") throw new Error("the RPC is down");
-      const entry = (type: "account" | "trustline", flags = 1) => ({ val: { switch: () => xdr.LedgerEntryType[type](), trustLine: () => ({ flags: () => flags }) } });
+      const entry = (type: "account" | "trustline", flags = 1) => ({
+        val: { switch: () => xdr.LedgerEntryType[type](), trustLine: () => ({ flags: () => flags, balance: () => xdr.Int64.fromString(state.balance.toString()) }) },
+      });
       const entries =
         state.trustline === "no_account"
           ? []
@@ -201,13 +210,18 @@ export function offlinePayer(chain: FakeChain): Payer {
 
 // ── The registry ────────────────────────────────────────────────────────────
 
+/**
+ * The identity registry's agents, and the Validation Registry's records. `requests` is its list of request
+ * hashes by validator, in the order they were made, which `verifier watch` reads.
+ */
 export function fakeRegistry(agents: Record<number, { uri: string; wallet?: string }> = {}) {
   const validations = new Map<string, ValidationRecord>();
+  const requests: { validator: string; requestHash: string }[] = [];
   const state = { down: false };
   const fail = () => {
     if (state.down) throw new Error("the registry can't be read");
   };
-  const registry: Registry = {
+  const registry: Registry & ValidatorIndex = {
     network: "stellar:testnet",
     contracts: { identity: TESTNET_CONFIG.contracts.identity, validation: TESTNET_CONFIG.contracts.validation },
     async agentUri(agentId) {
@@ -222,8 +236,15 @@ export function fakeRegistry(agents: Record<number, { uri: string; wallet?: stri
       fail();
       return validations.get(requestHash);
     },
+    async validatorRequests(validator, start, limit) {
+      fail();
+      return requests
+        .filter((request) => request.validator === validator)
+        .slice(start, start + limit)
+        .map((request) => request.requestHash);
+    },
   };
-  return { registry, agents, validations, state };
+  return { registry, agents, validations, requests, state };
 }
 
 // ── Putting it together ─────────────────────────────────────────────────────
@@ -273,12 +294,12 @@ export function setup(options: SetupOptions = {}) {
   }) as typeof globalThis.fetch;
 
   const registration = registrationDataUri(registrationFile(provider.manifest, provider.manifestUrl));
-  const { registry, agents, validations, state: registryState } = fakeRegistry({ [AGENT_ID]: { uri: registration, wallet: payTo } });
+  const { registry, agents, validations, requests: validationRequests, state: registryState } = fakeRegistry({ [AGENT_ID]: { uri: registration, wallet: payTo } });
   const testPayer = offlinePayer(chain);
   const verify = (overrides: Partial<VerifyOptions> = {}) =>
     verifyProvider({ manifestUrl: provider.manifestUrl, fetch, rpc: chain.chain, registry, sleep: fastSleep, ...overrides });
 
-  return { provider, chain, facilitator, fetch, requests, registry, agents, validations, registryState, payer: testPayer, verify };
+  return { provider, chain, facilitator, fetch, requests, registry, agents, validations, validationRequests, registryState, payer: testPayer, verify };
 }
 
 /** A JSON response like the original, with its body rewritten. */

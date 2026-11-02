@@ -15,8 +15,10 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY provider.config.json ./
 RUN mkdir -p /data && chown node:node /data
-USER node
 VOLUME /data
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 8787) + '/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+# A host's new volume may belong to root, as Fly.io's do: started as root, the container only gives /data to the node
+# user, then runs the service as node. Started as another user, it runs as that user.
+ENTRYPOINT ["sh", "-c", "if [ \"$(id -u)\" = 0 ]; then chown node:node /data 2>/dev/null || true; exec setpriv --reuid=node --regid=node --init-groups -- \"$@\"; fi; exec \"$@\"", "sh"]
 CMD ["node", "node_modules/@stellar-agent-services/provider-kit/dist/cli/index.js", "serve", "--config", "provider.config.json"]

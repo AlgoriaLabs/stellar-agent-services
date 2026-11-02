@@ -64,7 +64,7 @@ export async function prepareValidationRequest(
   const agentId = manifest.provider.agentId;
   const problems: string[] = [];
   if (!manifestUrl.startsWith("https://")) problems.push("a dev-mode provider (http://localhost) can't be validated: deploy it on HTTPS first");
-  if (agentId === undefined) problems.push("provider.agentId is not set [I2]: run provider-kit register, then add the agent id to the config");
+  if (agentId === undefined) problems.push("provider.agentId is not set [I2]: provider-kit launch registers the provider and saves its agent id");
   if (stellarAddressKind(validator) !== "account") problems.push("the validator must be a G... account address");
   if (registry.network !== network) problems.push(`the provider is on ${network}, but the registry is on ${registry.network}`);
   if (problems.length > 0 || agentId === undefined) throw new ValidationRequestError(problems);

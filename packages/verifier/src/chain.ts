@@ -1,6 +1,8 @@
 // What the verifier reads from the chain, through Soroban RPC. It never submits anything.
 //
 // - usdcTrustline(): a G... payTo can receive USDC [P2].
+// - usdcBalance(): what the test payer holds, which `verifier watch` checks before each run, so an empty
+//   payer is never taken for a provider that refuses payments.
 // - proveSettlement(): a job's receipt is a claim until the chain shows it [J16]. The transaction must
 //   have succeeded, carry the payment the verifier itself signed (the payer's auth entry with its nonce),
 //   and move exactly the approved asset and amount from the payer to payTo. Matching by nonce rather
@@ -53,6 +55,16 @@ export async function usdcTrustline(chain: ChainReader, network: StellarNetwork,
   if (trustline === undefined) return "missing";
   // AUTHORIZED_FLAG: an issuer without AUTH_REQUIRED sets it on every new trustline.
   return (trustline.val.trustLine().flags() & 1) === 1 ? "authorized" : "unauthorized";
+}
+
+/** The account's USDC balance in base units, or undefined without a USDC trustline. Throws when the chain can't be read. */
+export async function usdcBalance(chain: ChainReader, network: StellarNetwork, account: string): Promise<bigint | undefined> {
+  const accountId = Keypair.fromPublicKey(account).xdrAccountId();
+  const { entries } = await chain.getLedgerEntries(
+    xdr.LedgerKey.trustline(new xdr.LedgerKeyTrustLine({ accountId, asset: new Asset("USDC", USDC_ISSUER[network]).toTrustLineXDRObject() })),
+  );
+  const trustline = entries.find((entry) => entry.val.switch().name === "trustline");
+  return trustline === undefined ? undefined : BigInt(trustline.val.trustLine().balance().toString());
 }
 
 /** One signed payment as an auth entry authorizes it: the token transfer and the signature's terms. */

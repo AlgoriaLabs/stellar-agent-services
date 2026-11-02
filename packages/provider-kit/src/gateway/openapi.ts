@@ -24,10 +24,13 @@ import { readBounded } from "../http/bounded.js";
 import { createProvider } from "../provider.js";
 import type { GatewayService } from "./config.js";
 
-/** What a generated service starts with, as `provider-kit init` writes it. The developer sets the real values. */
+/**
+ * What a generated service starts with, as `provider-kit init` writes it. The developer sets the real values. A call
+ * expected to take seconds is charged only if it succeeds: on-success suits work under half a minute (spec §3.2).
+ */
 export const FIRST_GUESS = {
   price: "0.01",
-  charge: "upfront",
+  charge: "on-success",
   expectedDurationSeconds: 5,
   capacity: { concurrency: 2, maxQueueWaitSeconds: 60 },
 } as const satisfies Partial<GatewayService>;

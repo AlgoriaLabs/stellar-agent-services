@@ -82,7 +82,7 @@ async function withWallet(flags: CliFlags, io: OwnerIo, { manifest, manifestUrl,
     },
     result: () => ({
       title: "Validation requested",
-      message: "Give the verifier your manifest URL and this request hash. Its answer names the hash.",
+      message: "A verifier running verifier watch finds the request on chain, checks your service and answers there. provider-kit status shows its answer.",
       details: [
         { label: "Request hash", value: prepared.requestHash, mono: true },
         { label: "Verifier", value: validator, mono: true, href: explorerUrl(network, "account", validator) },
@@ -152,7 +152,8 @@ async function confirm(flags: CliFlags, registry: RegistryReader, prepared: Prep
   }
   console.log(`Requested: agent ${request.agentId} asks ${request.validator} for validation on ${network}.`);
   if (flags.out !== undefined) console.log(`The request document is in ${flags.out}.`);
-  console.log(`Next: give the verifier your manifest URL and the request hash. Its answer names the hash:`);
+  console.log("Next: nothing to send. A verifier running `verifier watch` finds the request on chain, checks the provider and");
+  console.log("answers there, and provider-kit status shows its answer. A verifier working by hand answers with:");
   console.log(`  verifier publish <receipt.json> --request-hash ${requestHash} --response-uri <https url> --source <its key>`);
   return 0;
 }
