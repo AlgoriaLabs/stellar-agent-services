@@ -654,10 +654,13 @@ services the packages name.
 
 ### Limits
 
-- **Two Stellar SDKs in a plain install.** `@trionlabs/stellar8004` asks for the Stellar SDK 15 and the kit uses 16,
-  and two copies can't read each other's XDR. Projects made by `create-stellar-service` carry the override; someone
-  installing the kit from npm by hand must add it ([provider-kit README](../packages/provider-kit/README.md)). The
-  rehearsal warns while this holds. A release of `@trionlabs/stellar8004` on SDK 16 would end it.
+- **Two Stellar SDKs in a plain install.** `@trionlabs/stellar8004` 0.0.11 asks for the Stellar SDK 15 and the kit
+  uses 16, so npm installs a second SDK for it. Everything works: only strings and numbers pass between the two (a
+  rehearsal of a plain install read the testnet registry through both). The cost is 18 MB and the second copy's
+  axios 1.15.0, which `npm audit` flags. Projects made by `create-stellar-service` carry an override that keeps one
+  copy, and `scaffold:check` fails a project with two. Someone installing the kit from npm by hand should add it
+  ([provider-kit README](../packages/provider-kit/README.md)). The rehearsal warns while this holds. A `@trionlabs/stellar8004` release that accepts SDK 16 would end it. Its main
+  branch moved to SDK 17 on 2026-10-10, unpublished, which would still be a second copy: x402 needs 16.
 - **The packages are still private, at 0.0.0.** The first release removes `"private": true` and publishes once with a
   token, before npm can trust the workflow ([CONTRIBUTING.md](../CONTRIBUTING.md#releasing)).
 - **The mainnet start check needs a key.** Without the `MAINNET_FACILITATOR_AUTH` secret it is skipped.

@@ -12,10 +12,11 @@ import { fileURLToPath } from "node:url";
 export const KIT_PACKAGES = ["protocol", "payment-client", "provider-kit"] as const;
 
 /**
- * The repository's npm overrides, which a project needs as well: @trionlabs/stellar8004 asks for the Stellar SDK 15,
- * and two copies of the SDK can't read each other's XDR. axios is the fixed version (IMPLEMENTATION_PLAN.md).
+ * The repository's npm overrides, which a project needs as well. @trionlabs/stellar8004 0.0.11 asks for the Stellar SDK
+ * 15, so without them npm installs a second SDK inside it: 18 MB more, and its axios has known vulnerabilities. Only
+ * stellar8004's SDK is overridden, so no other package is forced off the version it asks for.
  */
-export const OVERRIDES = { "@stellar/stellar-sdk": "16.3.1", axios: "1.20.0" } as const;
+export const OVERRIDES = { "@trionlabs/stellar8004": { "@stellar/stellar-sdk": "16.4.1" } } as const;
 
 /** The provider-kit command inside a project, run with node. */
 export const KIT_CLI = "node_modules/@stellar-agent-services/provider-kit/dist/cli/index.js";

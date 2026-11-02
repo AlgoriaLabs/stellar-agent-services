@@ -1,7 +1,8 @@
 // Makes a project with create-stellar-service and checks it as a developer would use it, for one kind and network:
-// the files and settings it writes, that it installs and builds, and that it starts a provider the verifier passes, with
-// payments on the network asked for. No key and no payment: the facilitator and the verifier's chain lookup are stand-ins
-// on this computer, unless --real-facilitator, and only --pay pays, with test money. Run after `npm run build`.
+// the files and settings it writes, that it installs with one Stellar SDK and builds, and that it starts a provider the
+// verifier passes, with payments on the network asked for. No key and no payment: the facilitator and the verifier's
+// chain lookup are stand-ins on this computer, unless --real-facilitator, and only --pay pays, with test money. Run
+// after `npm run build`.
 //
 //   node scripts/scaffold-check.mjs --kind wrap|typescript|python --network testnet|mainnet
 //     --scaffolder '<command>'   how to run create-stellar-service. Default: this clone's build.
@@ -79,6 +80,7 @@ async function check() {
   run(command, [...prefix, "svc", "--kind", kind, "--network", values.network, "--description", DESCRIPTION, "--price", "0.01", "--yes", ...upstream], { cwd: root });
 
   step("the files and settings it wrote", () => checkFiles());
+  step("one Stellar SDK", () => oneStellarSdk());
   if (kind === "typescript") run("npm", ["run", "build"], { cwd: project });
   if (kind === "python") checkPython();
   if (values.docker) run("docker", ["build", "-t", `scaffold-check-${kind}-${values.network}`, "."], { cwd: project });
@@ -307,6 +309,22 @@ function run(command, args, options) {
   console.log(`\n$ ${[command, ...args].map((arg) => (/[\s"']/.test(arg) ? JSON.stringify(arg) : arg)).join(" ")}`);
   const result = spawnSync(command, args, { ...options, stdio: ["ignore", "inherit", "inherit"] });
   if (result.status !== 0) throw new Error(`${command} ${args[0] ?? ""} failed (${result.error?.message ?? `exit ${result.status}`})`);
+}
+
+/** The project installed one copy of the Stellar SDK: its overrides bring @trionlabs/stellar8004 onto the kit's. */
+function oneStellarSdk() {
+  // npm ls exits non-zero on a range an override replaced, so only its output counts.
+  const listed = spawnSync("npm", ["ls", "@stellar/stellar-sdk", "--all", "--json"], { cwd: project, encoding: "utf8" });
+  const versions = new Set();
+  const walk = (node) => {
+    for (const [name, dependency] of Object.entries(node.dependencies ?? {})) {
+      if (name === "@stellar/stellar-sdk" && dependency.version) versions.add(dependency.version);
+      walk(dependency);
+    }
+  };
+  walk(JSON.parse(listed.stdout || "{}"));
+  if (versions.size !== 1) throw new Error(`found ${versions.size} (${[...versions].join(", ") || "none"}): the overrides in package.json didn't take`);
+  return [...versions][0];
 }
 
 /** Runs one check and prints what it found. */
