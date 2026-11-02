@@ -122,7 +122,7 @@ Planned, not built: Stellar Wallets Kit, passkey smart accounts, Eunomia, ERC-81
 
 ## Not ready on our side yet
 
-- The payment client is not on npm yet. Until it is, build your adapter as a package in a fork of this repo.
+- The payment client is at 0.x: a minor release may change the interfaces an adapter implements. Pin its version.
 - The conformance checks don't test what a payment method signs. We check it by hand in review.
 - Smart accounts (`C…`) can't pay through the built-in payment method yet. They need their own method.
 - There is no conformance suite for native clients yet. Test against the example service and its drills.

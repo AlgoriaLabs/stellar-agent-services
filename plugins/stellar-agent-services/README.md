@@ -20,11 +20,11 @@ The skills load when a task matches, and point to the references in this reposit
 agents without plugin support can read them directly. They start on testnet, with test money. Mainnet (real USDC)
 needs `--network mainnet` and a facilitator API key, and an agent never pays on mainnet unless the user asked.
 
-The skills tell the agent to clone and build this repository, because the packages are not on npm yet. For spec
-lookups, manifest validation and provider checks, also add the [MCP server](../../packages/dev-mcp) from that clone:
+The skills use the packages from npm. For spec lookups, manifest validation and provider checks, also add the
+[MCP server](../../packages/dev-mcp):
 
 ```bash
-claude mcp add stellar-agent-services -- node /path/to/stellar-agent-services/packages/dev-mcp/dist/index.js
+claude mcp add stellar-agent-services -- npx -y @stellar-agent-services/dev-mcp
 ```
 
 When you change a skill, keep it short. It routes to the reference documents and never restates the spec in

@@ -16,8 +16,7 @@ The full description, with every check and rule, is [docs/verification.md](../..
 ## Use
 
 ```bash
-# After npm install && npm run build at the repository root:
-alias verifier="node $PWD/packages/verifier/dist/cli/index.js"
+npm install -g @stellar-agent-services/verifier   # or run each command as npx @stellar-agent-services/verifier
 
 # A provider testing itself, with no payment and no key:
 verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev

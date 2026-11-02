@@ -18,11 +18,9 @@ providers. That one is planned in [packages/payment-client](../payment-client/RE
 
 ## Use
 
-From a clone, after `npm install && npm run build` at the repository root:
-
 ```bash
 # Claude Code
-claude mcp add stellar-agent-services -- node "$PWD/packages/dev-mcp/dist/index.js"
+claude mcp add stellar-agent-services -- npx -y @stellar-agent-services/dev-mcp
 ```
 
 Any other MCP client takes the same command as a stdio server:
@@ -30,13 +28,14 @@ Any other MCP client takes the same command as a stdio server:
 ```json
 {
   "mcpServers": {
-    "stellar-agent-services": { "command": "node", "args": ["/path/to/stellar-agent-services/packages/dev-mcp/dist/index.js"] }
+    "stellar-agent-services": { "command": "npx", "args": ["-y", "@stellar-agent-services/dev-mcp"] }
   }
 }
 ```
 
-The server reads the documents of the clone it is built in, so `git pull && npm run build` updates it. Installed from
-npm, it reads the copy packed with it in `repository/`, from the same commit as its code.
+Installed from npm, it reads the documents packed with it in `repository/`, from the same commit as its code. Run from
+a clone instead (`node packages/dev-mcp/dist/index.js`, after `npm install && npm run build`), it reads the clone's
+documents, so `git pull && npm run build` updates it.
 
 As a library, `createServer(options)` returns the `McpServer`. `options.verify` passes options to
 `verifyProvider()`, such as an offline provider's `fetch` in tests. It never takes a payer.

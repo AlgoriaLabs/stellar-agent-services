@@ -33,14 +33,15 @@ the Stellar 8004 registration and a request for verification, in one go. Then it
 deploys to Fly.io if you say yes, and waits until the service answers at its public address. `npm run status` shows
 where it stands at any time.
 
-**Until the packages are on npm,** run it from a clone, built once (`npm install && npm run build`):
+The project depends on the Provider Kit released with this command. To try changes not released yet, run it from a
+clone of the repository, built once (`npm install && npm run build`):
 
 ```bash
-node "$REPO/packages/create-stellar-service/dist/index.js" captioner
+node packages/create-stellar-service/dist/index.js captioner
 ```
 
 From a clone, it packs the Provider Kit into the project's `vendor/` folder, so the project installs and builds by
-itself, in Docker too. Once published, the project depends on the kit's released version instead.
+itself, in Docker too.
 
 ## What it makes
 

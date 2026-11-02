@@ -16,6 +16,7 @@ import {
   receiptHash,
   receiptProblems,
   renderBadge,
+  TOOL,
   writeReceipt,
   type ValidationRecord,
   type VerificationReport,
@@ -49,8 +50,10 @@ describe("verification receipts", () => {
       score: 100,
       scoreDirection: "higher-is-better",
       manifest: { url: MANIFEST_URL },
-      tool: { name: "@stellar-agent-services/verifier", version: "0.0.0" },
+      // The package's own version, which a release changes.
+      tool: { name: "@stellar-agent-services/verifier", version: TOOL.version },
     });
+    expect(TOOL.version).toMatch(/^\d+\.\d+\.\d+/);
     expect(receipt.payment?.transaction).toMatch(/^[0-9a-f]{64}$/);
   });
 

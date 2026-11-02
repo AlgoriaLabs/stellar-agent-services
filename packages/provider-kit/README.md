@@ -137,10 +137,10 @@ PAY_TO=G... provider-kit serve --config provider.config.json
 - Values written `"env:NAME"` come from the environment: the upstream's API key, `payTo`, `baseUrl`.
 - [examples/python-upstream](../../examples/python-upstream) is a Python API behind the gateway.
 
-**Docker:** `docker build -f packages/provider-kit/Dockerfile -t provider-kit .` from the repository root, then
-mount the config at `/config/provider.config.json` and a volume at `/data` (set `"store": "/data/jobs.sqlite"`).
-`GET /healthz` answers for health checks. From the first release on, each release also publishes this image as
-`ghcr.io/algorialabs/provider-kit:<version>`.
+**Docker:** each release publishes the gateway as `ghcr.io/algorialabs/provider-kit:<version>`, such as `0.1.0`
+(`docker build -f packages/provider-kit/Dockerfile .` from a clone builds the same image). Mount the config at
+`/config/provider.config.json` and a volume at `/data` (set `"store": "/data/jobs.sqlite"`). `GET /healthz` answers
+for health checks.
 
 ### From an OpenAPI document
 

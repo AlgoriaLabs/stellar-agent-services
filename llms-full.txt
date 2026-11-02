@@ -58,45 +58,40 @@ Follow one path. Don't mix the Kit with a hand-written job flow.
 
 ## 3. Use the packages from another project
 
-The packages are not on npm yet (`private`, version `0.0.0`). Build them once from a clone:
+The packages are on npm, all at one version:
 
 ```bash
-git clone https://github.com/AlgoriaLabs/stellar-agent-services.git
-cd stellar-agent-services && npm install && npm run build
-REPO=$PWD
+npm create stellar-service my-service -- --kind wrap|typescript|python   # a new project, ready to run
+npm install @stellar-agent-services/provider-kit      # a provider in your own project
+npm install @stellar-agent-services/payment-client    # an agent or app that pays
+npx @stellar-agent-services/verifier check <url>      # also provider-kit, and stellar-pay (payment-client)
 ```
 
-Then, in your own project:
+`npm create stellar-service` makes a project around the kit: it installs it and writes `.env`, a Dockerfile, `fly.toml`
+and npm scripts: `dev` (runs it, paid to a throwaway testnet account, so no wallet is needed), `try`, `check`,
+`status`, `launch` (goes live) and `deploy`. Pass every answer as a flag (`--openapi`, `--upstream`, `--description`,
+`--price`): without a terminal it asks nothing. `--network mainnet` makes a project that takes real USDC: use it only
+when the user asked for mainnet. Such a project has no `try`, since mainnet has no test money: build and try it on
+testnet first.
 
-```bash
-npm install "$REPO/packages/provider-kit"      # a provider; or packages/payment-client for a client
-alias provider-kit="node $REPO/packages/provider-kit/dist/cli/index.js"
-alias verifier="node $REPO/packages/verifier/dist/cli/index.js"
-alias stellar-pay="node $REPO/packages/payment-client/dist/cli.js"
-alias create-stellar-service="node $REPO/packages/create-stellar-service/dist/index.js"
-```
-
-`create-stellar-service <folder> --kind wrap|typescript|python` makes a new project instead: it packs the kit from
-the clone into the project's `vendor/` folder, installs it, and writes `.env`, a Dockerfile, `fly.toml` and npm
-scripts: `dev` (runs it, paid to a throwaway testnet account, so no wallet is needed), `try`, `check`, `status`,
-`launch` (goes live) and `deploy`. Pass every answer as a flag (`--openapi`, `--upstream`, `--description`, `--price`):
-without a terminal it asks nothing. `--network mainnet` makes a project that takes real USDC: use it only when the user
-asked for mainnet. Such a project has no `try`, since mainnet has no test money: build and try it on testnet first.
+Installing the kit into a project of your own, add the override `create-stellar-service` writes to its
+`package.json`, which keeps one copy of the Stellar SDK: `"overrides": { "@trionlabs/stellar8004": {
+"@stellar/stellar-sdk": "16.4.1" } }` ([provider-kit README](packages/provider-kit/README.md)).
 
 `npm run launch` (`provider-kit launch`) opens an approval page in the user's browser, where their wallet signs the
 trustline, the 8004 registration and a validation request in one go, and it may deploy to Fly.io. Ask the user
 first, run it with `--no-open`, and give them the link. `provider-kit status --json` tells you where a provider stands
 and the one command to run next.
 
-`npm install <path>` links the package, so a later `git pull && npm run build` in the clone updates it. A native
-implementation needs no package: it needs the spec, `packages/protocol/schemas/manifest.schema.json` and the
-test vectors.
+A native implementation needs no package: it needs the spec, `packages/protocol/schemas/manifest.schema.json` and
+the test vectors. Changes not released yet run from a clone (`npm install && npm run build`): there,
+`node packages/create-stellar-service/dist/index.js` packs the clone's kit into the new project's `vendor/` folder.
 
 **Tools for coding agents.** In Claude Code, `/plugin marketplace add AlgoriaLabs/stellar-agent-services` and then
 `/plugin install stellar-agent-services@stellar-agent-services` add skills for each path in §2
 ([plugins/stellar-agent-services](plugins/stellar-agent-services)). Any MCP client can run the
-[MCP server](packages/dev-mcp) from the clone: `claude mcp add stellar-agent-services -- node
-$REPO/packages/dev-mcp/dist/index.js`. Without either, the skills are plain Markdown under
+[MCP server](packages/dev-mcp): `claude mcp add stellar-agent-services -- npx -y @stellar-agent-services/dev-mcp`.
+Without either, the skills are plain Markdown under
 `plugins/stellar-agent-services/skills/`, and [llms-full.txt](llms-full.txt) holds every guide in one file.
 
 ## 4. Rules you must not break
@@ -204,10 +199,11 @@ uncertain payments from on-chain data ([docs/job-recovery.md](docs/job-recovery.
 ([docs/verification.md](docs/verification.md)). The plan is in
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development runs on Stellar **testnet**.
 
-To offer a service, start with [`npm create stellar-service`](packages/create-stellar-service), run from a clone
-until the packages are on npm, then:
+To offer a service, start with [`npm create stellar-service`](packages/create-stellar-service), then:
 
 ```bash
+npm create stellar-service my-service
+cd my-service
 npm run dev       # runs it, paid to a throwaway testnet account: no wallet needed yet
 npm run try       # pays for one call with test money
 npm run launch    # goes live: one approval in your wallet registers and verifies it, then Fly.io
@@ -1487,7 +1483,7 @@ npx stellar-pay pay http://localhost:8787/.well-known/stellar-agent-services.jso
 - Independent of the levels: **Registered** (C2 identity + a Validation Registry record) and **Load-safe** (C7
   load).
 - The checks are defined in [verification.md](../verification.md). Run them with
-  `node packages/verifier/dist/cli/index.js check <manifest-url>` (`--dev` for `http://localhost`): every check that
+  `npx @stellar-agent-services/verifier check <manifest-url>` (`--dev` for `http://localhost`): every check that
   needs no payment. Exit code 0 means every check that ran passed; each failure names its rule id.
 
 ## 14. Client rules (agents, wallets, apps)
@@ -1822,7 +1818,7 @@ and the income lands in the wallet you already use.
 ## Quick start
 
 ```bash
-npm create stellar-service my-service      # from a clone until the packages are on npm: see §2
+npm create stellar-service my-service
 cd my-service
 npm run dev       # runs it here, paid to a throwaway testnet account: no wallet needed yet
 npm run try       # pays for one call with test money, from another terminal
@@ -1845,19 +1841,15 @@ capacity limits and a job store that survives restarts.
 
 **Fastest start:** `npm create stellar-service` makes a project for either kit path, or a new Python service behind
 the gateway, with the scripts above, a Dockerfile and `fly.toml` ([create-stellar-service](../packages/create-stellar-service)).
-Until the packages are on npm, run it from the clone (§2): `node packages/create-stellar-service/dist/index.js my-service`.
 
 ## 2. Prerequisites
 
 - **Node.js 22.13 or later** for the library and the CLI, or **Docker** for the gateway.
-- **The kit.** The packages are not on npm yet, so get them from this repository:
-
-  ```bash
-  git clone https://github.com/AlgoriaLabs/stellar-agent-services.git
-  cd stellar-agent-services
-  npm install && npm run build
-  alias provider-kit="node $PWD/packages/provider-kit/dist/cli/index.js"
-  ```
+- **The kit.** A project made by `npm create stellar-service` has it already, and `npm run <script>` runs its
+  commands. Otherwise, `npm install @stellar-agent-services/provider-kit` in your project, and run the `provider-kit`
+  commands below as `npx provider-kit`. Add the override from the
+  [provider-kit README](../packages/provider-kit/README.md) to its `package.json`. The gateway image is
+  `ghcr.io/algorialabs/provider-kit`.
 
 - **A Stellar wallet, to go live** (§7): the one you already use, such as Freighter, xBull, Albedo, Rabet, Hana,
   MetaMask or a Ledger ([Stellar Wallets Kit](https://stellarwalletskit.dev) lists them). Its account becomes your
@@ -1912,12 +1904,11 @@ provider-kit dev --config provider.config.json
 together. The gateway checks the whole config and refuses to start, listing every problem, if something would fail
 the standard. [examples/python-upstream](../examples/python-upstream) is a complete example with a Python API.
 
-**With Docker** instead of Node, from the repository root:
+**With Docker** instead of Node, run the gateway image each release publishes:
 
 ```bash
-docker build -f packages/provider-kit/Dockerfile -t provider-kit .
 docker run -p 8787:8787 -e PAY_TO -v "$PWD/provider.config.json:/config/provider.config.json:ro" \
-  -v provider-jobs:/data provider-kit
+  -v provider-jobs:/data ghcr.io/algorialabs/provider-kit:0.1.0
 ```
 
 Set `"store": "/data/jobs.sqlite"` in the config so jobs live on the volume. If the config refers to schema files,
@@ -2000,8 +1991,7 @@ running service: invalid input, the `402` challenge, an oversized body, CORS, an
 providers pass it; it matters most for native implementations.
 
 ```bash
-alias verifier="node $PWD/packages/verifier/dist/cli/index.js"
-verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
+npx @stellar-agent-services/verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
 ```
 
 ## 6. Make a paid testnet request
@@ -2304,10 +2294,10 @@ PAY_TO=G... provider-kit serve --config provider.config.json
 - Values written `"env:NAME"` come from the environment: the upstream's API key, `payTo`, `baseUrl`.
 - [examples/python-upstream](../../examples/python-upstream) is a Python API behind the gateway.
 
-**Docker:** `docker build -f packages/provider-kit/Dockerfile -t provider-kit .` from the repository root, then
-mount the config at `/config/provider.config.json` and a volume at `/data` (set `"store": "/data/jobs.sqlite"`).
-`GET /healthz` answers for health checks. From the first release on, each release also publishes this image as
-`ghcr.io/algorialabs/provider-kit:<version>`.
+**Docker:** each release publishes the gateway as `ghcr.io/algorialabs/provider-kit:<version>`, such as `0.1.0`
+(`docker build -f packages/provider-kit/Dockerfile .` from a clone builds the same image). Mount the config at
+`/config/provider.config.json` and a volume at `/data` (set `"store": "/data/jobs.sqlite"`). `GET /healthz` answers
+for health checks.
 
 ### From an OpenAPI document
 
@@ -2711,14 +2701,15 @@ the Stellar 8004 registration and a request for verification, in one go. Then it
 deploys to Fly.io if you say yes, and waits until the service answers at its public address. `npm run status` shows
 where it stands at any time.
 
-**Until the packages are on npm,** run it from a clone, built once (`npm install && npm run build`):
+The project depends on the Provider Kit released with this command. To try changes not released yet, run it from a
+clone of the repository, built once (`npm install && npm run build`):
 
 ```bash
-node "$REPO/packages/create-stellar-service/dist/index.js" captioner
+node packages/create-stellar-service/dist/index.js captioner
 ```
 
 From a clone, it packs the Provider Kit into the project's `vendor/` folder, so the project installs and builds by
-itself, in Docker too. Once published, the project depends on the kit's released version instead.
+itself, in Docker too.
 
 ## What it makes
 
@@ -2915,8 +2906,8 @@ Use this file to build, review or submit one of three things:
   package rules. They are integration rules, not part of Provider Standard v1. Spec rules keep their own ids
   (`[P7]`, `[J16]`).
 - **Human summary:** [README.md](README.md).
-- **State (2026-10-25):** only the built-ins exist (`localKeySigner`, `x402ExactStellar`). No third-party adapter exists
-  yet. The package is `private`, version `0.0.0`, not on npm.
+- **State (2026-11-02):** only the built-ins exist (`localKeySigner`, `x402ExactStellar`). No third-party adapter exists
+  yet. The package is on npm as `@stellar-agent-services/payment-client`, from 0.1.0.
 
 ## 0. Rules for the agent using this file
 
@@ -3362,8 +3353,7 @@ CG1–CG10 and their tests, and update this file and [payment-client.md](../paym
 
 | Gap | What it means for you | Plan |
 | --- | --- | --- |
-| `payment-client` is `private`, `0.0.0`, not on npm | Build the adapter as a workspace package in a fork, or install an `npm pack` tarball | Publish with semver; the strategy interfaces become the stable API |
-| The interfaces carry no version | A breaking change could land without notice | Semver once published. Until then, any change is called out in its PR. |
+| `payment-client` is at 0.x, and its interfaces carry no version of their own | A minor release (0.1 to 0.2) may change the strategy interfaces an adapter implements: pin it | Every change to them is called out in its PR and the release notes. 1.0 makes them the stable API. |
 | Conformance doesn't exercise `createPayload()` | [PM3] is checked by review and the §8.5 self-test | A signing check: a recording signer plus preimage decoding |
 | The core doesn't check what is signed | A buggy method could sign other terms | A guarded signer: the core wraps the `Signer` it passes to `createPayload()` and refuses any preimage that isn't the approved transfer |
 | `policy.agentAddress` isn't compared with `signer.address` | A policy can run under another account | A fail-closed check in the core |
@@ -3514,7 +3504,7 @@ Planned, not built: Stellar Wallets Kit, passkey smart accounts, Eunomia, ERC-81
 
 ## Not ready on our side yet
 
-- The payment client is not on npm yet. Until it is, build your adapter as a package in a fork of this repo.
+- The payment client is at 0.x: a minor release may change the interfaces an adapter implements. Pin its version.
 - The conformance checks don't test what a payment method signs. We check it by hand in review.
 - Smart accounts (`C…`) can't pay through the built-in payment method yet. They need their own method.
 - There is no conformance suite for native clients yet. Test against the example service and its drills.
@@ -3975,10 +3965,10 @@ The verifier is [`packages/verifier`](../packages/verifier).
 
 ## Commands
 
-The packages are not on npm yet. After `npm install && npm run build` at the root of this repository:
+Install the `verifier` command, or run each one as `npx @stellar-agent-services/verifier <command>`:
 
 ```bash
-alias verifier="node $PWD/packages/verifier/dist/cli/index.js"
+npm install -g @stellar-agent-services/verifier
 ```
 
 | Command | What it does | Keys |
@@ -4478,8 +4468,7 @@ The full description, with every check and rule, is [docs/verification.md](../..
 ## Use
 
 ```bash
-# After npm install && npm run build at the repository root:
-alias verifier="node $PWD/packages/verifier/dist/cli/index.js"
+npm install -g @stellar-agent-services/verifier   # or run each command as npx @stellar-agent-services/verifier
 
 # A provider testing itself, with no payment and no key:
 verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
@@ -5232,11 +5221,9 @@ providers. That one is planned in [packages/payment-client](../payment-client/RE
 
 ## Use
 
-From a clone, after `npm install && npm run build` at the repository root:
-
 ```bash
 # Claude Code
-claude mcp add stellar-agent-services -- node "$PWD/packages/dev-mcp/dist/index.js"
+claude mcp add stellar-agent-services -- npx -y @stellar-agent-services/dev-mcp
 ```
 
 Any other MCP client takes the same command as a stdio server:
@@ -5244,13 +5231,14 @@ Any other MCP client takes the same command as a stdio server:
 ```json
 {
   "mcpServers": {
-    "stellar-agent-services": { "command": "node", "args": ["/path/to/stellar-agent-services/packages/dev-mcp/dist/index.js"] }
+    "stellar-agent-services": { "command": "npx", "args": ["-y", "@stellar-agent-services/dev-mcp"] }
   }
 }
 ```
 
-The server reads the documents of the clone it is built in, so `git pull && npm run build` updates it. Installed from
-npm, it reads the copy packed with it in `repository/`, from the same commit as its code.
+Installed from npm, it reads the documents packed with it in `repository/`, from the same commit as its code. Run from
+a clone instead (`node packages/dev-mcp/dist/index.js`, after `npm install && npm run build`), it reads the clone's
+documents, so `git pull && npm run build` updates it.
 
 As a library, `createServer(options)` returns the `McpServer`. `options.verify` passes options to
 `verifyProvider()`, such as an offline provider's `fetch` in tests. It never takes a payer.
@@ -5290,11 +5278,11 @@ The skills load when a task matches, and point to the references in this reposit
 agents without plugin support can read them directly. They start on testnet, with test money. Mainnet (real USDC)
 needs `--network mainnet` and a facilitator API key, and an agent never pays on mainnet unless the user asked.
 
-The skills tell the agent to clone and build this repository, because the packages are not on npm yet. For spec
-lookups, manifest validation and provider checks, also add the [MCP server](../../packages/dev-mcp) from that clone:
+The skills use the packages from npm. For spec lookups, manifest validation and provider checks, also add the
+[MCP server](../../packages/dev-mcp):
 
 ```bash
-claude mcp add stellar-agent-services -- node /path/to/stellar-agent-services/packages/dev-mcp/dist/index.js
+claude mcp add stellar-agent-services -- npx -y @stellar-agent-services/dev-mcp
 ```
 
 When you change a skill, keep it short. It routes to the reference documents and never restates the spec in

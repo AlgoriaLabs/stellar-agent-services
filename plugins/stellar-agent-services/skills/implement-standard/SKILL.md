@@ -47,10 +47,10 @@ Persist every state change before the next step. Keep the job store durable.
 - Every file in `packages/protocol/test-vectors/` (the README there explains the conventions). Port them as data
   tests in the user's language. Don't copy the expected values by hand.
 - The acceptance checklist in `docs/standard/README-AI.md` §13.
-- The verifier from a clone (`npm install && npm run build`):
-  `node packages/verifier/dist/cli/index.js check http://localhost:<port>/.well-known/stellar-agent-services.json --dev`.
-  Each failure names a rule id. Look it up with the MCP tool `get_spec_rule` if available, or in the spec.
-- A paid testnet call, after asking the user: `node packages/provider-kit/dist/cli/index.js try <service> --manifest
+- The verifier: `npx @stellar-agent-services/verifier check
+  http://localhost:<port>/.well-known/stellar-agent-services.json --dev`. Each failure names a rule id. Look it up with
+  the MCP tool `get_spec_rule` if available, or in the spec.
+- A paid testnet call, after asking the user: `npx @stellar-agent-services/provider-kit try <service> --manifest
   http://localhost:<port>/.well-known/stellar-agent-services.json --yes` pays once from a throwaway testnet account
   (README-AI §13). Then the verify-provider skill for C4 and C5.
 

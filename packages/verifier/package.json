@@ -1,7 +1,6 @@
 {
   "name": "@stellar-agent-services/verifier",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Checks a provider against Provider Standard v1, issues verification receipts and badges, and publishes Stellar 8004 Validation Registry responses.",
   "type": "module",
   "license": "MIT",
@@ -30,7 +29,7 @@
     "verifier": "./dist/cli/index.js"
   },
   "dependencies": {
-    "@stellar-agent-services/protocol": "0.0.0",
+    "@stellar-agent-services/protocol": "0.1.0",
     "@stellar/stellar-sdk": "16.4.1",
     "@trionlabs/stellar8004": "0.0.11",
     "@x402/core": "2.28.0",
@@ -38,6 +37,6 @@
     "ajv": "8.20.0"
   },
   "devDependencies": {
-    "@stellar-agent-services/provider-kit": "0.0.0"
+    "@stellar-agent-services/provider-kit": "0.1.0"
   }
 }
