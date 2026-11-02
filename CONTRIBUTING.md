@@ -70,16 +70,23 @@ git commit -am "Release 0.2.0" && git tag v0.2.0 && git push origin main v0.2.0
 A version with a suffix, such as `0.2.0-rc.1`, goes to npm under the `next` tag, so `npm install` keeps getting the
 last release. Run the workflow from the Actions tab with "dry run" on to go through every step without publishing.
 
-The first release needs three things done once:
+npm publishes through trusted publishing: it trusts `release.yml` itself, so no npm token is stored anywhere.
+Each package needs a trusted publisher on npmjs.com, under the package's **Settings** tab → Trusted Publisher →
+GitHub Actions, with:
 
-1. Remove `"private": true` from each package under `packages/`. `npm run packages:check` lists the ones left;
-   the publish refuses to start while any is.
-2. Publish the first version with a token, since npm only trusts a workflow for a package that exists: an npm
-   granular access token with read and write access to your packages, new ones included, saved as the repository
-   secret `NPM_TOKEN`. The `@stellar-agent-services` organization must exist on npm, with you able to publish to it.
-3. Then make npm trust the workflow instead: on npmjs.com, each package's settings → Trusted publishing → GitHub
-   Actions, organization `AlgoriaLabs`, repository `stellar-agent-services`, workflow `release.yml`, environment `npm`.
-   Delete the `NPM_TOKEN` secret and the token. Later versions publish with no token at all.
+- organization `AlgoriaLabs`, repository `stellar-agent-services`, workflow `release.yml`, environment `npm`;
+- under Allowed actions, **npm publish** ticked. Without it, npm only allows `npm stage publish`, and the release
+  fails.
+
+A new trusted publisher expires unless it publishes within 2 days. So set them up on the day of the release that
+first uses them, before pushing its tag. 0.1.0 went out with a token, so the next release is that day for all six
+packages.
+
+A new package can't have a trusted publisher yet, since npm only trusts a workflow for a package that exists. Its
+first version goes out with a token: an npm granular access token with read and write access, new packages
+included, and "Bypass 2FA" ticked, saved as the repository *secret* `NPM_TOKEN` (not a variable). Delete the secret and the token
+after that release, then add the package's trusted publisher on the day of the next one. A new package also needs
+`"private": true` removed; `npm run packages:check` lists any still private, and the publish refuses them.
 
 The `npm` environment can require an approval before each publish (Settings → Environments → npm).
 
