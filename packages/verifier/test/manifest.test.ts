@@ -7,6 +7,12 @@ import { MANIFEST_URL, pathOf, setup, type Tamper } from "./support/harness.js";
 
 const check = (report: VerificationReport, id: string) => report.results.find((result) => result.check === id) as CheckResult;
 
+/**
+ * The address with another last character. That character holds only checksum bits, so any other one breaks the
+ * checksum. Always writing "A" was a no-op for the 1 in 32 random addresses that already end in "A".
+ */
+const badChecksum = (address: string) => `${address.slice(0, -1)}${address.endsWith("A") ? "B" : "A"}`;
+
 /** Rewrites the manifest the provider serves: its JSON, its raw text, or its headers. */
 function manifest(options: {
   change?: (manifest: any) => void;
@@ -53,7 +59,7 @@ describe("C1 manifest", () => {
     ["a manifest of another major version", { change: (m) => (m.standard = "stellar-agent-services/provider@2") }, "M8"],
     ["a field the JSON Schema forbids", { change: (m) => (m.payment.accepts[0].amount = "100000") }, "M9"],
     ["a baseUrl on another origin", { change: (m) => (m.baseUrl = "https://other.test") }, "M5"],
-    ["a payTo with a bad checksum", { change: (m) => (m.payment.accepts[0].payTo = `${m.payment.accepts[0].payTo.slice(0, -1)}A`) }, "P11"],
+    ["a payTo with a bad checksum", { change: (m) => (m.payment.accepts[0].payTo = badChecksum(m.payment.accepts[0].payTo)) }, "P11"],
     ["two services with one name", { change: (m) => m.services.push(m.services[0]) }, "M7"],
     ["an example that does not match its schema", { change: (m) => (m.services[0].examples[0].output = { words: "two" }) }, "S9"],
     ["a schema that does not compile", { change: (m) => (m.services[0].outputSchema = { type: "object", properties: { words: { $ref: "#/$defs/missing" } } }) }, "§3.3"],
