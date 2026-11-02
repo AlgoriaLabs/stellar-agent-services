@@ -10,6 +10,9 @@
     "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
     "directory": "packages/payment-client"
   },
+  "engines": {
+    "node": ">=22.13"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -29,7 +32,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/.tsbuildinfo"
   ],
   "scripts": {
     "build": "tsc -b"

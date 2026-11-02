@@ -10,6 +10,9 @@
     "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
     "directory": "packages/provider-kit"
   },
+  "engines": {
+    "node": ">=22.13"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -22,7 +25,8 @@
   },
   "files": [
     "dist",
-    "schemas"
+    "schemas",
+    "!dist/.tsbuildinfo"
   ],
   "scripts": {
     "build": "tsc -b && npm run build:approve",

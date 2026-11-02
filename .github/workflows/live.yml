@@ -1,0 +1,74 @@
+name: live
+
+# Checks against the live networks, every day and by hand (Actions → live → Run workflow). Not on pull requests: these
+# depend on services outside this repository, which tests never touch.
+#
+# - What the packages take for granted, on testnet and mainnet: the facilitator, Soroban RPC, Horizon, the USDC
+#   contract and the Stellar 8004 registries. Read-only.
+# - A paid call on testnet: a new TypeScript project, paid once by `provider-kit try --yes` from a throwaway account
+#   with test XLM and test USDC. Test money only; nobody's wallet.
+# - A mainnet project started against OpenZeppelin's facilitator, with the API key in the MAINNET_FACILITATOR_AUTH
+#   secret ("Bearer <key>"). Nothing is paid on mainnet. Without the secret, this job only says how to turn it on.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  networks:
+    name: What the packages expect on ${{ matrix.network }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        network: [testnet, mainnet]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run live:check -- --network ${{ matrix.network }}
+        env:
+          FACILITATOR_AUTH: ${{ matrix.network == 'mainnet' && secrets.MAINNET_FACILITATOR_AUTH || '' }}
+
+  paid-call:
+    name: A paid call on testnet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run scaffold:check -- --kind typescript --network testnet --real-facilitator --pay
+
+  mainnet-start:
+    name: A mainnet project with the real facilitator
+    runs-on: ubuntu-latest
+    env:
+      FACILITATOR_AUTH: ${{ secrets.MAINNET_FACILITATOR_AUTH }}
+    steps:
+      - name: Without the secret
+        if: env.FACILITATOR_AUTH == ''
+        run: echo "::notice title=Mainnet facilitator not checked::Add the repository secret MAINNET_FACILITATOR_AUTH, \"Bearer <key>\" with a key from https://channels.openzeppelin.com/gen, to start a mainnet project against the real facilitator."
+      - uses: actions/checkout@v7
+        if: env.FACILITATOR_AUTH != ''
+      - uses: actions/setup-node@v7
+        if: env.FACILITATOR_AUTH != ''
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+        if: env.FACILITATOR_AUTH != ''
+      - run: npm run build
+        if: env.FACILITATOR_AUTH != ''
+      - run: npm run scaffold:check -- --kind typescript --network mainnet --real-facilitator
+        if: env.FACILITATOR_AUTH != ''

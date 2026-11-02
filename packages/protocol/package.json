@@ -10,6 +10,9 @@
     "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
     "directory": "packages/protocol"
   },
+  "engines": {
+    "node": ">=22.13"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -23,7 +26,8 @@
   "files": [
     "dist",
     "schemas",
-    "test-vectors"
+    "test-vectors",
+    "!dist/.tsbuildinfo"
   ],
   "scripts": {
     "build": "tsc -b"

@@ -10,6 +10,9 @@
     "url": "git+https://github.com/AlgoriaLabs/stellar-agent-services.git",
     "directory": "packages/dev-mcp"
   },
+  "engines": {
+    "node": ">=22.13"
+  },
   "exports": {
     ".": {
       "types": "./dist/server.d.ts",
@@ -17,10 +20,13 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "repository",
+    "!dist/.tsbuildinfo"
   ],
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "prepack": "node scripts/pack-docs.mjs"
   },
   "bin": {
     "stellar-agent-services-mcp": "./dist/index.js"

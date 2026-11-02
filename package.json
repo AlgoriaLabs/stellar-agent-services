@@ -25,7 +25,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "llms": "node scripts/llms-full.mjs",
-    "llms:check": "node scripts/llms-full.mjs --check"
+    "llms:check": "node scripts/llms-full.mjs --check",
+    "packages:check": "node scripts/packages.mjs check",
+    "packages:rehearse": "node scripts/packages.mjs rehearse",
+    "packages:version": "node scripts/packages.mjs version",
+    "scaffold:check": "node --disable-warning=ExperimentalWarning scripts/scaffold-check.mjs",
+    "live:check": "node --disable-warning=ExperimentalWarning scripts/live-check.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
