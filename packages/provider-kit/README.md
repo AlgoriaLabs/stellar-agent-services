@@ -23,6 +23,10 @@ gateway:  provider-kit serve --config <file>  ->  forwards paid jobs to your exi
 
 The step-by-step guide is [docs/provider-setup-guide.md](../../docs/provider-setup-guide.md).
 
+Installed from npm into a project of your own, the kit needs the override this repository has, which
+`create-stellar-service` also writes: `"overrides": { "@stellar/stellar-sdk": "16.3.1" }` in `package.json`. The
+Stellar 8004 SDK asks for SDK 15, and two copies of the SDK can't read each other's XDR, so registration would fail.
+
 ## From nothing to live
 
 ```bash
@@ -134,7 +138,8 @@ PAY_TO=G... provider-kit serve --config provider.config.json
 
 **Docker:** `docker build -f packages/provider-kit/Dockerfile -t provider-kit .` from the repository root, then
 mount the config at `/config/provider.config.json` and a volume at `/data` (set `"store": "/data/jobs.sqlite"`).
-`GET /healthz` answers for health checks.
+`GET /healthz` answers for health checks. From the first release on, each release also publishes this image as
+`ghcr.io/algorialabs/provider-kit:<version>`.
 
 ### From an OpenAPI document
 
@@ -467,7 +472,7 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/provider.ts` | `createProvider()`: wires everything into one `fetch` handler; startup checks |
 | `src/manifest.ts` | Builds the manifest from the same config as the 402 challenge, and checks it |
 | `src/http/router.ts` | Manifest, create-job, check-status and get-result routes, in §5.4 order |
-| `src/http/node-server.ts` | `listen()`: serves a provider on Node's HTTP server, with `/healthz` and graceful close |
+| `src/http/node-server.ts` | `listen()`: serves a provider on Node's HTTP server, with `/healthz` and graceful close. A request body is read only as far as the router reads it, so an early answer (`413`) leaves the connection usable. |
 | `src/payments/payload-checks.ts` | Local payment checks and the payment fingerprint |
 | `src/payments/facilitator.ts` | The facilitator client and the startup check |
 | `src/payments/settlement.ts` | Settlement as `settled`, `failed` or `uncertain` (never charge twice) |

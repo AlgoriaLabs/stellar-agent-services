@@ -17,7 +17,8 @@ services on Stellar, paid per job in USDC through x402.
 | [`verify-provider`](skills/verify-provider/SKILL.md) | Check a provider (C1–C7), fix failing rules, register on 8004 and get verified |
 
 The skills load when a task matches, and point to the references in this repository. They are plain Markdown, so
-agents without plugin support can read them directly.
+agents without plugin support can read them directly. They start on testnet, with test money. Mainnet (real USDC)
+needs `--network mainnet` and a facilitator API key, and an agent never pays on mainnet unless the user asked.
 
 The skills tell the agent to clone and build this repository, because the packages are not on npm yet. For spec
 lookups, manifest validation and provider checks, also add the [MCP server](../../packages/dev-mcp) from that clone:

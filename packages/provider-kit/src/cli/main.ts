@@ -57,11 +57,12 @@ More:
   provider-kit reconcile (--config <file> | --store <file> --network <testnet|pubnet>)
                          [--rpc <url>] [--dry-run] [--dev]
 
-dev         Runs the provider on this computer, on testnet: a gateway config (default
-            ./provider.config.json), or your own command after --. Reads .env. With PAY_TO empty, it
-            makes a throwaway testnet account to be paid to, so no wallet is needed yet: its key is
-            dropped once it can hold USDC. --with runs the API the gateway calls next to it. --tunnel
-            also serves it at a temporary public HTTPS address (cloudflared).
+dev         Runs the provider on this computer: a gateway config (default ./provider.config.json),
+            or your own command after --. Reads .env. On testnet, with PAY_TO empty, it makes a
+            throwaway testnet account to be paid to, so no wallet is needed yet: its key is dropped
+            once it can hold USDC. On mainnet, PAY_TO must be your own account: launch sets it up.
+            --with runs the API the gateway calls next to it. --tunnel also serves it at a temporary
+            public HTTPS address (cloudflared).
 try         Pays for one job on testnet, the way any client does, and shows the result and the
             payment on chain. The payer is a throwaway test account, funded with test XLM and test
             USDC, kept in memory only. Without an input, it uses the service's example. When nothing

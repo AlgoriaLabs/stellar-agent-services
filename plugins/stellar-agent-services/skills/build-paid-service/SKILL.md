@@ -30,7 +30,8 @@ For a new project, the fastest start is the scaffolder:
 `node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind typescript --description "<one sentence>"
 --price <usdc>`. It writes `src/server.ts`, an example service to replace (`src/services/summarize.ts`), `.env`, a
 Dockerfile, `fly.toml` and npm scripts (`dev`, `try`, `check`, `status`, `launch`, `deploy`), packs the kit from the
-clone into `vendor/` and installs it. No wallet is needed to build and try it.
+clone into `vendor/` and installs it. No wallet is needed to build and try it. `--network mainnet` makes it take
+real USDC instead: only when the user asks for that (§6).
 `$REPO/examples/paid-service` is a fuller template: two services, SQLite jobs and `.env.example`.
 
 ## 2. Write each service
@@ -104,6 +105,21 @@ one approval page where the user's own wallet signs the USDC trustline, the 8004
 request. It saves `PAY_TO` and `AGENT_ID`, and with `--deploy` deploys to Fly.io and waits for the public manifest.
 Ask the user first, run it with `--no-open`, give them the link, and say what they will approve. Then
 `provider-kit status --json`. In CI, `register` and `request-validation` take `--source <key>` instead.
+
+## 6. Mainnet
+
+Only when the user asks for real money, and after the service works on testnet: the code is the same. A project made
+with `--network mainnet` has these settings; otherwise set them by hand:
+
+- `network: "stellar:pubnet"`. The template reads it from `STELLAR_NETWORK` in `.env`.
+- The facilitator: OpenZeppelin's, `https://channels.openzeppelin.com/x402`, which wants an API key from
+  `https://channels.openzeppelin.com/gen`. The user puts it in `.env` as `FACILITATOR_AUTH="Bearer <key>"`, and the
+  server sends it: `httpFacilitator(url, { headers: { Authorization: process.env.FACILITATOR_AUTH! } })`.
+- `rpc: process.env.SOROBAN_RPC_URL`: pubnet has no default RPC, and without one an uncertain payment waits for
+  `provider-kit reconcile`. `.env` starts with `https://mainnet.sorobanrpc.com`.
+- No throwaway account and no `try`. `npm run launch` sets up `PAY_TO` in the user's wallet, which needs a few XLM,
+  writes `STELLAR_NETWORK` to `fly.toml`, and stages `FACILITATOR_AUTH` and `SOROBAN_RPC_URL` as Fly secrets. Don't
+  pay the service on mainnet yourself.
 
 ## Never
 

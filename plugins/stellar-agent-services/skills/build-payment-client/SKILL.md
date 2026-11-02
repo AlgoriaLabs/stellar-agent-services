@@ -51,6 +51,8 @@ journal), `/browser` (IndexedDB journal), and `/conformance` (the adapter checks
   sees them.
 - **Adapters** only sign or confirm. They never touch the journal, policy, job token or provider HTTP. They fail
   closed: throw, or return `{ confirmed: false, reason }`. Never a placeholder.
+- **Networks:** `stellar:pubnet` is real USDC. Pay on it only when the user asked for mainnet, and never mix testnet
+  and pubnet in one flow. The `stellar-pay` CLI pays on testnet only.
 - No secret keys in source, fixtures or logs. Tests use `Keypair.random()` and never the network.
 
 ## 4. Test

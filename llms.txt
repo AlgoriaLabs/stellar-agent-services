@@ -4,6 +4,7 @@
 
 - The spec is the source of truth. Cite its rules by id, such as `[J13]`.
 - A provider never holds a Stellar secret key: only its public `payTo` address and a facilitator URL.
+- Everything starts on testnet, with test money. Mainnet (`stellar:pubnet`) is real USDC: `create-stellar-service --network mainnet`, and its facilitator wants an API key (`FACILITATOR_AUTH`). Never pay on mainnet unless the user asked.
 - The packages are not on npm yet. Clone the repository and run `npm install && npm run build`; AGENTS.md shows how to use them from another project.
 - Agents should start with AGENTS.md, which picks a path and points to the right reference.
 
