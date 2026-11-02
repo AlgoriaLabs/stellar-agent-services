@@ -26,15 +26,10 @@ Reference: `docs/client-integration/README-AI.md` (written for you) and the clie
 
 ## 2. Get the code (TypeScript paths)
 
-The packages are not on npm. Find a built clone (ask the user), or clone one with the user's agreement:
-
-```bash
-git clone https://github.com/AlgoriaLabs/stellar-agent-services.git
-cd stellar-agent-services && npm install && npm run build && REPO=$PWD
-```
-
-In the user's project: `npm install "$REPO/packages/payment-client"`. Entry points: the core, `/node` (file
-journal), `/browser` (IndexedDB journal), and `/conformance` (the adapter checks).
+In the user's project: `npm install @stellar-agent-services/payment-client` (Node 22.13 or later). Entry points: the
+core, `/node` (file journal), `/browser` (IndexedDB journal), and `/conformance` (the adapter checks). The
+`stellar-pay` command comes with it (`npx stellar-pay`). It is at 0.x, so pin its version: a minor release may change
+the adapter interfaces.
 
 ## 3. Rules that hold on every path
 

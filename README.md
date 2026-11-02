@@ -25,10 +25,11 @@ uncertain payments from on-chain data ([docs/job-recovery.md](docs/job-recovery.
 ([docs/verification.md](docs/verification.md)). The plan is in
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development runs on Stellar **testnet**.
 
-To offer a service, start with [`npm create stellar-service`](packages/create-stellar-service), run from a clone
-until the packages are on npm, then:
+To offer a service, start with [`npm create stellar-service`](packages/create-stellar-service), then:
 
 ```bash
+npm create stellar-service my-service
+cd my-service
 npm run dev       # runs it, paid to a throwaway testnet account: no wallet needed yet
 npm run try       # pays for one call with test money
 npm run launch    # goes live: one approval in your wallet registers and verifies it, then Fly.io

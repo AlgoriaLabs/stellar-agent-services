@@ -661,6 +661,6 @@ services the packages name.
   copy, and `scaffold:check` fails a project with two. Someone installing the kit from npm by hand should add it
   ([provider-kit README](../packages/provider-kit/README.md)). The rehearsal warns while this holds. A `@trionlabs/stellar8004` release that accepts SDK 16 would end it. Its main
   branch moved to SDK 17 on 2026-10-10, unpublished, which would still be a second copy: x402 needs 16.
-- **The packages are still private, at 0.0.0.** The first release removes `"private": true` and publishes once with a
-  token, before npm can trust the workflow ([CONTRIBUTING.md](../CONTRIBUTING.md#releasing)).
+- **The first release, 0.1.0, publishes with a token,** since npm can only trust the workflow for a package that
+  exists. Trusted publishing replaces it after that ([CONTRIBUTING.md](../CONTRIBUTING.md#releasing)).
 - **The mainnet start check needs a key.** Without the `MAINNET_FACILITATOR_AUTH` secret it is skipped.

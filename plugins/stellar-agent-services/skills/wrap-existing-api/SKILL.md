@@ -22,23 +22,16 @@ and tell the user why. `429`, `502`–`504` and connection errors are retried wi
 
 ## 2. Get the kit
 
-The packages are not on npm. Find a built clone (ask the user), or clone one with the user's agreement:
-
-```bash
-git clone https://github.com/AlgoriaLabs/stellar-agent-services.git
-cd stellar-agent-services && npm install && npm run build && REPO=$PWD
-alias provider-kit="node $REPO/packages/provider-kit/dist/cli/index.js"
-alias verifier="node $REPO/packages/verifier/dist/cli/index.js"
-```
-
-Docker works too: `docker build -f packages/provider-kit/Dockerfile -t provider-kit .` from the clone.
-
-For a new project around the API, the scaffolder does §3 and more:
-`node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind wrap --openapi <document> --price <usdc>`
+Node 22.13 or later. For a new project around the API, the scaffolder does §3 and more:
+`npm create stellar-service <folder> -- --kind wrap --openapi <document> --price <usdc>`
 (or `--upstream <url>` without a document). It runs `provider-kit init`, makes the config read `PUBLIC_ORIGIN`,
 `PAY_TO`, `JOB_DB_PATH` and `AGENT_ID` from `.env`, and writes a Dockerfile, `fly.toml` and npm scripts (`dev`, `try`,
 `check`, `status`, `launch`, `deploy`). Read its output to the user, then review the config as §3 says.
 `--network mainnet` makes it take real USDC instead: only when the user asks for that (§6).
+
+Without the scaffolder: `npm install @stellar-agent-services/provider-kit` (add the override from its README to
+`package.json`) and run `npx provider-kit`, or run the gateway image `ghcr.io/algorialabs/provider-kit:<version>`.
+The verifier runs as `npx @stellar-agent-services/verifier`.
 
 ## 3. Write the config
 

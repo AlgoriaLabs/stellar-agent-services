@@ -50,45 +50,40 @@ Follow one path. Don't mix the Kit with a hand-written job flow.
 
 ## 3. Use the packages from another project
 
-The packages are not on npm yet (`private`, version `0.0.0`). Build them once from a clone:
+The packages are on npm, all at one version:
 
 ```bash
-git clone https://github.com/AlgoriaLabs/stellar-agent-services.git
-cd stellar-agent-services && npm install && npm run build
-REPO=$PWD
+npm create stellar-service my-service -- --kind wrap|typescript|python   # a new project, ready to run
+npm install @stellar-agent-services/provider-kit      # a provider in your own project
+npm install @stellar-agent-services/payment-client    # an agent or app that pays
+npx @stellar-agent-services/verifier check <url>      # also provider-kit, and stellar-pay (payment-client)
 ```
 
-Then, in your own project:
+`npm create stellar-service` makes a project around the kit: it installs it and writes `.env`, a Dockerfile, `fly.toml`
+and npm scripts: `dev` (runs it, paid to a throwaway testnet account, so no wallet is needed), `try`, `check`,
+`status`, `launch` (goes live) and `deploy`. Pass every answer as a flag (`--openapi`, `--upstream`, `--description`,
+`--price`): without a terminal it asks nothing. `--network mainnet` makes a project that takes real USDC: use it only
+when the user asked for mainnet. Such a project has no `try`, since mainnet has no test money: build and try it on
+testnet first.
 
-```bash
-npm install "$REPO/packages/provider-kit"      # a provider; or packages/payment-client for a client
-alias provider-kit="node $REPO/packages/provider-kit/dist/cli/index.js"
-alias verifier="node $REPO/packages/verifier/dist/cli/index.js"
-alias stellar-pay="node $REPO/packages/payment-client/dist/cli.js"
-alias create-stellar-service="node $REPO/packages/create-stellar-service/dist/index.js"
-```
-
-`create-stellar-service <folder> --kind wrap|typescript|python` makes a new project instead: it packs the kit from
-the clone into the project's `vendor/` folder, installs it, and writes `.env`, a Dockerfile, `fly.toml` and npm
-scripts: `dev` (runs it, paid to a throwaway testnet account, so no wallet is needed), `try`, `check`, `status`,
-`launch` (goes live) and `deploy`. Pass every answer as a flag (`--openapi`, `--upstream`, `--description`, `--price`):
-without a terminal it asks nothing. `--network mainnet` makes a project that takes real USDC: use it only when the user
-asked for mainnet. Such a project has no `try`, since mainnet has no test money: build and try it on testnet first.
+Installing the kit into a project of your own, add the override `create-stellar-service` writes to its
+`package.json`, which keeps one copy of the Stellar SDK: `"overrides": { "@trionlabs/stellar8004": {
+"@stellar/stellar-sdk": "16.4.1" } }` ([provider-kit README](packages/provider-kit/README.md)).
 
 `npm run launch` (`provider-kit launch`) opens an approval page in the user's browser, where their wallet signs the
 trustline, the 8004 registration and a validation request in one go, and it may deploy to Fly.io. Ask the user
 first, run it with `--no-open`, and give them the link. `provider-kit status --json` tells you where a provider stands
 and the one command to run next.
 
-`npm install <path>` links the package, so a later `git pull && npm run build` in the clone updates it. A native
-implementation needs no package: it needs the spec, `packages/protocol/schemas/manifest.schema.json` and the
-test vectors.
+A native implementation needs no package: it needs the spec, `packages/protocol/schemas/manifest.schema.json` and
+the test vectors. Changes not released yet run from a clone (`npm install && npm run build`): there,
+`node packages/create-stellar-service/dist/index.js` packs the clone's kit into the new project's `vendor/` folder.
 
 **Tools for coding agents.** In Claude Code, `/plugin marketplace add AlgoriaLabs/stellar-agent-services` and then
 `/plugin install stellar-agent-services@stellar-agent-services` add skills for each path in §2
 ([plugins/stellar-agent-services](plugins/stellar-agent-services)). Any MCP client can run the
-[MCP server](packages/dev-mcp) from the clone: `claude mcp add stellar-agent-services -- node
-$REPO/packages/dev-mcp/dist/index.js`. Without either, the skills are plain Markdown under
+[MCP server](packages/dev-mcp): `claude mcp add stellar-agent-services -- npx -y @stellar-agent-services/dev-mcp`.
+Without either, the skills are plain Markdown under
 `plugins/stellar-agent-services/skills/`, and [llms-full.txt](llms-full.txt) holds every guide in one file.
 
 ## 4. Rules you must not break

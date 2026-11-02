@@ -19,10 +19,10 @@ The verifier is [`packages/verifier`](../packages/verifier).
 
 ## Commands
 
-The packages are not on npm yet. After `npm install && npm run build` at the root of this repository:
+Install the `verifier` command, or run each one as `npx @stellar-agent-services/verifier <command>`:
 
 ```bash
-alias verifier="node $PWD/packages/verifier/dist/cli/index.js"
+npm install -g @stellar-agent-services/verifier
 ```
 
 | Command | What it does | Keys |

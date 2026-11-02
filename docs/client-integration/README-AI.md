@@ -15,8 +15,8 @@ Use this file to build, review or submit one of three things:
   package rules. They are integration rules, not part of Provider Standard v1. Spec rules keep their own ids
   (`[P7]`, `[J16]`).
 - **Human summary:** [README.md](README.md).
-- **State (2026-10-25):** only the built-ins exist (`localKeySigner`, `x402ExactStellar`). No third-party adapter exists
-  yet. The package is `private`, version `0.0.0`, not on npm.
+- **State (2026-11-02):** only the built-ins exist (`localKeySigner`, `x402ExactStellar`). No third-party adapter exists
+  yet. The package is on npm as `@stellar-agent-services/payment-client`, from 0.1.0.
 
 ## 0. Rules for the agent using this file
 
@@ -462,8 +462,7 @@ CG1–CG10 and their tests, and update this file and [payment-client.md](../paym
 
 | Gap | What it means for you | Plan |
 | --- | --- | --- |
-| `payment-client` is `private`, `0.0.0`, not on npm | Build the adapter as a workspace package in a fork, or install an `npm pack` tarball | Publish with semver; the strategy interfaces become the stable API |
-| The interfaces carry no version | A breaking change could land without notice | Semver once published. Until then, any change is called out in its PR. |
+| `payment-client` is at 0.x, and its interfaces carry no version of their own | A minor release (0.1 to 0.2) may change the strategy interfaces an adapter implements: pin it | Every change to them is called out in its PR and the release notes. 1.0 makes them the stable API. |
 | Conformance doesn't exercise `createPayload()` | [PM3] is checked by review and the §8.5 self-test | A signing check: a recording signer plus preimage decoding |
 | The core doesn't check what is signed | A buggy method could sign other terms | A guarded signer: the core wraps the `Signer` it passes to `createPayload()` and refuses any preimage that isn't the approved transfer |
 | `policy.agentAddress` isn't compared with `signer.address` | A policy can run under another account | A fail-closed check in the core |

@@ -14,25 +14,15 @@ in the repository, or at `https://raw.githubusercontent.com/AlgoriaLabs/stellar-
 
 ## 1. Get the kit
 
-The packages are not on npm. Find a built clone (ask the user where they keep it), or clone one beside the
-project with the user's agreement:
+Node 22.13 or later. For a new project, the fastest start is the scaffolder:
+`npm create stellar-service <folder> -- --kind typescript --description "<one sentence>" --price <usdc>`. It writes
+`src/server.ts`, an example service to replace (`src/services/summarize.ts`), `.env`, a Dockerfile, `fly.toml` and npm
+scripts (`dev`, `try`, `check`, `status`, `launch`, `deploy`), and installs the kit. No wallet is needed to build and
+try it. `--network mainnet` makes it take real USDC instead: only when the user asks for that (§6).
 
-```bash
-git clone https://github.com/AlgoriaLabs/stellar-agent-services.git
-cd stellar-agent-services && npm install && npm run build && REPO=$PWD
-```
-
-In the user's project: `npm install "$REPO/packages/provider-kit"`. CLIs:
-`alias provider-kit="node $REPO/packages/provider-kit/dist/cli/index.js"` and
-`alias verifier="node $REPO/packages/verifier/dist/cli/index.js"`. Node 22.13 or later.
-
-For a new project, the fastest start is the scaffolder:
-`node $REPO/packages/create-stellar-service/dist/index.js <folder> --kind typescript --description "<one sentence>"
---price <usdc>`. It writes `src/server.ts`, an example service to replace (`src/services/summarize.ts`), `.env`, a
-Dockerfile, `fly.toml` and npm scripts (`dev`, `try`, `check`, `status`, `launch`, `deploy`), packs the kit from the
-clone into `vendor/` and installs it. No wallet is needed to build and try it. `--network mainnet` makes it take
-real USDC instead: only when the user asks for that (§6).
-`$REPO/examples/paid-service` is a fuller template: two services, SQLite jobs and `.env.example`.
+In an existing project: `npm install @stellar-agent-services/provider-kit`, and add the override from its README to
+`package.json`. Run the CLIs as `npx provider-kit` and `npx @stellar-agent-services/verifier`. `examples/paid-service`
+in the repository is a fuller template: two services, SQLite jobs and `.env.example`.
 
 ## 2. Write each service
 

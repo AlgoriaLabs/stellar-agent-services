@@ -13,7 +13,7 @@ and the income lands in the wallet you already use.
 ## Quick start
 
 ```bash
-npm create stellar-service my-service      # from a clone until the packages are on npm: see §2
+npm create stellar-service my-service
 cd my-service
 npm run dev       # runs it here, paid to a throwaway testnet account: no wallet needed yet
 npm run try       # pays for one call with test money, from another terminal
@@ -36,19 +36,15 @@ capacity limits and a job store that survives restarts.
 
 **Fastest start:** `npm create stellar-service` makes a project for either kit path, or a new Python service behind
 the gateway, with the scripts above, a Dockerfile and `fly.toml` ([create-stellar-service](../packages/create-stellar-service)).
-Until the packages are on npm, run it from the clone (§2): `node packages/create-stellar-service/dist/index.js my-service`.
 
 ## 2. Prerequisites
 
 - **Node.js 22.13 or later** for the library and the CLI, or **Docker** for the gateway.
-- **The kit.** The packages are not on npm yet, so get them from this repository:
-
-  ```bash
-  git clone https://github.com/AlgoriaLabs/stellar-agent-services.git
-  cd stellar-agent-services
-  npm install && npm run build
-  alias provider-kit="node $PWD/packages/provider-kit/dist/cli/index.js"
-  ```
+- **The kit.** A project made by `npm create stellar-service` has it already, and `npm run <script>` runs its
+  commands. Otherwise, `npm install @stellar-agent-services/provider-kit` in your project, and run the `provider-kit`
+  commands below as `npx provider-kit`. Add the override from the
+  [provider-kit README](../packages/provider-kit/README.md) to its `package.json`. The gateway image is
+  `ghcr.io/algorialabs/provider-kit`.
 
 - **A Stellar wallet, to go live** (§7): the one you already use, such as Freighter, xBull, Albedo, Rabet, Hana,
   MetaMask or a Ledger ([Stellar Wallets Kit](https://stellarwalletskit.dev) lists them). Its account becomes your
@@ -103,12 +99,11 @@ provider-kit dev --config provider.config.json
 together. The gateway checks the whole config and refuses to start, listing every problem, if something would fail
 the standard. [examples/python-upstream](../examples/python-upstream) is a complete example with a Python API.
 
-**With Docker** instead of Node, from the repository root:
+**With Docker** instead of Node, run the gateway image each release publishes:
 
 ```bash
-docker build -f packages/provider-kit/Dockerfile -t provider-kit .
 docker run -p 8787:8787 -e PAY_TO -v "$PWD/provider.config.json:/config/provider.config.json:ro" \
-  -v provider-jobs:/data provider-kit
+  -v provider-jobs:/data ghcr.io/algorialabs/provider-kit:0.1.0
 ```
 
 Set `"store": "/data/jobs.sqlite"` in the config so jobs live on the volume. If the config refers to schema files,
@@ -191,8 +186,7 @@ running service: invalid input, the `402` challenge, an oversized body, CORS, an
 providers pass it; it matters most for native implementations.
 
 ```bash
-alias verifier="node $PWD/packages/verifier/dist/cli/index.js"
-verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
+npx @stellar-agent-services/verifier check http://localhost:8787/.well-known/stellar-agent-services.json --dev
 ```
 
 ## 6. Make a paid testnet request

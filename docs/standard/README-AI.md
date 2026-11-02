@@ -473,7 +473,7 @@ npx stellar-pay pay http://localhost:8787/.well-known/stellar-agent-services.jso
 - Independent of the levels: **Registered** (C2 identity + a Validation Registry record) and **Load-safe** (C7
   load).
 - The checks are defined in [verification.md](../verification.md). Run them with
-  `node packages/verifier/dist/cli/index.js check <manifest-url>` (`--dev` for `http://localhost`): every check that
+  `npx @stellar-agent-services/verifier check <manifest-url>` (`--dev` for `http://localhost`): every check that
   needs no payment. Exit code 0 means every check that ran passed; each failure names its rule id.
 
 ## 14. Client rules (agents, wallets, apps)

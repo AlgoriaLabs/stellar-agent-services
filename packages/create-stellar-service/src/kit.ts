@@ -1,8 +1,8 @@
 // Where a new project gets the Provider Kit.
 //
-// Run from a clone of this repository, the scaffolder packs the kit's packages into the project's vendor/ folder,
-// since they aren't on npm yet. The project then installs and builds by itself, on another computer or in Docker too.
-// Installed from npm, the project depends on the kit version released with this scaffolder.
+// Installed from npm, the project depends on the kit version released with this scaffolder. Run from a clone of this
+// repository, for changes not released yet, it packs the kit's packages into the project's vendor/ folder: the project
+// then installs and builds by itself, on another computer or in Docker too.
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

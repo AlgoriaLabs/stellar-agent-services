@@ -1,7 +1,6 @@
 {
   "name": "@stellar-agent-services/provider-kit",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Turn a function, or an existing HTTP API in any language, into a paid Stellar service: Provider Standard v1 manifest, x402 USDC payments, job recovery, capacity.",
   "type": "module",
   "license": "MIT",
@@ -35,8 +34,8 @@
     "check": "svelte-check --workspace ./approve --tsconfig ./tsconfig.json --fail-on-warnings"
   },
   "dependencies": {
-    "@stellar-agent-services/payment-client": "0.0.0",
-    "@stellar-agent-services/protocol": "0.0.0",
+    "@stellar-agent-services/payment-client": "0.1.0",
+    "@stellar-agent-services/protocol": "0.1.0",
     "@stellar/stellar-sdk": "16.4.1",
     "@trionlabs/stellar8004": "0.0.11",
     "@x402/core": "2.28.0",

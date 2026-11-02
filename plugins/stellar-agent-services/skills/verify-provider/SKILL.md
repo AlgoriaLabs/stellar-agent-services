@@ -11,12 +11,9 @@ repository or at `https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-se
 
 ## Tools
 
-From a built clone (`npm install && npm run build`; the packages are not on npm):
-
-```bash
-alias verifier="node $REPO/packages/verifier/dist/cli/index.js"
-alias provider-kit="node $REPO/packages/provider-kit/dist/cli/index.js"
-```
+`verifier` is `npx @stellar-agent-services/verifier` (Node 22.13 or later). `provider-kit` is `npx provider-kit` in a
+project that has the kit, such as one `npm create stellar-service` made, and `npx @stellar-agent-services/provider-kit`
+elsewhere.
 
 If the `stellar-agent-services` MCP server is connected, `check_provider` runs `verifier check`,
 `validate_manifest` checks a manifest before it is served, and `get_spec_rule` explains a rule id.
