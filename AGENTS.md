@@ -30,6 +30,7 @@ Facts to get right:
 - **Asset:** USDC only. Take its contract address from `USDC_ASSET[network]` in `@stellar-agent-services/protocol`
   instead of retyping it.
 - **Facilitator:** `https://x402.org/facilitator` on testnet. It verifies and settles payments with sponsored fees.
+  On mainnet, OpenZeppelin's `https://channels.openzeppelin.com/x402`, which wants an API key (`FACILITATOR_AUTH`).
 - **Identity:** a provider registers in the Stellar 8004 identity registry. Its `agentId` goes in the manifest, and
   its registered wallet must equal `payTo` (`[I1]`–`[I3]`).
 - **Node.js 22.13 or later.** `.node-version` pins 24.
@@ -71,7 +72,8 @@ alias create-stellar-service="node $REPO/packages/create-stellar-service/dist/in
 the clone into the project's `vendor/` folder, installs it, and writes `.env`, a Dockerfile, `fly.toml` and npm
 scripts: `dev` (runs it, paid to a throwaway testnet account, so no wallet is needed), `try`, `check`, `status`,
 `launch` (goes live) and `deploy`. Pass every answer as a flag (`--openapi`, `--upstream`, `--description`, `--price`):
-without a terminal it asks nothing.
+without a terminal it asks nothing. `--network mainnet` makes a project that takes real USDC: use it only when the user
+asked for mainnet. Such a project has no `try`, since mainnet has no test money: build and try it on testnet first.
 
 `npm run launch` (`provider-kit launch`) opens an approval page in the user's browser, where their wallet signs the
 trustline, the 8004 registration and a validation request in one go, and it may deploy to Fly.io. Ask the user
@@ -118,15 +120,17 @@ These come from the spec and [SECURITY.md](SECURITY.md). Breaking one loses or d
 - **Provider:** the manifest passes the JSON Schema and `checkManifestRules` (or the MCP tool
   `validate_manifest`). `provider-kit check` and `verifier check` pass. A paid testnet call succeeds and the
   transfer is on chain: `provider-kit try <service> --manifest <url> --yes`, after the user agreed to pay, pays from
-  a throwaway testnet account (or `stellar-pay pay` from a payer wallet). Go through the "How agents see you" hints
-  at the end of `provider-kit check` with the user: on mainnet, search matches only `provider.name` and
-  `provider.description` (`check --fix` writes the missing words in); on testnet it also reads the manifest's
-  services. `provider-kit status --json` shows each stage, from running to
-  verified.
+  a throwaway testnet account (or `stellar-pay pay` from a payer wallet). For a mainnet provider, make that call on
+  testnet, with the same code: on mainnet, only check it, and leave the first real payment to the user. Go through
+  the "How agents see you" hints at the end of `provider-kit check` with the user: on mainnet, search matches only
+  `provider.name` and `provider.description` (`check --fix` writes the missing words in); on testnet it also reads
+  the manifest's services. `provider-kit status --json` shows each stage, from running to verified.
   The checklist is in [docs/standard/README-AI.md §13](docs/standard/README-AI.md#13-testing-and-conformance).
 - **Client or adapter:** the conformance checks pass, and tests use `Keypair.random()` and never the network.
 - **Any change here:** `npm run typecheck` and `npm test` pass. If you changed a document that
-  [llms.txt](llms.txt) links to, run `npm run llms`.
+  [llms.txt](llms.txt) links to, run `npm run llms`. If you changed `create-stellar-service`, its templates or what
+  a package publishes, `npm run scaffold:check` (for each kind and network you touched) and `npm run packages:check`
+  pass too.
 
 Cite spec rules by id in code comments, findings and error messages, as the existing code does.
 
@@ -137,7 +141,17 @@ npm install
 npm run typecheck     # tsc -b over every package
 npm test              # vitest, the whole workspace, offline
 npm run llms          # rebuild llms-full.txt after a doc change (CI checks it)
+
+npm run build && npm run packages:check   # what each npm package would publish
+npm run scaffold:check -- --kind typescript --network mainnet   # a new project: made, built, started, verified
+npm run packages:rehearse                 # publish to a throwaway local registry, then install and use the packages
+npm run live:check                        # read-only checks against the live networks: facilitators, RPC, registries
 ```
+
+- **CI** runs all of these on every pull request except `live:check`, which runs daily
+  ([CONTRIBUTING.md](CONTRIBUTING.md#what-ci-checks)). The project checks and the rehearsal install from the npm
+  registry, and `live:check` reads the live networks. None of them signs or pays. A release is a version tag
+  ([CONTRIBUTING.md](CONTRIBUTING.md#releasing)).
 
 - **Order of change:** the spec is the product. A new behavior becomes a spec rule first
   ([docs/provider-standard.md](docs/provider-standard.md)), then the Kit and the payment client, then a verifier

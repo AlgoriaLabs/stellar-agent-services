@@ -1,4 +1,4 @@
-import { createServer, type Server } from "node:http";
+import { createServer, type IncomingHttpHeaders, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { USDC_ASSET } from "@stellar-agent-services/protocol";
 import { Account, Keypair, Networks, Operation, TimeoutInfinite, Transaction, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
@@ -129,14 +129,14 @@ describe("settle", () => {
 describe("httpFacilitator", () => {
   let server: Server;
   let url: string;
-  const handler = vi.fn<(path: string, body: unknown) => { status: number; body: unknown; headers?: Record<string, string> }>();
+  const handler = vi.fn<(path: string, body: unknown, headers: IncomingHttpHeaders) => { status: number; body: unknown; headers?: Record<string, string> }>();
 
   beforeAll(async () => {
     server = createServer((request, response) => {
       let text = "";
       request.on("data", (chunk) => (text += chunk));
       request.on("end", () => {
-        const answer = handler(request.url ?? "", text === "" ? undefined : JSON.parse(text));
+        const answer = handler(request.url ?? "", text === "" ? undefined : JSON.parse(text), request.headers);
         response.writeHead(answer.status, { "Content-Type": "application/json", ...answer.headers });
         response.end(typeof answer.body === "string" ? answer.body : JSON.stringify(answer.body));
       });
@@ -189,5 +189,17 @@ describe("httpFacilitator", () => {
     await expect(checkFacilitator(facilitator, "stellar:pubnet")).rejects.toThrow(/does not support/);
     handler.mockReturnValue({ status: 200, body: { kinds: [{ x402Version: 2, scheme: "exact", network: "stellar:testnet" }] } });
     await expect(checkFacilitator(facilitator, "stellar:testnet")).rejects.toThrow(/sponsor/);
+  });
+
+  it("sends the API key it was given with every call, and says so when the facilitator wants one", async () => {
+    // As mainnet's facilitator (OpenZeppelin's) answers: 401 without the right Authorization header.
+    handler.mockImplementation((_path, _body, headers) =>
+      headers.authorization === "Bearer right-key"
+        ? { status: 200, body: { kinds: [{ x402Version: 2, scheme: "exact", network: "stellar:pubnet", extra: { areFeesSponsored: true } }] } }
+        : { status: 401, body: { success: false, code: 401, error: "Unauthorized", message: "Unauthorized" } },
+    );
+    await expect(checkFacilitator(httpFacilitator(url, { dev: true, headers: { Authorization: "Bearer right-key" } }), "stellar:pubnet")).resolves.toBeUndefined();
+    await expect(checkFacilitator(httpFacilitator(url, { dev: true }), "stellar:pubnet")).rejects.toThrow(/supported answered 401: the facilitator wants an API key/);
+    await expect(checkFacilitator(httpFacilitator(url, { dev: true, headers: { Authorization: "Bearer wrong" } }), "stellar:pubnet")).rejects.toThrow(/refused the one sent/);
   });
 });

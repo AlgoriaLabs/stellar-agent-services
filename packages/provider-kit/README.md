@@ -23,6 +23,10 @@ gateway:  provider-kit serve --config <file>  ->  forwards paid jobs to your exi
 
 The step-by-step guide is [docs/provider-setup-guide.md](../../docs/provider-setup-guide.md).
 
+Installed from npm into a project of your own, the kit needs the override this repository has, which
+`create-stellar-service` also writes: `"overrides": { "@stellar/stellar-sdk": "16.3.1" }` in `package.json`. The
+Stellar 8004 SDK asks for SDK 15, and two copies of the SDK can't read each other's XDR, so registration would fail.
+
 ## From nothing to live
 
 ```bash
@@ -134,7 +138,8 @@ PAY_TO=G... provider-kit serve --config provider.config.json
 
 **Docker:** `docker build -f packages/provider-kit/Dockerfile -t provider-kit .` from the repository root, then
 mount the config at `/config/provider.config.json` and a volume at `/data` (set `"store": "/data/jobs.sqlite"`).
-`GET /healthz` answers for health checks.
+`GET /healthz` answers for health checks. From the first release on, each release also publishes this image as
+`ghcr.io/algorialabs/provider-kit:<version>`.
 
 ### From an OpenAPI document
 
@@ -246,12 +251,20 @@ Deploy to Fly.io now (fly deploy, app text-tools)? [Y/n]
   is `--validator`, `STELLAR_VALIDATOR`, or the default in `src/cli/validators.ts`; a provider's own account is never
   asked.
 - **Saved.** `PAY_TO` and `AGENT_ID` in `.env` (`DEV_PAY_TO` goes), the agent id where the gateway config reads it,
-  and the public settings in `fly.toml`. A new agent's id is saved even if a later step stops, so running `launch`
-  again never registers a second agent; it signs nothing when everything is in place.
-- **Deployed and checked.** `flyctl` creates the app the first time, the API's key from `.env` is staged as a Fly
-  secret, and `fly deploy` runs with one machine. Then `launch` waits until the public manifest serves the agent id,
-  and checks [I1]–[I3] from outside. A gateway whose `upstream.url` is on 127.0.0.1 isn't deployed: in a container
+  and the public settings in `fly.toml`. For a provider started by its own command, that includes `STELLAR_NETWORK`
+  (and `FACILITATOR_URL` when set), so it takes payments where it registered. A new agent's id is saved even if a later
+  step stops, so running `launch` again never registers a second agent; it signs nothing when everything is in place.
+- **Deployed and checked.** `flyctl` creates the app the first time, and what may hold a key is staged as Fly secrets
+  from `.env`: every variable a gateway config reads, such as the API's key (one that isn't set is named, since the
+  gateway can't start without it), or a command's `FACILITATOR_AUTH` and `SOROBAN_RPC_URL`. `fly deploy` runs with one
+  machine. Then `launch` waits until the public manifest serves the agent id, on the network it registered on, and
+  checks [I1]–[I3] from outside. A gateway whose `upstream.url` is on 127.0.0.1 isn't deployed: in a container
   that is the container itself, unless the API runs inside it too, as the Python kind's does.
+- **Mainnet.** The same steps, on `stellar:pubnet`: the wallet's account needs a few XLM, as no Friendbot funds it.
+  Mainnet's facilitator, OpenZeppelin's (`https://channels.openzeppelin.com/x402`), wants an API key: a gateway config
+  sends it with `"facilitatorHeaders": { "Authorization": "env:FACILITATOR_AUTH" }`. The provider checks it at start,
+  and a 401 says so. `npm create stellar-service -- --network mainnet` sets all of this up
+  ([Mainnet](../create-stellar-service/README.md#mainnet)).
 
 ### Trying a paid call
 
@@ -459,7 +472,7 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/provider.ts` | `createProvider()`: wires everything into one `fetch` handler; startup checks |
 | `src/manifest.ts` | Builds the manifest from the same config as the 402 challenge, and checks it |
 | `src/http/router.ts` | Manifest, create-job, check-status and get-result routes, in §5.4 order |
-| `src/http/node-server.ts` | `listen()`: serves a provider on Node's HTTP server, with `/healthz` and graceful close |
+| `src/http/node-server.ts` | `listen()`: serves a provider on Node's HTTP server, with `/healthz` and graceful close. A request body is read only as far as the router reads it, so an early answer (`413`) leaves the connection usable. |
 | `src/payments/payload-checks.ts` | Local payment checks and the payment fingerprint |
 | `src/payments/facilitator.ts` | The facilitator client and the startup check |
 | `src/payments/settlement.ts` | Settlement as `settled`, `failed` or `uncertain` (never charge twice) |

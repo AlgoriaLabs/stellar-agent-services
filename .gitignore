@@ -2,6 +2,8 @@ node_modules/
 dist/
 *.tsbuildinfo
 coverage/
+# The documents the MCP server packs for npm (packages/dev-mcp/scripts/pack-docs.mjs).
+packages/dev-mcp/repository/
 
 # Secrets and local state: keys, journals and job databases never get committed.
 .env

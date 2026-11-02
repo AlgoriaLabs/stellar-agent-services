@@ -35,7 +35,8 @@ Any other MCP client takes the same command as a stdio server:
 }
 ```
 
-The server reads the documents of the clone it is built in, so `git pull && npm run build` updates it.
+The server reads the documents of the clone it is built in, so `git pull && npm run build` updates it. Installed from
+npm, it reads the copy packed with it in `repository/`, from the same commit as its code.
 
 As a library, `createServer(options)` returns the `McpServer`. `options.verify` passes options to
 `verifyProvider()`, such as an offline provider's `fetch` in tests. It never takes a payer.
@@ -47,4 +48,5 @@ As a library, `createServer(options)` returns the `McpServer`. `options.verify` 
 | `src/server.ts` | `createServer()`: the tools |
 | `src/docs.ts` | The llms.txt index, document reads and search, spec rule parsing |
 | `src/index.ts` | The stdio entry point |
+| `scripts/pack-docs.mjs` | Before npm packs the package: copies llms.txt and every document it links to into `repository/` |
 | `test/server.test.ts` | Every tool through a real MCP client; `check_provider` against the verifier's offline provider |

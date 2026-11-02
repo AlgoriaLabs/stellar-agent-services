@@ -9,8 +9,10 @@
 //   check_provider     `verifier check` on a running provider: C1, C2, C3, C6 and C7's unpaid burst
 //
 // It holds no key and never pays: check_provider runs without a test payer, so the paid checks (C4, C5)
-// are always skipped. The documents are read from the clone the server is built in.
+// are always skipped. The documents are read from the clone the server is built in, or, installed from npm, from the
+// copy of them packed with it (scripts/pack-docs.mjs).
 
+import { existsSync, readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { PROVIDER_STANDARD, type CheckResult } from "@stellar-agent-services/protocol";
@@ -18,10 +20,14 @@ import { checkManifestDocument, InvalidOptionsError, verifyProvider, type Verify
 import { z } from "zod/v4";
 import { Docs } from "./docs.js";
 
-export const SERVER = { name: "stellar-agent-services", version: "0.0.0" } as const;
+const PACKAGE = new URL("../", import.meta.url);
+const { version } = JSON.parse(readFileSync(new URL("package.json", PACKAGE), "utf8")) as { version: string };
 
-/** The repository this file is built in: dist/ is two levels below it. */
-const REPOSITORY = new URL("../../../", import.meta.url);
+export const SERVER = { name: "stellar-agent-services", version } as const;
+
+/** The clone this file is built in (dist/ is two levels below it), or else the documents packed in repository/. */
+const CLONE = new URL("../../../", import.meta.url);
+const REPOSITORY = existsSync(new URL("packages/dev-mcp/package.json", CLONE)) ? CLONE : new URL("repository/", PACKAGE);
 const MAX_SEARCH_HITS = 50;
 
 export interface ServerOptions {

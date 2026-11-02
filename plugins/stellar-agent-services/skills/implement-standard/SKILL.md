@@ -31,7 +31,7 @@ From the repository, or `https://raw.githubusercontent.com/AlgoriaLabs/stellar-a
 4. **create-job** in the exact processing order of README-AI §6: validate input and capacity before any `402`
    `[P8]`, `[Q1]`, look up a known job id before settling `[J5]`, and settle at most once per signed payment `[P9]`.
 5. **Payment** (§7): x402 v2, `exact` scheme on Stellar, through a facilitator (`https://x402.org/facilitator` on
-   testnet). Decode and check the payment locally before the facilitator sees it. A facilitator timeout or unknown
+   testnet; on pubnet one such as OpenZeppelin's `https://channels.openzeppelin.com/x402`, which wants an API key). Decode and check the payment locally before the facilitator sees it. A facilitator timeout or unknown
    answer makes the job `payment_uncertain`, never `failed` `[J13]`.
 6. **check-status and get-result** (§5, §8): never charge `[J11]`. The same `404` for unknown, expired and
    wrong-token jobs `[J10]`. Store only the token's hash `[J3]`.
@@ -60,3 +60,5 @@ Persist every state change before the next step. Keep the job store durable.
 - Invent fields, headers, status codes or error codes. Extra data goes in `extensions` `[X1]`.
 - Retry a settlement, or charge again for a known job id.
 - Skip a MUST because a test passes without it.
+- Answer early (`413` for a body over `maxInputBytes`, `404`) and leave the rest of the body on a kept-alive
+  connection: the client's next request on it fails `[Q1]`. Read and drop the rest, or close the connection.

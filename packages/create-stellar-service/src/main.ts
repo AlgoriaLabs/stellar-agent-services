@@ -8,7 +8,9 @@
 // account to be paid to, and `npm run launch` sets up the developer's own wallet when the service goes live. --wallet
 // sets it up now instead, with `provider-kit trustline`. Flags answer every question, for scripts and coding agents.
 //
-// Testnet only. It never asks for, makes or stores a secret key, and never pays.
+// Testnet unless --network mainnet, which writes mainnet's facilitator (it wants an API key, FACILITATOR_AUTH) and a
+// Soroban RPC instead, and leaves out the testnet-only steps. It never asks for, makes or stores a secret key, and
+// never pays.
 
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
@@ -21,6 +23,7 @@ import {
   DEFAULT_PRICE,
   dockerignore,
   envFile,
+  FACILITATOR_KEYS,
   gitignore,
   KINDS,
   packageJson,
@@ -30,6 +33,7 @@ import {
   TEMPLATE_FILES,
   template,
   type Kind,
+  type Network,
   type Project,
 } from "./files.js";
 import { KIT_CLI, KIT_PACKAGES, kitDependencies, kitSource, unbuilt, type KitSource } from "./kit.js";
@@ -41,6 +45,7 @@ const OPTIONS = {
   name: { type: "string" },
   description: { type: "string" },
   price: { type: "string" },
+  network: { type: "string" },
   "pay-to": { type: "string" },
   wallet: { type: "boolean" },
   yes: { type: "boolean", short: "y" },
@@ -55,7 +60,7 @@ Usage:
   npm create stellar-service [<folder>] [-- <options>]
   create-stellar-service [<folder>] [--kind wrap|typescript|python] [--openapi <file | url>]
                          [--upstream <url>] [--name <text>] [--description <text>] [--price <usdc>]
-                         [--wallet | --pay-to <G...>] [--yes]
+                         [--network testnet|mainnet] [--wallet | --pay-to <G...>] [--yes]
 
 --kind          wrap: an API you already run, in any language, behind the Provider Kit gateway. No
                 code changes: --openapi reads its OpenAPI document (FastAPI serves /openapi.json) and
@@ -66,14 +71,16 @@ Usage:
 --description   One sentence on what it offers. Search matches it and the name: use the words buyers type.
 --name          The provider's name. Default: the folder's, or the OpenAPI document's title.
 --price         What a call costs, in USDC. Default 0.01.
+--network       testnet (default): test money, nothing to set up. mainnet: real USDC, through mainnet's
+                facilitator, which wants an API key (FACILITATOR_AUTH in .env); no throwaway accounts.
 --wallet        Sets up the account clients pay now: a page opens where your own wallet approves a USDC
-                trustline on testnet, and the address goes in .env as PAY_TO. --pay-to takes an address
-                you have. Without either, nothing is needed until npm run launch: npm run dev pays a
-                throwaway testnet account meanwhile.
+                trustline, and the address goes in .env as PAY_TO. --pay-to takes an address you have.
+                Without either, nothing is needed until npm run launch: on testnet, npm run dev pays a
+                throwaway account meanwhile.
 --yes           Takes the defaults for questions no flag answers. Without a terminal it never asks, and
                 --kind is needed.
 
-Testnet only. It never asks for a secret key, and never pays.`;
+Testnet unless --network mainnet. It never asks for a secret key, and never pays.`;
 
 const DEFAULT_FOLDER = "my-stellar-service";
 const MAKING: Record<Kind, string> = { wrap: "a gateway in front of your API", typescript: "a new TypeScript service", python: "a new Python service" };
@@ -151,6 +158,7 @@ export async function create(argv: string[], io: CreateIo = createIo()): Promise
   if (flags["pay-to"] !== undefined && !STELLAR_ACCOUNT.test(flags["pay-to"])) throw new UsageError("--pay-to must be a public Stellar account address, G...");
   if (flags["pay-to"] !== undefined && flags.wallet === true) throw new UsageError("--pay-to and --wallet both set the payout account: pick one");
   if (flags.price !== undefined && !validPrice(flags.price)) throw new UsageError(`--price must be a price in USDC above zero, such as 0.05, not "${flags.price}"`);
+  if (flags.network !== undefined && parseNetwork(flags.network) === undefined) throw new UsageError(`--network must be testnet or mainnet, not "${flags.network}"`);
   if (io.kit.from === "clone") {
     const missing = unbuilt(io.kit.packages);
     if (missing.length > 0) throw new Error(`the Provider Kit in ${dirname(io.kit.packages)} isn't built (no ${missing[0]}): run npm install && npm run build there first`);
@@ -178,6 +186,7 @@ interface Answers {
   description?: string;
   /** Each service's price in USDC. */
   price: string;
+  network: Network;
   /** Set up the payout account in the developer's wallet now, rather than at launch. */
   wallet: boolean;
   payTo?: string;
@@ -236,6 +245,7 @@ async function answer(flags: Flags, folder: string | undefined, io: CreateIo): P
     ...(flags.name === undefined ? {} : { name: flags.name }),
     ...(description === undefined ? {} : { description }),
     price: price ?? DEFAULT_PRICE,
+    network: flags.network === undefined ? "stellar:testnet" : parseNetwork(flags.network)!,
     wallet: flags.wallet ?? false,
     ...(flags["pay-to"] === undefined ? {} : { payTo: flags["pay-to"] }),
   };
@@ -246,12 +256,20 @@ function validPrice(value: string): boolean {
   return PRICE.test(value) && Number(value) > 0;
 }
 
+/** --network as a network id: testnet, or mainnet (also written pubnet), as provider-kit takes them. */
+function parseNetwork(value: string): Network | undefined {
+  if (["testnet", "stellar:testnet"].includes(value)) return "stellar:testnet";
+  if (["mainnet", "pubnet", "public", "stellar:pubnet"].includes(value)) return "stellar:pubnet";
+  return undefined;
+}
+
 /** Writes and installs the project, then sets up the payout account if asked. */
 async function build(answers: Answers, io: CreateIo): Promise<number> {
-  const { directory, kind } = answers;
+  const { directory, kind, network } = answers;
+  const testnet = network === "stellar:testnet";
   const folder = basename(directory);
   const vendored = io.kit.from === "clone";
-  io.log(`\nCreating ${folder}: ${MAKING[kind]}, paid in USDC on Stellar testnet\n`);
+  io.log(`\nCreating ${folder}: ${MAKING[kind]}, paid in USDC on Stellar ${testnet ? "testnet" : "mainnet, real money"}\n`);
   await mkdir(directory, { recursive: true });
   const write = (file: string, text: string) => writeAt(directory, file, text);
 
@@ -262,6 +280,7 @@ async function build(answers: Answers, io: CreateIo): Promise<number> {
     name: answers.name ?? titleCase(folder),
     description: answers.description ?? TEMPLATE_DESCRIPTION,
     price: answers.price,
+    network,
     vendored,
     // uv runs a Python API with its packages, so there is no virtual environment to make first.
     ...(kind === "python" ? { uv: await io.has("uv") } : {}),
@@ -305,7 +324,7 @@ async function build(answers: Answers, io: CreateIo): Promise<number> {
 
   let payTo = answers.payTo;
   if (answers.wallet) {
-    payTo = await connectWallet(io, directory);
+    payTo = await connectWallet(io, directory, network);
     if (payTo !== undefined) await write(".env", envFile(project, { payTo, variables }));
   }
 
@@ -316,13 +335,21 @@ async function build(answers: Answers, io: CreateIo): Promise<number> {
   // packages for another processor, such as when Node runs under Rosetta on an Apple silicon Mac.
   if (kind === "python" && !project.uv) first.push("python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   installs the API's packages, once");
   const starts = { wrap: "the gateway in front of your API,", typescript: "the service", python: "the API and the gateway in front of it," }[kind];
-  const steps = [
-    `cd ${shellWord(folder)}`,
-    ...first,
-    `npm run dev        starts ${starts} at http://localhost:8787${payTo === undefined ? ": no wallet needed yet" : ""}`,
-    "npm run try        pays for one call with test money, from another terminal",
-    "npm run launch     takes it live: one approval in your wallet, then Fly.io",
-  ];
+  const steps = testnet
+    ? [
+        `cd ${shellWord(folder)}`,
+        ...first,
+        `npm run dev        starts ${starts} at http://localhost:8787${payTo === undefined ? ": no wallet needed yet" : ""}`,
+        "npm run try        pays for one call with test money, from another terminal",
+        "npm run launch     takes it live: one approval in your wallet, then Fly.io",
+      ]
+    : [
+        `cd ${shellWord(folder)}`,
+        ...first,
+        `set FACILITATOR_AUTH in .env   mainnet's facilitator key, as "Bearer <key>": ${FACILITATOR_KEYS}`,
+        "npm run launch     takes it live on mainnet: one approval in your wallet (with a few XLM), then Fly.io",
+        `npm run dev        starts ${starts} at http://localhost:8787${payTo === undefined ? ", once launch has set PAY_TO" : ""}`,
+      ];
   io.log(`\nNext:\n${steps.map((line) => `  ${line}`).join("\n")}\n\nnpm run status shows where it stands at any time. README.md has the rest.`);
   return 0;
 }
@@ -357,11 +384,15 @@ async function gatewayFromInit(answers: Answers, project: Project, io: CreateIo)
     );
   }
 
-  const adapted = adaptInitConfig(await readFile(out, "utf8"), {
-    ...(answers.name !== undefined || !fromDocument ? { name: project.name } : {}),
-    ...(answers.description === undefined ? {} : { description: answers.description }),
-    price: project.price,
-  });
+  const adapted = adaptInitConfig(
+    await readFile(out, "utf8"),
+    {
+      ...(answers.name !== undefined || !fromDocument ? { name: project.name } : {}),
+      ...(answers.description === undefined ? {} : { description: answers.description }),
+      price: project.price,
+    },
+    project.network,
+  );
   await writeFile(out, adapted.config);
   const config = JSON.parse(adapted.config) as { provider: { name: string; description?: string }; services: { name: string; upstream: { url: string } }[] };
   const names = config.services.map((service) => service.name);
@@ -391,15 +422,16 @@ async function pack(io: CreateIo, directory: string): Promise<Partial<Record<(ty
 
 /**
  * Sets up the account clients pay: `provider-kit trustline` opens a page where the developer's own wallet approves a
- * USDC trustline on testnet, then prints the account as PAY_TO=G.... Its address, or undefined if it didn't finish.
+ * USDC trustline on the project's network, then prints the account as PAY_TO=G.... Its address, or undefined if it
+ * didn't finish.
  */
-async function connectWallet(io: CreateIo, directory: string): Promise<string | undefined> {
+async function connectWallet(io: CreateIo, directory: string, network: Network): Promise<string | undefined> {
   io.log("\nSetting up the account clients pay, in your wallet:\n");
   // Ctrl+C on the approval page stops provider-kit trustline, not the rest of this.
   const ignore = () => {};
   process.on("SIGINT", ignore);
   try {
-    const result = await io.run(process.execPath, [KIT_CLI, "trustline", "--network", "testnet"], { cwd: directory, echo: true });
+    const result = await io.run(process.execPath, [KIT_CLI, "trustline", "--network", network === "stellar:testnet" ? "testnet" : "mainnet"], { cwd: directory, echo: true });
     const address = /PAY_TO=(G[A-Z2-7]{55})\b/.exec(result.output)?.[1];
     if (result.code === 0 && address !== undefined) {
       io.log(`  ✓ PAY_TO=${address} in .env`);

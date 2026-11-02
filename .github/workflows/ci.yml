@@ -1,16 +1,23 @@
 name: ci
 
+# Every pull request and push to main, and every release (release.yml calls it). Nothing here signs or pays, and no
+# secret is used: the projects' facilitator and the verifier's chain lookup are stand-ins on the runner.
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   check:
+    name: Typecheck, test, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
@@ -21,4 +28,51 @@ jobs:
       - run: npm run check --workspace @stellar-agent-services/wallet
       - run: npm run build --workspace @stellar-agent-services/wallet
       - run: npm run check --workspace @stellar-agent-services/provider-kit
-      - run: npm run build:approve --workspace @stellar-agent-services/provider-kit
+      - run: npm run build
+      - name: What each npm package would publish
+        run: npm run packages:check
+
+  scaffold:
+    # create-stellar-service from this clone, each kind on each network: the project installs, builds and starts, and
+    # the verifier passes it. A mainnet project must also refuse to start without the facilitator's API key. On testnet,
+    # its Dockerfile is built too.
+    name: New ${{ matrix.kind }} project on ${{ matrix.network }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: [wrap, typescript, python]
+        network: [testnet, mainnet]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run scaffold:check -- --kind ${{ matrix.kind }} --network ${{ matrix.network }} ${{ matrix.network == 'testnet' && '--docker' || '' }}
+
+  rehearsal:
+    # The packages published to a throwaway registry on the runner, installed from it, and the projects the published
+    # create-stellar-service makes: what npm users will get, before anything reaches npm.
+    name: npm publish rehearsal
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run packages:rehearse
+
+  image:
+    name: Gateway image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f packages/provider-kit/Dockerfile -t provider-kit:ci .
+      - name: It runs provider-kit
+        run: docker run --rm provider-kit:ci --help

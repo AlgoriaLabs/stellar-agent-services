@@ -100,7 +100,11 @@ export async function findStatus(flags: CliFlags, io: StatusIo): Promise<Status>
   const payTo = kind === "unset" ? local.manifest?.payment.accepts[0].payTo : io.env["PAY_TO"];
   let paidUsdc: string | undefined;
   if (payTo === undefined) {
-    stages.push({ id: "payTo", ok: false, detail: "PAY_TO is empty: provider-kit dev makes a throwaway testnet account, launch connects your wallet" });
+    stages.push({
+      id: "payTo",
+      ok: false,
+      detail: network === "stellar:testnet" ? "PAY_TO is empty: provider-kit dev makes a throwaway testnet account, launch connects your wallet" : "PAY_TO is empty: launch connects your wallet",
+    });
   } else {
     const what = kind === "throwaway" ? "a throwaway testnet account (test payments only)" : "your account";
     try {
@@ -183,10 +187,21 @@ export async function findStatus(flags: CliFlags, io: StatusIo): Promise<Status>
     }
   }
 
-  return { network, stages, next: whatNext({ local: local.manifest !== undefined, paid: Number(paidUsdc ?? 0) > 0, kind, registered, live, verified, requested, fly: fly !== undefined }) };
+  return { network, stages, next: whatNext({ network, local: local.manifest !== undefined, paid: Number(paidUsdc ?? 0) > 0, kind, registered, live, verified, requested, fly: fly !== undefined }) };
 }
 
-function whatNext(state: { local: boolean; paid: boolean; kind: string; registered: boolean; live: boolean; verified: boolean; requested: string | undefined; fly: boolean }): Status["next"] {
+function whatNext(state: {
+  network: StellarNetwork;
+  local: boolean;
+  paid: boolean;
+  kind: string;
+  registered: boolean;
+  live: boolean;
+  verified: boolean;
+  requested: string | undefined;
+  fly: boolean;
+}): Status["next"] {
+  const launch = { command: nextCommand("launch"), why: "connects your wallet, registers the service and deploys it" };
   if (state.registered && state.live && state.verified) return { why: "Nothing: agents can find it, pay it and check its verification." };
   if (state.registered && state.live) {
     return state.requested === undefined
@@ -194,9 +209,11 @@ function whatNext(state: { local: boolean; paid: boolean; kind: string; register
       : { why: `Waiting for the verifier ${shortAddress(state.requested)} to answer: it checks the service and answers on chain.` };
   }
   if (state.registered) return { command: state.fly ? nextCommand("deploy", "fly deploy --ha=false") : "deploy it", why: "serves the manifest with the agent id at the public address" };
+  // Testnet has test money and throwaway accounts: run it and pay it before launching. Mainnet has neither.
+  if (state.network !== "stellar:testnet") return launch;
   if (!state.local) return { command: nextCommand("dev"), why: "runs it on this computer, with no wallet needed" };
   if (!state.paid && state.kind !== "yours") return { command: nextCommand("try"), why: "pays for one call with test money" };
-  return { command: nextCommand("launch"), why: "connects your wallet, registers the service and deploys it" };
+  return launch;
 }
 
 /** The fields of a manifest inspectRegistration() reads, for a provider known by its agent id and payTo. */

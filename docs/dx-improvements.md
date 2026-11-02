@@ -9,6 +9,7 @@ repository, why, and how it was checked. A phase is added here when it lands.
 | 2 | [`provider-kit init --openapi`](#phase-2-provider-kit-init---openapi): the gateway config from an OpenAPI document | Done |
 | 3 | [`npm create stellar-service`, and how agents see you](#phase-3-npm-create-stellar-service-and-how-agents-see-you): a ready project in one command, and what search sees | Done, in review |
 | 4 | [From nothing to live: `dev`, `launch`, `status`](#phase-4-from-nothing-to-live-dev-launch-status): no wallet until launch, one approval page, verification without a hand-off | Done, in review |
+| 5 | [Mainnet, and the checks before a release](#phase-5-mainnet-and-the-checks-before-a-release): a mainnet project, CI that rehearses the npm publish, daily live checks, releases from a tag | Done, in review |
 
 Before these phases, the owner's transactions (the USDC trustline, 8004 registration, validation requests) moved
 from a key in the CLI to the developer's own wallet, approved on a page the CLI opens
@@ -574,3 +575,89 @@ npm run status    # where it stands, and the one command to run next (--json for
   (`STELLAR_NETWORK=testnet node dist/index.js profile <id>`).
 - **`verifier watch` has no container image**: it signs through the Stellar CLI keychain, which would have to be
   installed in the image. Its README describes running it on a small server. It hasn't run against testnet here.
+
+## Phase 5: mainnet, and the checks before a release
+
+### Why
+
+The packages are about to go to npm, for testnet and mainnet. Until now every project started on testnet, and nothing
+checked what an npm user would get: the packed packages, a project made by the published scaffolder, or the mainnet
+services the packages name.
+
+### What changed
+
+- **`create-stellar-service --network mainnet`** makes a project that takes real USDC: OpenZeppelin's facilitator,
+  which wants an API key (`FACILITATOR_AUTH`, sent by the TypeScript template and by a gateway config's
+  `facilitatorHeaders`), a Soroban RPC in `.env`, and no `try` script. `launch` writes the network to `fly.toml`,
+  stages the key and the RPC as Fly secrets, and won't call a deploy live while it takes payments on another network
+  than its registration. `dev` and `status` point to `check` and `launch` on mainnet. A facilitator that refuses the key
+  says so.
+- **CI** ([CONTRIBUTING.md](../CONTRIBUTING.md#what-ci-checks)) makes a project of each kind on each network, then
+  installs, builds and starts it and runs the verifier on it. It checks what every package would publish, and rehearses
+  the publish on a throwaway registry: the packages installed and used from it, and projects the published scaffolder
+  makes.
+- **Daily live checks** read what the packages take for granted on both networks, pay one testnet call with test
+  money, and, with the `MAINNET_FACILITATOR_AUTH` secret, start a mainnet project against the real facilitator.
+- **Releases** ([CONTRIBUTING.md](../CONTRIBUTING.md#releasing)): a version tag publishes the npm packages with
+  provenance, the gateway image at `ghcr.io/algorialabs/provider-kit`, and a GitHub release.
+
+### What the checks found
+
+- **A kit provider could fail the verifier's C7 at random.** `listen()` read each request body with
+  `Readable.toWeb()`, which starts reading at once and stops when nobody reads. A body answered before it was read
+  (C6's oversized probe, a `404`) stayed half-read on its kept-alive connection, and the next request on it, in C7's
+  burst, was reset: in 3 runs of 4 here. The body is now read only when the router reads it, and Node drops the rest
+  after the answer.
+- **The MCP server, installed from npm, would have crashed on start**: it read `llms.txt` from the clone it was built
+  in. Its package now carries the documents (`scripts/pack-docs.mjs`, run before each pack), read when there is no
+  clone.
+- **Receipts would have named version 0.0.0** after a release: the verifier's version, in its User-Agent and in every
+  receipt, was typed in the code. The verifier and the MCP server now read their own `package.json`.
+- **Every package would have published its TypeScript build cache** (`dist/.tsbuildinfo`, about 80 kB), and none its
+  license text. Each package now has a `LICENSE` and `engines.node`.
+
+### How it stays safe
+
+- No check signs or pays on mainnet, and none holds a Stellar key. The pull-request checks use no secret: the
+  facilitator and the verifier's chain lookup are stand-ins on the runner.
+- The only payment is the daily testnet call, from a throwaway account with test XLM and test USDC.
+- The rehearsal publishes to a registry on the runner, with npm settings of its own, so nothing reaches npm.
+- The publish refuses a private package, a tag that doesn't match the version, and packages at different versions.
+  npm itself would skip a private workspace and report success.
+- Release builds use no dependency cache, and the release's third-party actions are pinned to commits.
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `.github/workflows/ci.yml`, `live.yml`, `release.yml` | The pull-request checks; the daily live checks; the release |
+| `scripts/scaffold-check.mjs`, `packages.mjs`, `live-check.mjs` | A new project end to end; packing, versions, the rehearsal and the publish; the live networks |
+| `packages/provider-kit/src/http/node-server.ts`, `test/node-server.test.ts` | The request body, read when the router reads it, and its regression test |
+| `packages/dev-mcp/src/server.ts`, `scripts/pack-docs.mjs` | The documents packed with the package, and its version |
+| `packages/verifier/src/tool.ts` | Its version, from its `package.json` |
+| `packages/*/package.json`, `packages/*/LICENSE` | `engines.node`, no build cache, the license text |
+| `packages/create-stellar-service/`, `packages/provider-kit/src/cli/`, `src/payments/facilitator.ts` | `--network mainnet`; `launch`, `dev` and `status` on mainnet; the facilitator's `401` |
+| Docs | [CONTRIBUTING.md](../CONTRIBUTING.md), [AGENTS.md](../AGENTS.md), README-AI §2, §7 and §15, the five skills, the provider-kit, create-stellar-service and dev-mcp READMEs, the setup guide's mainnet section, `llms.txt` |
+
+### How it was checked
+
+- `npm run typecheck` and `npm test` pass: 1,032 tests. The new test fails without the fix: the request after a
+  `413` hangs, or is reset.
+- `npm run scaffold:check` passed here for all three kinds on both networks, and `npm run packages:rehearse` passed:
+  six packages published to Verdaccio, installed and used, and three projects from the published scaffolder.
+- `npm run live:check` passed on both networks: x402.org's and OpenZeppelin's facilitators (the latter without a key:
+  it answers `401`), both RPCs, Horizon, the USDC contracts and the 8004 registries.
+- actionlint passes the three workflows.
+- **Not run here:** the workflows themselves (they run once pushed), the paid testnet call (it spends test money, so it
+  waits for the maintainer's go), the mainnet facilitator with a key (no key here), and the Docker builds (no Docker
+  daemon here; CI builds them).
+
+### Limits
+
+- **Two Stellar SDKs in a plain install.** `@trionlabs/stellar8004` asks for the Stellar SDK 15 and the kit uses 16,
+  and two copies can't read each other's XDR. Projects made by `create-stellar-service` carry the override; someone
+  installing the kit from npm by hand must add it ([provider-kit README](../packages/provider-kit/README.md)). The
+  rehearsal warns while this holds. A release of `@trionlabs/stellar8004` on SDK 16 would end it.
+- **The packages are still private, at 0.0.0.** The first release removes `"private": true` and publishes once with a
+  token, before npm can trust the workflow ([CONTRIBUTING.md](../CONTRIBUTING.md#releasing)).
+- **The mainnet start check needs a key.** Without the `MAINNET_FACILITATOR_AUTH` secret it is skipped.

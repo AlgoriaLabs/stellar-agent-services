@@ -38,6 +38,7 @@ For a new project around the API, the scaffolder does §3 and more:
 (or `--upstream <url>` without a document). It runs `provider-kit init`, makes the config read `PUBLIC_ORIGIN`,
 `PAY_TO`, `JOB_DB_PATH` and `AGENT_ID` from `.env`, and writes a Dockerfile, `fly.toml` and npm scripts (`dev`, `try`,
 `check`, `status`, `launch`, `deploy`). Read its output to the user, then review the config as §3 says.
+`--network mainnet` makes it take real USDC instead: only when the user asks for that (§6).
 
 ## 3. Write the config
 
@@ -65,7 +66,7 @@ Its JSON Schema is `packages/provider-kit/schemas/gateway-config.schema.json`. F
 - `capacity.concurrency`: what the API can run at once.
 - `upstream.url`, and `upstream.headers` for the API's own key, written as `"env:NAME"`.
 
-Top level: `"payTo": "env:PAY_TO"`, `"network": "stellar:testnet"`, `"facilitator": "https://x402.org/facilitator"`,
+Top level (mainnet's are in §6): `"payTo": "env:PAY_TO"`, `"network": "stellar:testnet"`, `"facilitator": "https://x402.org/facilitator"`,
 `"store": "./jobs.sqlite"`, and `baseUrl` (`"env:PUBLIC_ORIGIN"` works). Secrets never go in the file, and a
 Stellar secret key never goes anywhere near the gateway.
 
@@ -97,6 +98,23 @@ public address from `fly.toml` or `--url`, one approval page where the user's ow
 and with `--deploy` the deploy and the live check. Ask the user first, run it with `--no-open`, give them the link,
 and say what they will approve. `provider-kit status --json` shows where it stands. Never ask the user for a secret
 key. In CI, `register` and `request-validation` take `--source <key>` instead.
+
+## 6. Mainnet
+
+Only when the user asks for real money, after the gateway works on testnet. `--network mainnet` writes these; otherwise
+set them in the config by hand:
+
+```json
+"network": "stellar:pubnet",
+"facilitator": "https://channels.openzeppelin.com/x402",
+"facilitatorHeaders": { "Authorization": "env:FACILITATOR_AUTH" },
+"rpcUrl": "env:SOROBAN_RPC_URL"
+```
+
+OpenZeppelin's facilitator wants an API key from `https://channels.openzeppelin.com/gen`: the user puts it in `.env`
+as `FACILITATOR_AUTH="Bearer <key>"`. `SOROBAN_RPC_URL` starts as `https://mainnet.sorobanrpc.com`. There is no
+throwaway account and no `try`: `launch` sets up `PAY_TO` in the user's wallet (a few XLM) and stages both values as
+Fly secrets. Don't pay the service on mainnet yourself.
 
 ## Done when
 

@@ -83,6 +83,13 @@ The kit's CLI runs the rest, with no secret key anywhere:
 | Go live | `provider-kit launch --config <file>` or `--start '<command>' --url <https origin>` | One approval page in the user's wallet: USDC trustline, 8004 registration [I1]–[I3], validation request. Saves `PAY_TO` and `AGENT_ID`, deploys with `flyctl` when there is a `fly.toml`. Ask the user first; run it with `--no-open` and give them the link. |
 | Where it stands | `provider-kit status --json` | Each stage, from running here to verified, and the command to run next |
 
+**Mainnet** (`stellar:pubnet`, real USDC) is the same code with `network: "stellar:pubnet"`, a facilitator that settles
+it, and a Soroban RPC (`rpc`), since pubnet has no default one. OpenZeppelin's facilitator,
+`https://channels.openzeppelin.com/x402`, wants an API key: `httpFacilitator(url, { headers: { Authorization:
+process.env.FACILITATOR_AUTH } })` with `FACILITATOR_AUTH="Bearer <key>"`, or `facilitatorHeaders` in a gateway config.
+There, `dev` needs the owner's own `PAY_TO`, and `try` doesn't run: it pays with test money.
+`create-stellar-service --network mainnet` writes these settings. Build and try on testnet first.
+
 ## 3. Constants
 
 | Name | Value |
@@ -267,7 +274,8 @@ in the same transaction. Compare token hashes in constant time `[J3]`.
 - **Paid request:** the same request plus `PAYMENT-SIGNATURE`. Reject a payload whose `x402Version` isn't 2, or
   whose `accepted` differs from the challenge in `scheme`, `network`, `asset`, `amount` or `payTo`.
 - **Facilitator:** verify and settle through an x402 facilitator that supports the network with scheme `exact` and
-  sponsored fees, such as `https://x402.org/facilitator` on testnet. The provider never signs anything.
+  sponsored fees, such as `https://x402.org/facilitator` on testnet, or OpenZeppelin's
+  `https://channels.openzeppelin.com/x402` on pubnet, which wants an API key. The provider never signs anything.
 - **Settlement outcome:**
   - `settled`: success with a transaction hash.
   - `failed`: only when the facilitator said success is false and gave no transaction.
@@ -507,6 +515,7 @@ npx stellar-pay pay http://localhost:8787/.well-known/stellar-agent-services.jso
 | Storing the raw `Job-Token` | J3 |
 | Echoing headers, payment payloads, tokens or exception messages in errors | E2 |
 | Marking a facilitator timeout as `failed`, or settling again | J13 |
+| Answering `413` or `404` before reading the request body, and leaving the rest of it on a kept-alive connection: the client's next request on it fails. Read and drop the rest, or close the connection. | Q1 |
 | Long `on-success` work (more than `maxTimeoutSeconds / 2`) | S2 |
 | `500`, a dropped connection or a hang under load instead of `503` + `Retry-After` | Q1 |
 | Rate-limiting check-status or get-result | Q7 |

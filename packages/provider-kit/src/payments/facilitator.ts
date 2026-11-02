@@ -131,6 +131,10 @@ export function httpFacilitator(url: string, options: FacilitatorOptions = {}): 
 
     async supported() {
       const { status, body } = await call("supported", { method: "GET", timeoutSeconds: SUPPORTED_TIMEOUT_SECONDS });
+      // The first call a provider makes, so a missing or wrong API key shows here, before any payment.
+      if (status === 401 || status === 403) {
+        throw new FacilitatorError(`supported answered ${status}: the facilitator wants an API key, such as an Authorization header (facilitatorHeaders in a gateway config), or refused the one sent`);
+      }
       if (status !== 200 || !Array.isArray(body["kinds"])) throw new FacilitatorError(`supported answered ${status}`);
       return { kinds: body["kinds"].filter(isObject) as unknown as SupportedKind[] };
     },

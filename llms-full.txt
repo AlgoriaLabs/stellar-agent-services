@@ -38,6 +38,7 @@ Facts to get right:
 - **Asset:** USDC only. Take its contract address from `USDC_ASSET[network]` in `@stellar-agent-services/protocol`
   instead of retyping it.
 - **Facilitator:** `https://x402.org/facilitator` on testnet. It verifies and settles payments with sponsored fees.
+  On mainnet, OpenZeppelin's `https://channels.openzeppelin.com/x402`, which wants an API key (`FACILITATOR_AUTH`).
 - **Identity:** a provider registers in the Stellar 8004 identity registry. Its `agentId` goes in the manifest, and
   its registered wallet must equal `payTo` (`[I1]`–`[I3]`).
 - **Node.js 22.13 or later.** `.node-version` pins 24.
@@ -79,7 +80,8 @@ alias create-stellar-service="node $REPO/packages/create-stellar-service/dist/in
 the clone into the project's `vendor/` folder, installs it, and writes `.env`, a Dockerfile, `fly.toml` and npm
 scripts: `dev` (runs it, paid to a throwaway testnet account, so no wallet is needed), `try`, `check`, `status`,
 `launch` (goes live) and `deploy`. Pass every answer as a flag (`--openapi`, `--upstream`, `--description`, `--price`):
-without a terminal it asks nothing.
+without a terminal it asks nothing. `--network mainnet` makes a project that takes real USDC: use it only when the user
+asked for mainnet. Such a project has no `try`, since mainnet has no test money: build and try it on testnet first.
 
 `npm run launch` (`provider-kit launch`) opens an approval page in the user's browser, where their wallet signs the
 trustline, the 8004 registration and a validation request in one go, and it may deploy to Fly.io. Ask the user
@@ -126,15 +128,17 @@ These come from the spec and [SECURITY.md](SECURITY.md). Breaking one loses or d
 - **Provider:** the manifest passes the JSON Schema and `checkManifestRules` (or the MCP tool
   `validate_manifest`). `provider-kit check` and `verifier check` pass. A paid testnet call succeeds and the
   transfer is on chain: `provider-kit try <service> --manifest <url> --yes`, after the user agreed to pay, pays from
-  a throwaway testnet account (or `stellar-pay pay` from a payer wallet). Go through the "How agents see you" hints
-  at the end of `provider-kit check` with the user: on mainnet, search matches only `provider.name` and
-  `provider.description` (`check --fix` writes the missing words in); on testnet it also reads the manifest's
-  services. `provider-kit status --json` shows each stage, from running to
-  verified.
+  a throwaway testnet account (or `stellar-pay pay` from a payer wallet). For a mainnet provider, make that call on
+  testnet, with the same code: on mainnet, only check it, and leave the first real payment to the user. Go through
+  the "How agents see you" hints at the end of `provider-kit check` with the user: on mainnet, search matches only
+  `provider.name` and `provider.description` (`check --fix` writes the missing words in); on testnet it also reads
+  the manifest's services. `provider-kit status --json` shows each stage, from running to verified.
   The checklist is in [docs/standard/README-AI.md §13](docs/standard/README-AI.md#13-testing-and-conformance).
 - **Client or adapter:** the conformance checks pass, and tests use `Keypair.random()` and never the network.
 - **Any change here:** `npm run typecheck` and `npm test` pass. If you changed a document that
-  [llms.txt](llms.txt) links to, run `npm run llms`.
+  [llms.txt](llms.txt) links to, run `npm run llms`. If you changed `create-stellar-service`, its templates or what
+  a package publishes, `npm run scaffold:check` (for each kind and network you touched) and `npm run packages:check`
+  pass too.
 
 Cite spec rules by id in code comments, findings and error messages, as the existing code does.
 
@@ -145,7 +149,17 @@ npm install
 npm run typecheck     # tsc -b over every package
 npm test              # vitest, the whole workspace, offline
 npm run llms          # rebuild llms-full.txt after a doc change (CI checks it)
+
+npm run build && npm run packages:check   # what each npm package would publish
+npm run scaffold:check -- --kind typescript --network mainnet   # a new project: made, built, started, verified
+npm run packages:rehearse                 # publish to a throwaway local registry, then install and use the packages
+npm run live:check                        # read-only checks against the live networks: facilitators, RPC, registries
 ```
+
+- **CI** runs all of these on every pull request except `live:check`, which runs daily
+  ([CONTRIBUTING.md](CONTRIBUTING.md#what-ci-checks)). The project checks and the rehearsal install from the npm
+  registry, and `live:check` reads the live networks. None of them signs or pays. A release is a version tag
+  ([CONTRIBUTING.md](CONTRIBUTING.md#releasing)).
 
 - **Order of change:** the spec is the product. A new behavior becomes a spec rule first
   ([docs/provider-standard.md](docs/provider-standard.md)), then the Kit and the payment client, then a verifier
@@ -1083,6 +1097,13 @@ The kit's CLI runs the rest, with no secret key anywhere:
 | Go live | `provider-kit launch --config <file>` or `--start '<command>' --url <https origin>` | One approval page in the user's wallet: USDC trustline, 8004 registration [I1]–[I3], validation request. Saves `PAY_TO` and `AGENT_ID`, deploys with `flyctl` when there is a `fly.toml`. Ask the user first; run it with `--no-open` and give them the link. |
 | Where it stands | `provider-kit status --json` | Each stage, from running here to verified, and the command to run next |
 
+**Mainnet** (`stellar:pubnet`, real USDC) is the same code with `network: "stellar:pubnet"`, a facilitator that settles
+it, and a Soroban RPC (`rpc`), since pubnet has no default one. OpenZeppelin's facilitator,
+`https://channels.openzeppelin.com/x402`, wants an API key: `httpFacilitator(url, { headers: { Authorization:
+process.env.FACILITATOR_AUTH } })` with `FACILITATOR_AUTH="Bearer <key>"`, or `facilitatorHeaders` in a gateway config.
+There, `dev` needs the owner's own `PAY_TO`, and `try` doesn't run: it pays with test money.
+`create-stellar-service --network mainnet` writes these settings. Build and try on testnet first.
+
 ## 3. Constants
 
 | Name | Value |
@@ -1267,7 +1288,8 @@ in the same transaction. Compare token hashes in constant time `[J3]`.
 - **Paid request:** the same request plus `PAYMENT-SIGNATURE`. Reject a payload whose `x402Version` isn't 2, or
   whose `accepted` differs from the challenge in `scheme`, `network`, `asset`, `amount` or `payTo`.
 - **Facilitator:** verify and settle through an x402 facilitator that supports the network with scheme `exact` and
-  sponsored fees, such as `https://x402.org/facilitator` on testnet. The provider never signs anything.
+  sponsored fees, such as `https://x402.org/facilitator` on testnet, or OpenZeppelin's
+  `https://channels.openzeppelin.com/x402` on pubnet, which wants an API key. The provider never signs anything.
 - **Settlement outcome:**
   - `settled`: success with a transaction hash.
   - `failed`: only when the facilitator said success is false and gave no transaction.
@@ -1507,6 +1529,7 @@ npx stellar-pay pay http://localhost:8787/.well-known/stellar-agent-services.jso
 | Storing the raw `Job-Token` | J3 |
 | Echoing headers, payment payloads, tokens or exception messages in errors | E2 |
 | Marking a facilitator timeout as `failed`, or settling again | J13 |
+| Answering `413` or `404` before reading the request body, and leaving the rest of it on a kept-alive connection: the client's next request on it fails. Read and drop the rest, or close the connection. | Q1 |
 | Long `on-success` work (more than `maxTimeoutSeconds / 2`) | S2 |
 | `500`, a dropped connection or a hang under load instead of `503` + `Retry-After` | Q1 |
 | Rate-limiting check-status or get-result | Q7 |
@@ -2083,6 +2106,26 @@ Clients accept `http://` only in development [M6]. `launch` deploys to Fly.io; o
 - for `rateLimit`, set `keyHeader` to the header your proxy puts the client address in;
 - health checks can use `GET /healthz`.
 
+### On mainnet
+
+Everything above holds on `stellar:pubnet`, where clients pay real USDC. `npm create stellar-service -- --network
+mainnet` starts a project there; a testnet project moves by hand
+([create-stellar-service](../packages/create-stellar-service/README.md#mainnet)). What is different:
+
+- **The facilitator.** x402.org's settles testnet only. Stellar's docs list OpenZeppelin's for mainnet,
+  `https://channels.openzeppelin.com/x402`, which wants an API key from
+  [channels.openzeppelin.com/gen](https://channels.openzeppelin.com/gen). A gateway config sends it with
+  `"facilitatorHeaders": { "Authorization": "env:FACILITATOR_AUTH" }` and `FACILITATOR_AUTH="Bearer <key>"` in `.env`;
+  the library takes `httpFacilitator(url, { headers })`. The provider checks it when it starts, before any payment.
+- **The RPC.** Mainnet has no public default: set `rpcUrl` or `rpc`. The Stellar 8004 SDK uses
+  `https://mainnet.sorobanrpc.com`; for production traffic, an
+  [RPC provider](https://developers.stellar.org/docs/data/apis/rpc/providers)'s is safer.
+- **No test money.** `provider-kit try` and the throwaway account are testnet only. `launch` connects an account of
+  yours, which needs a few XLM for the trustline's reserve and the fees. It stages the facilitator's key and the RPC
+  as Fly secrets.
+- **Search.** On mainnet, search matches only the provider's name and description: `provider-kit check --fix` writes
+  the missing words in.
+
 ## 9. Get verified
 
 A verifier checks a provider from outside, issues a verification receipt and badges, and records the result in
@@ -2146,6 +2189,10 @@ gateway:  provider-kit serve --config <file>  ->  forwards paid jobs to your exi
   approved in your own wallet, on a page the CLI opens on your computer. See [Approving in your wallet](#approving-in-your-wallet).
 
 The step-by-step guide is [docs/provider-setup-guide.md](../../docs/provider-setup-guide.md).
+
+Installed from npm into a project of your own, the kit needs the override this repository has, which
+`create-stellar-service` also writes: `"overrides": { "@stellar/stellar-sdk": "16.3.1" }` in `package.json`. The
+Stellar 8004 SDK asks for SDK 15, and two copies of the SDK can't read each other's XDR, so registration would fail.
 
 ## From nothing to live
 
@@ -2258,7 +2305,8 @@ PAY_TO=G... provider-kit serve --config provider.config.json
 
 **Docker:** `docker build -f packages/provider-kit/Dockerfile -t provider-kit .` from the repository root, then
 mount the config at `/config/provider.config.json` and a volume at `/data` (set `"store": "/data/jobs.sqlite"`).
-`GET /healthz` answers for health checks.
+`GET /healthz` answers for health checks. From the first release on, each release also publishes this image as
+`ghcr.io/algorialabs/provider-kit:<version>`.
 
 ### From an OpenAPI document
 
@@ -2370,12 +2418,20 @@ Deploy to Fly.io now (fly deploy, app text-tools)? [Y/n]
   is `--validator`, `STELLAR_VALIDATOR`, or the default in `src/cli/validators.ts`; a provider's own account is never
   asked.
 - **Saved.** `PAY_TO` and `AGENT_ID` in `.env` (`DEV_PAY_TO` goes), the agent id where the gateway config reads it,
-  and the public settings in `fly.toml`. A new agent's id is saved even if a later step stops, so running `launch`
-  again never registers a second agent; it signs nothing when everything is in place.
-- **Deployed and checked.** `flyctl` creates the app the first time, the API's key from `.env` is staged as a Fly
-  secret, and `fly deploy` runs with one machine. Then `launch` waits until the public manifest serves the agent id,
-  and checks [I1]–[I3] from outside. A gateway whose `upstream.url` is on 127.0.0.1 isn't deployed: in a container
+  and the public settings in `fly.toml`. For a provider started by its own command, that includes `STELLAR_NETWORK`
+  (and `FACILITATOR_URL` when set), so it takes payments where it registered. A new agent's id is saved even if a later
+  step stops, so running `launch` again never registers a second agent; it signs nothing when everything is in place.
+- **Deployed and checked.** `flyctl` creates the app the first time, and what may hold a key is staged as Fly secrets
+  from `.env`: every variable a gateway config reads, such as the API's key (one that isn't set is named, since the
+  gateway can't start without it), or a command's `FACILITATOR_AUTH` and `SOROBAN_RPC_URL`. `fly deploy` runs with one
+  machine. Then `launch` waits until the public manifest serves the agent id, on the network it registered on, and
+  checks [I1]–[I3] from outside. A gateway whose `upstream.url` is on 127.0.0.1 isn't deployed: in a container
   that is the container itself, unless the API runs inside it too, as the Python kind's does.
+- **Mainnet.** The same steps, on `stellar:pubnet`: the wallet's account needs a few XLM, as no Friendbot funds it.
+  Mainnet's facilitator, OpenZeppelin's (`https://channels.openzeppelin.com/x402`), wants an API key: a gateway config
+  sends it with `"facilitatorHeaders": { "Authorization": "env:FACILITATOR_AUTH" }`. The provider checks it at start,
+  and a 401 says so. `npm create stellar-service -- --network mainnet` sets all of this up
+  ([Mainnet](../create-stellar-service/README.md#mainnet)).
 
 ### Trying a paid call
 
@@ -2583,7 +2639,7 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/provider.ts` | `createProvider()`: wires everything into one `fetch` handler; startup checks |
 | `src/manifest.ts` | Builds the manifest from the same config as the 402 challenge, and checks it |
 | `src/http/router.ts` | Manifest, create-job, check-status and get-result routes, in §5.4 order |
-| `src/http/node-server.ts` | `listen()`: serves a provider on Node's HTTP server, with `/healthz` and graceful close |
+| `src/http/node-server.ts` | `listen()`: serves a provider on Node's HTTP server, with `/healthz` and graceful close. A request body is read only as far as the router reads it, so an early answer (`413`) leaves the connection usable. |
 | `src/payments/payload-checks.ts` | Local payment checks and the payment fingerprint |
 | `src/payments/facilitator.ts` | The facilitator client and the startup check |
 | `src/payments/settlement.ts` | Settlement as `settled`, `failed` or `uncertain` (never charge twice) |
@@ -2696,6 +2752,29 @@ the first deploy: `launch` registers the service with it, writes `PUBLIC_ORIGIN`
 `uv run --with-requirements requirements.txt`, so there is no virtual environment to make. Without it, the next steps
 give the two commands that make `.venv`.
 
+## Mainnet
+
+`--network mainnet` makes a project that takes real USDC on `stellar:pubnet`. What changes:
+
+- **The facilitator.** Payments settle through OpenZeppelin's facilitator, `https://channels.openzeppelin.com/x402`,
+  which Stellar's docs list for mainnet (x402.org's settles testnet only). It wants an API key: get one at
+  [channels.openzeppelin.com/gen](https://channels.openzeppelin.com/gen) and set `FACILITATOR_AUTH="Bearer <key>"` in
+  `.env`. A gateway config sends it as `"facilitatorHeaders": { "Authorization": "env:FACILITATOR_AUTH" }`; the
+  TypeScript service reads it in `src/server.ts`. Without it, the service stops at start and says so.
+- **The RPC.** `SOROBAN_RPC_URL` in `.env` starts as `https://mainnet.sorobanrpc.com`, the RPC the Stellar 8004 SDK
+  uses. Mainnet has no default one. For production traffic, an [RPC provider](https://developers.stellar.org/docs/data/apis/rpc/providers)'s
+  is safer.
+- **No test money.** There is no throwaway account and no `npm run try`. `npm run launch` sets up the account clients
+  pay in your own wallet, which needs a few XLM, and `npm run dev` runs once `PAY_TO` is set.
+- **The deploy.** `launch` stages `FACILITATOR_AUTH` and `SOROBAN_RPC_URL` as Fly secrets. A TypeScript service reads its
+  network from `STELLAR_NETWORK`, which `launch` also writes to `fly.toml`. It won't call a deploy live while it takes
+  payments on another network than the one it registered on.
+
+To take a testnet project to mainnet, make these changes by hand: in a gateway config, `network`, `facilitator`,
+`facilitatorHeaders` and `rpcUrl`; in a TypeScript project's `.env`, `STELLAR_NETWORK=stellar:pubnet`. In both, add
+`FACILITATOR_AUTH` and `SOROBAN_RPC_URL` to `.env`. Then empty `PAY_TO` and `AGENT_ID` (testnet's agent ids don't exist
+on mainnet), delete `DEV_PAY_TO`, and run `npm run launch`.
+
 ## For scripts and coding agents
 
 Flags answer every question. Without a terminal it asks nothing, and `--kind` is needed:
@@ -2713,6 +2792,7 @@ create-stellar-service captioner --kind wrap --openapi http://127.0.0.1:8000/ope
 | `--description <text>` | One sentence on what it offers: search matches it and the name |
 | `--name <text>` | The provider's name. Default: the folder's, or the document's title. |
 | `--price <usdc>` | What a call costs, in USDC. Default `0.01`. |
+| `--network testnet\|mainnet` | Where clients pay. Default `testnet`, with test money. `mainnet` takes real USDC: see [Mainnet](#mainnet). |
 | `--wallet`, `--pay-to <G…>` | Set up the payout account now in your wallet, or use an address you have. Without either, nothing is needed until `npm run launch`. |
 | `--yes` | Take the defaults for the questions no flag answers |
 
@@ -2725,7 +2805,7 @@ does `npm run launch` later: a coding agent runs it with `--no-open` and gives t
   developer's own wallet, on `provider-kit launch`'s approval page, and only its public address is saved. Until then,
   `npm run dev`'s throwaway testnet account has no key anyone keeps.
 - **It never pays.** `npm run try` pays later, when the developer runs it, from a throwaway account with test money.
-- **Testnet only.** Every project starts on `stellar:testnet`.
+- **Testnet unless asked.** Every project starts on `stellar:testnet`; only `--network mainnet` makes a mainnet one.
 - **Nothing is overwritten.** It refuses a folder that already has files in it.
 
 ## Files
@@ -5168,7 +5248,8 @@ Any other MCP client takes the same command as a stdio server:
 }
 ```
 
-The server reads the documents of the clone it is built in, so `git pull && npm run build` updates it.
+The server reads the documents of the clone it is built in, so `git pull && npm run build` updates it. Installed from
+npm, it reads the copy packed with it in `repository/`, from the same commit as its code.
 
 As a library, `createServer(options)` returns the `McpServer`. `options.verify` passes options to
 `verifyProvider()`, such as an offline provider's `fetch` in tests. It never takes a payer.
@@ -5180,6 +5261,7 @@ As a library, `createServer(options)` returns the `McpServer`. `options.verify` 
 | `src/server.ts` | `createServer()`: the tools |
 | `src/docs.ts` | The llms.txt index, document reads and search, spec rule parsing |
 | `src/index.ts` | The stdio entry point |
+| `scripts/pack-docs.mjs` | Before npm packs the package: copies llms.txt and every document it links to into `repository/` |
 | `test/server.test.ts` | Every tool through a real MCP client; `check_provider` against the verifier's offline provider |
 
 
@@ -5204,7 +5286,8 @@ services on Stellar, paid per job in USDC through x402.
 | [`verify-provider`](skills/verify-provider/SKILL.md) | Check a provider (C1–C7), fix failing rules, register on 8004 and get verified |
 
 The skills load when a task matches, and point to the references in this repository. They are plain Markdown, so
-agents without plugin support can read them directly.
+agents without plugin support can read them directly. They start on testnet, with test money. Mainnet (real USDC)
+needs `--network mainnet` and a facilitator API key, and an agent never pays on mainnet unless the user asked.
 
 The skills tell the agent to clone and build this repository, because the packages are not on npm yet. For spec
 lookups, manifest validation and provider checks, also add the [MCP server](../../packages/dev-mcp) from that clone:

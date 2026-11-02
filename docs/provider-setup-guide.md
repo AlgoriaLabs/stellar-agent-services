@@ -297,6 +297,26 @@ Clients accept `http://` only in development [M6]. `launch` deploys to Fly.io; o
 - for `rateLimit`, set `keyHeader` to the header your proxy puts the client address in;
 - health checks can use `GET /healthz`.
 
+### On mainnet
+
+Everything above holds on `stellar:pubnet`, where clients pay real USDC. `npm create stellar-service -- --network
+mainnet` starts a project there; a testnet project moves by hand
+([create-stellar-service](../packages/create-stellar-service/README.md#mainnet)). What is different:
+
+- **The facilitator.** x402.org's settles testnet only. Stellar's docs list OpenZeppelin's for mainnet,
+  `https://channels.openzeppelin.com/x402`, which wants an API key from
+  [channels.openzeppelin.com/gen](https://channels.openzeppelin.com/gen). A gateway config sends it with
+  `"facilitatorHeaders": { "Authorization": "env:FACILITATOR_AUTH" }` and `FACILITATOR_AUTH="Bearer <key>"` in `.env`;
+  the library takes `httpFacilitator(url, { headers })`. The provider checks it when it starts, before any payment.
+- **The RPC.** Mainnet has no public default: set `rpcUrl` or `rpc`. The Stellar 8004 SDK uses
+  `https://mainnet.sorobanrpc.com`; for production traffic, an
+  [RPC provider](https://developers.stellar.org/docs/data/apis/rpc/providers)'s is safer.
+- **No test money.** `provider-kit try` and the throwaway account are testnet only. `launch` connects an account of
+  yours, which needs a few XLM for the trustline's reserve and the fees. It stages the facilitator's key and the RPC
+  as Fly secrets.
+- **Search.** On mainnet, search matches only the provider's name and description: `provider-kit check --fix` writes
+  the missing words in.
+
 ## 9. Get verified
 
 A verifier checks a provider from outside, issues a verification receipt and badges, and records the result in

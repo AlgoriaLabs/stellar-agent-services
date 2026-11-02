@@ -8,7 +8,6 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { Readable } from "node:stream";
 import type { Provider } from "../provider.js";
 
 export interface ListenOptions {
@@ -89,6 +88,46 @@ function toRequest(incoming: IncomingMessage): Request {
     else if (value !== undefined) headers.set(name, value);
   }
   const method = incoming.method ?? "GET";
-  const body = method === "GET" || method === "HEAD" ? {} : { body: Readable.toWeb(incoming) as ReadableStream<Uint8Array>, duplex: "half" as const };
+  const body = method === "GET" || method === "HEAD" ? {} : { body: requestBody(incoming), duplex: "half" as const };
   return new Request(new URL(incoming.url ?? "/", "http://localhost"), { method, headers, ...body });
+}
+
+/**
+ * The request body as a stream that reads nothing until the router reads it. Readable.toWeb() starts reading at once
+ * and stops when nobody reads, so a body answered before it was read (413 payload_too_large, 404) stayed half-read
+ * on a kept-alive connection, and the client's next request on it failed [Q1]. Left unread, Node drops the rest of the
+ * body after the answer, as for any server. A body the router stops reading, over the size limit, is dropped too.
+ */
+function requestBody(incoming: IncomingMessage): ReadableStream<Uint8Array> {
+  let onData: ((chunk: Buffer) => void) | undefined;
+  let finished = false;
+  return new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        if (onData === undefined) {
+          onData = (chunk) => {
+            controller.enqueue(chunk);
+            if ((controller.desiredSize ?? 0) <= 0) incoming.pause();
+          };
+          incoming.on("data", onData);
+          incoming.once("end", () => {
+            if (!finished) controller.close();
+            finished = true;
+          });
+          incoming.once("error", (error) => {
+            if (!finished) controller.error(error);
+            finished = true;
+          });
+        }
+        incoming.resume();
+      },
+      cancel() {
+        finished = true;
+        if (onData !== undefined) incoming.off("data", onData);
+        incoming.resume();
+      },
+    },
+    // Nothing is read ahead: only what the router asks for.
+    { highWaterMark: 0 },
+  );
 }

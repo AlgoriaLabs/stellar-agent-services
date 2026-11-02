@@ -75,6 +75,29 @@ the first deploy: `launch` registers the service with it, writes `PUBLIC_ORIGIN`
 `uv run --with-requirements requirements.txt`, so there is no virtual environment to make. Without it, the next steps
 give the two commands that make `.venv`.
 
+## Mainnet
+
+`--network mainnet` makes a project that takes real USDC on `stellar:pubnet`. What changes:
+
+- **The facilitator.** Payments settle through OpenZeppelin's facilitator, `https://channels.openzeppelin.com/x402`,
+  which Stellar's docs list for mainnet (x402.org's settles testnet only). It wants an API key: get one at
+  [channels.openzeppelin.com/gen](https://channels.openzeppelin.com/gen) and set `FACILITATOR_AUTH="Bearer <key>"` in
+  `.env`. A gateway config sends it as `"facilitatorHeaders": { "Authorization": "env:FACILITATOR_AUTH" }`; the
+  TypeScript service reads it in `src/server.ts`. Without it, the service stops at start and says so.
+- **The RPC.** `SOROBAN_RPC_URL` in `.env` starts as `https://mainnet.sorobanrpc.com`, the RPC the Stellar 8004 SDK
+  uses. Mainnet has no default one. For production traffic, an [RPC provider](https://developers.stellar.org/docs/data/apis/rpc/providers)'s
+  is safer.
+- **No test money.** There is no throwaway account and no `npm run try`. `npm run launch` sets up the account clients
+  pay in your own wallet, which needs a few XLM, and `npm run dev` runs once `PAY_TO` is set.
+- **The deploy.** `launch` stages `FACILITATOR_AUTH` and `SOROBAN_RPC_URL` as Fly secrets. A TypeScript service reads its
+  network from `STELLAR_NETWORK`, which `launch` also writes to `fly.toml`. It won't call a deploy live while it takes
+  payments on another network than the one it registered on.
+
+To take a testnet project to mainnet, make these changes by hand: in a gateway config, `network`, `facilitator`,
+`facilitatorHeaders` and `rpcUrl`; in a TypeScript project's `.env`, `STELLAR_NETWORK=stellar:pubnet`. In both, add
+`FACILITATOR_AUTH` and `SOROBAN_RPC_URL` to `.env`. Then empty `PAY_TO` and `AGENT_ID` (testnet's agent ids don't exist
+on mainnet), delete `DEV_PAY_TO`, and run `npm run launch`.
+
 ## For scripts and coding agents
 
 Flags answer every question. Without a terminal it asks nothing, and `--kind` is needed:
@@ -92,6 +115,7 @@ create-stellar-service captioner --kind wrap --openapi http://127.0.0.1:8000/ope
 | `--description <text>` | One sentence on what it offers: search matches it and the name |
 | `--name <text>` | The provider's name. Default: the folder's, or the document's title. |
 | `--price <usdc>` | What a call costs, in USDC. Default `0.01`. |
+| `--network testnet\|mainnet` | Where clients pay. Default `testnet`, with test money. `mainnet` takes real USDC: see [Mainnet](#mainnet). |
 | `--wallet`, `--pay-to <G…>` | Set up the payout account now in your wallet, or use an address you have. Without either, nothing is needed until `npm run launch`. |
 | `--yes` | Take the defaults for the questions no flag answers |
 
@@ -104,7 +128,7 @@ does `npm run launch` later: a coding agent runs it with `--no-open` and gives t
   developer's own wallet, on `provider-kit launch`'s approval page, and only its public address is saved. Until then,
   `npm run dev`'s throwaway testnet account has no key anyone keeps.
 - **It never pays.** `npm run try` pays later, when the developer runs it, from a throwaway account with test money.
-- **Testnet only.** Every project starts on `stellar:testnet`.
+- **Testnet unless asked.** Every project starts on `stellar:testnet`; only `--network mainnet` makes a mainnet one.
 - **Nothing is overwritten.** It refuses a folder that already has files in it.
 
 ## Files

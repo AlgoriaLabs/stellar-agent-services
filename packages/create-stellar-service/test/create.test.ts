@@ -10,7 +10,21 @@ import { createProvider, loadGatewayConfig } from "@stellar-agent-services/provi
 import { Keypair } from "@stellar/stellar-sdk";
 import ts from "typescript";
 import { afterAll, describe, expect, it } from "vitest";
-import { adaptInitConfig, envFile, packageJson, pythonGatewayConfig, SUMMARIZE, TEMPLATE_FILES, template, type Kind, type Project } from "../src/files.js";
+import {
+  adaptInitConfig,
+  envFile,
+  FACILITATOR_KEYS,
+  FACILITATORS,
+  MAINNET_RPC,
+  packageJson,
+  pythonGatewayConfig,
+  SUMMARIZE,
+  TEMPLATE_FILES,
+  template,
+  type Kind,
+  type Network,
+  type Project,
+} from "../src/files.js";
 import { KIT_CLI, kitDependencies, OVERRIDES, type KitSource } from "../src/kit.js";
 import { Cancelled, classify, create, packageName, titleCase, UsageError, type CreateIo, type RunResult } from "../src/main.js";
 
@@ -248,6 +262,7 @@ describe("create-stellar-service, from flags", () => {
     await expect(create([folder(), "--kind", "python", "--openapi", FIXTURE], fakeIo().io)).rejects.toThrow(/for --kind wrap/);
     await expect(create([folder(), "--kind", "python", "--pay-to", "SABC"], fakeIo().io)).rejects.toThrow(/public Stellar account/);
     await expect(create([folder(), "--kind", "python", "--pay-to", PAY_TO, "--wallet"], fakeIo().io)).rejects.toThrow(/pick one/);
+    await expect(create([folder(), "--kind", "python", "--network", "futurenet"], fakeIo().io)).rejects.toThrow(/--network must be testnet or mainnet/);
     const stopped = fakeIo({ fetch: async () => Promise.reject(Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNREFUSED" } })) });
     const unread = folder();
     await expect(create([unread, "--kind", "wrap", "--openapi", "http://127.0.0.1:8000/openapi.json"], stopped.io)).rejects.toThrow(/nothing answers there.*Nothing was written/);
@@ -284,6 +299,72 @@ describe("the account clients pay", () => {
     expect(await create([directory, "--kind", "typescript", "--wallet"], fake.io)).toBe(0);
     expect(env(directory)["PAY_TO"]).toBe("");
     expect(fake.output.join("\n")).toContain("The account wasn't set up. npm run launch sets it up when the service goes live.");
+  });
+});
+
+describe("a mainnet project, with --network mainnet", () => {
+  it("makes a TypeScript project that reads its network, the facilitator's key and an RPC from .env, without testnet-only steps", async () => {
+    const directory = folder();
+    const fake = fakeIo();
+    expect(await create([directory, "--kind", "typescript", "--network", "mainnet"], fake.io)).toBe(0);
+    expect(env(directory)).toMatchObject({ PAY_TO: "", STELLAR_NETWORK: "stellar:pubnet", FACILITATOR_AUTH: "", SOROBAN_RPC_URL: MAINNET_RPC });
+    expect(read(directory, ".env")).toContain("Mainnet has no throwaway accounts.");
+    expect(read(directory, ".env")).toContain(FACILITATOR_KEYS);
+    // try pays with test money, which mainnet doesn't have.
+    expect(Object.keys(JSON.parse(read(directory, "package.json")).scripts)).toEqual(["build", "dev", "check", "status", "launch", "deploy", "start"]);
+    const text = fake.output.join("\n");
+    expect(text).toContain("paid in USDC on Stellar mainnet, real money");
+    expect(text).toContain(`set FACILITATOR_AUTH in .env   mainnet's facilitator key, as "Bearer <key>": ${FACILITATOR_KEYS}`);
+    expect(text).toContain("npm run dev        starts the service at http://localhost:8787, once launch has set PAY_TO");
+    expect(text).not.toContain("npm run try");
+    const readme = read(directory, "README.md");
+    expect(readme).toContain("`npm run launch` does the rest, on mainnet:");
+    expect(readme).toContain("The account needs a few XLM");
+    expect(readme).not.toContain("npm run try");
+  });
+
+  it("makes a gateway config that pays out on mainnet through a facilitator with its key, and won't load without the key", async () => {
+    const directory = folder();
+    expect(await create([directory, "--kind", "python", "--network", "pubnet"], fakeIo().io)).toBe(0);
+    const path = join(directory, "provider.config.json");
+    expect(JSON.parse(read(directory, "provider.config.json"))).toMatchObject({
+      network: "stellar:pubnet",
+      facilitator: FACILITATORS["stellar:pubnet"],
+      facilitatorHeaders: { Authorization: "env:FACILITATOR_AUTH" },
+      rpcUrl: "env:SOROBAN_RPC_URL",
+    });
+    const settings = { PAY_TO, PUBLIC_ORIGIN: "http://localhost:8787", JOB_DB_PATH: "memory", SOROBAN_RPC_URL: MAINNET_RPC };
+    await expect(loadGatewayConfig(path, { env: settings, openStore: false, overrides: { dev: true } })).rejects.toThrow(/FACILITATOR_AUTH, which is not set/);
+    const { config } = await loadGatewayConfig(path, { env: { ...settings, FACILITATOR_AUTH: "Bearer test-key" }, openStore: false, overrides: { dev: true } });
+    const provider = createProvider({ ...config, rpc: false });
+    expect(provider.manifest.payment.accepts[0]).toMatchObject({ network: "stellar:pubnet", payTo: PAY_TO });
+    await provider.close();
+    // The gateway's network is in its config, not .env.
+    expect(env(directory)).toMatchObject({ FACILITATOR_AUTH: "", SOROBAN_RPC_URL: MAINNET_RPC });
+    expect(env(directory)).not.toHaveProperty("STELLAR_NETWORK");
+    expect(JSON.parse(read(directory, "package.json")).scripts).not.toHaveProperty("try");
+  });
+
+  it("turns init's testnet config into a mainnet one in place, and keeps the API's key apart from the facilitator's", async () => {
+    const { config, variables } = adaptInitConfig(JSON.stringify(INIT_CONFIG), {}, "stellar:pubnet");
+    expect(Object.keys(JSON.parse(config))).toEqual(["$schema", "baseUrl", "network", "payTo", "facilitator", "facilitatorHeaders", "rpcUrl", "provider", "store", "services"]);
+    expect(JSON.parse(config)).toMatchObject({ network: "stellar:pubnet", facilitator: FACILITATORS["stellar:pubnet"], rpcUrl: "env:SOROBAN_RPC_URL" });
+    expect(variables).toEqual(["UPSTREAM_X_API_KEY"]);
+
+    const directory = folder();
+    const fake = fakeIo();
+    expect(await create([directory, "--kind", "wrap", "--openapi", FIXTURE, "--network", "mainnet"], fake.io)).toBe(0);
+    expect(env(directory)).toMatchObject({ UPSTREAM_X_API_KEY: "", FACILITATOR_AUTH: "", SOROBAN_RPC_URL: MAINNET_RPC });
+    expect(fake.output.join("\n")).toContain("set UPSTREAM_X_API_KEY in .env   the gateway sends it to your API");
+  });
+
+  it("sets up the account clients pay on mainnet with --wallet, so dev runs before launch", async () => {
+    const directory = folder();
+    const fake = fakeIo();
+    expect(await create([directory, "--kind", "typescript", "--network", "mainnet", "--wallet"], fake.io)).toBe(0);
+    expect(fake.runs.find((run) => run.args[1] === "trustline")?.args).toEqual([KIT_CLI, "trustline", "--network", "mainnet"]);
+    expect(env(directory)).toMatchObject({ PAY_TO });
+    expect(fake.output.join("\n")).toContain("npm run dev        starts the service at http://localhost:8787\n");
   });
 });
 
@@ -334,7 +415,16 @@ describe("create-stellar-service, on a terminal", () => {
 });
 
 describe("the files", () => {
-  const project = (kind: Kind, vendored = true): Project => ({ kind, package: "demo", app: "demo", name: 'Demo "Quoted"', description: "Does things.", price: "0.03", vendored });
+  const project = (kind: Kind, vendored = true, network: Network = "stellar:testnet"): Project => ({
+    kind,
+    package: "demo",
+    app: "demo",
+    name: 'Demo "Quoted"',
+    description: "Does things.",
+    price: "0.03",
+    network,
+    vendored,
+  });
 
   it("fills every placeholder in every template", () => {
     for (const kind of ["wrap", "typescript", "python"] as const) {
@@ -390,6 +480,12 @@ describe("the files", () => {
     expect(text).toContain(`PAY_TO=${PAY_TO}`);
     expect(text).toMatch(/UPSTREAM_X_API_KEY=\n$/);
     expect(text).not.toMatch(/SECRET|SEED|^S[A-Z2-7]{55}/m);
+    // On mainnet too: the facilitator's API key is left for the developer to fill in, and never a Stellar key.
+    for (const kind of ["wrap", "typescript", "python"] as const) {
+      const mainnet = envFile(project(kind, true, "stellar:pubnet"), { variables: [] });
+      expect(mainnet).toMatch(/^FACILITATOR_AUTH=$/m);
+      expect(mainnet).not.toMatch(/SECRET|SEED|^S[A-Z2-7]{55}/m);
+    }
     expect(pythonGatewayConfig(project("python"))).toContain('"payTo": "env:PAY_TO"');
   });
 });
