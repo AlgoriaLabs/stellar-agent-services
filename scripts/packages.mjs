@@ -321,8 +321,10 @@ if (TOOL.version !== ${JSON.stringify(version)}) throw new Error("the verifier s
   }
   console.log("  ✓ stellar-agent-services-mcp reads AGENTS.md and the spec's rules from its own package");
 
-  // One Stellar SDK, or 8004 registration can't read the kit's transactions: a project needs the same overrides as
-  // this repository. create-stellar-service writes them; someone installing the kit by hand may not.
+  // What a plain install brings, with none of the overrides create-stellar-service writes: how many Stellar SDKs, and
+  // what npm audit says about the packages' dependencies. Both are warnings: the causes sit in other packages, and the
+  // advisories change from day to day.
+  const warn = (title, message) => console.log(process.env["GITHUB_ACTIONS"] === "true" ? `::warning title=${title}::${message}` : `  ! ${message}`);
   const listed = spawnSync("npm", ["ls", "@stellar/stellar-sdk", "--all", "--json"], { cwd: consumer, encoding: "utf8", env });
   const sdks = new Set();
   const walk = (node) => {
@@ -333,9 +335,17 @@ if (TOOL.version !== ${JSON.stringify(version)}) throw new Error("the verifier s
   };
   walk(JSON.parse(listed.stdout || "{}"));
   if (sdks.size > 1) {
-    const message = `Installed without overrides, the packages bring ${sdks.size} Stellar SDKs (${[...sdks].join(", ")}): @trionlabs/stellar8004 asks for ^15. A project needs "overrides": { "@stellar/stellar-sdk": "16.3.1" }, as create-stellar-service writes.`;
-    console.log(process.env["GITHUB_ACTIONS"] === "true" ? `::warning title=Two Stellar SDKs::${message}` : `  ! ${message}`);
+    warn("Two Stellar SDKs", `Installed without overrides, the packages bring ${sdks.size} Stellar SDKs (${[...sdks].join(", ")}): @trionlabs/stellar8004 asks for another version. Nothing breaks, but the second copy adds size and its own dependencies. A project avoids it with the overrides create-stellar-service writes.`);
   } else console.log(`  ✓ one Stellar SDK: ${[...sdks].join("")}`);
+
+  // The advisories come from npm itself: this registry only holds the packages.
+  const audit = spawnSync("npm", ["audit", "--omit=dev", "--json", "--registry", "https://registry.npmjs.org/"], { cwd: consumer, encoding: "utf8", env });
+  const found = Object.values(JSON.parse(audit.stdout || "{}").vulnerabilities ?? {}).filter((entry) => entry.via.some((via) => typeof via === "object"));
+  if (audit.stdout === "" || audit.error) warn("npm audit didn't run", (audit.stderr || String(audit.error)).slice(0, 300));
+  else if (found.length > 0) {
+    const listed = found.map((entry) => `${entry.name} ${entry.range} (${entry.severity}) in ${entry.nodes.join(", ")}`).join("; ");
+    warn("npm audit", `A plain install of the packages has known vulnerabilities in ${found.length} dependencies: ${listed}`);
+  } else console.log("  ✓ npm audit finds nothing in a plain install");
 }
 
 async function freePort() {

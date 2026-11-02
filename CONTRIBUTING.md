@@ -39,8 +39,8 @@ npm run llms:check
 | Job | What it checks | Run it here |
 | --- | --- | --- |
 | Typecheck, test, build | The four commands above, the wallet and approval pages, and what each npm package would publish: its files, metadata and shared version | `npm run build && npm run packages:check` |
-| New project, 6 jobs | `create-stellar-service` from this clone, each kind on testnet and on mainnet: the project installs, builds and starts, and the verifier passes it (C1, C3, C6, C7). A mainnet project must refuse to start without the facilitator's API key. On testnet the project's Dockerfile is built too. The facilitator and the verifier's chain lookup are stand-ins. | `npm run scaffold:check -- --kind typescript --network mainnet` |
-| npm publish rehearsal | Every package published to a throwaway registry (Verdaccio on the runner), installed from it and used: imports, commands, the MCP server's documents, and projects made by the published scaffolder | `npm run packages:rehearse` |
+| New project, 6 jobs | `create-stellar-service` from this clone, each kind on testnet and on mainnet: the project installs with one copy of the Stellar SDK, builds and starts, and the verifier passes it (C1, C3, C6, C7). A mainnet project must refuse to start without the facilitator's API key. On testnet the project's Dockerfile is built too. The facilitator and the verifier's chain lookup are stand-ins. | `npm run scaffold:check -- --kind typescript --network mainnet` |
+| npm publish rehearsal | Every package published to a throwaway registry (Verdaccio on the runner), installed from it and used: imports, commands, the MCP server's documents, and projects made by the published scaffolder. It warns when a plain install brings two Stellar SDKs or dependencies `npm audit` flags. | `npm run packages:rehearse` |
 | Gateway image | `packages/provider-kit/Dockerfile` builds and runs | `docker build -f packages/provider-kit/Dockerfile .` |
 
 The new-project checks and the rehearsal install from the npm registry. Run them after `npm run build`.

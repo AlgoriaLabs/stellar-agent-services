@@ -182,7 +182,7 @@ Journal on the happy path: `intent, approved, sending, settled, result`. When th
 | Id | Rule |
 | --- | --- |
 | AD1 | Its own package, named `signer-<name>` or `method-<name>` (under your own npm scope). |
-| AD2 | `@stellar-agent-services/payment-client` is a `peerDependency` (and a `devDependency` for tests). Import only its types, `rpcConfirmPayment` / `checkTransfer`, and `./conformance`. Pin `@x402/core` and `@x402/stellar` 2.28.0 and `@stellar/stellar-sdk` 16.3.1 as the core does. The core never imports the adapter. |
+| AD2 | `@stellar-agent-services/payment-client` is a `peerDependency` (and a `devDependency` for tests). Import only its types, `rpcConfirmPayment` / `checkTransfer`, and `./conformance`. Pin `@x402/core` and `@x402/stellar` 2.28.0 and `@stellar/stellar-sdk` 16.4.1 as the core does. The core never imports the adapter. |
 | AD3 | ESM. Runs where it says it does: Node ≥ 22.13, the browser, or both. A browser adapter uses no Node-only API (`Buffer`, `fs`). `./conformance` itself uses `Buffer`, so run it in Node. |
 | AD4 | CI runs the conformance checks (§8.4) on every change, and they all pass. |
 | AD5 | No keys, preimages, signatures, payloads or job tokens in logs, error messages, analytics or telemetry. Errors name the cause, not the data. |
@@ -338,7 +338,7 @@ humanPrompt: per-payment                   # never | per-payment | above-a-limit
 keyCustody: browser extension on the user's device   # where the key lives; "server" can't be Verified
 signs: one SAC transfer(payer, payTo, amount) auth entry per payment
 submits: never
-dependencies: ["@stellar/stellar-sdk@16.3.1", "@x402/stellar@2.28.0"]
+dependencies: ["@stellar/stellar-sdk@16.4.1", "@x402/stellar@2.28.0"]
 license: MIT
 source: https://github.com/example/signer-example
 security: security@example.com

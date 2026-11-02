@@ -14,7 +14,7 @@
   "dependencies": {
     "@stellar-agent-services/payment-client": "0.0.0",
     "@stellar-agent-services/protocol": "0.0.0",
-    "@stellar/stellar-sdk": "16.3.1"
+    "@stellar/stellar-sdk": "16.4.1"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.1",

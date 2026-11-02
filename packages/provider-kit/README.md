@@ -23,9 +23,10 @@ gateway:  provider-kit serve --config <file>  ->  forwards paid jobs to your exi
 
 The step-by-step guide is [docs/provider-setup-guide.md](../../docs/provider-setup-guide.md).
 
-Installed from npm into a project of your own, the kit needs the override this repository has, which
-`create-stellar-service` also writes: `"overrides": { "@stellar/stellar-sdk": "16.3.1" }` in `package.json`. The
-Stellar 8004 SDK asks for SDK 15, and two copies of the SDK can't read each other's XDR, so registration would fail.
+Installed from npm into a project of your own, add the override this repository has, which `create-stellar-service`
+also writes, to `package.json`: `"overrides": { "@trionlabs/stellar8004": { "@stellar/stellar-sdk": "16.4.1" } }`.
+The Stellar 8004 SDK the kit uses for registration asks for Stellar SDK 15. Without the override, npm installs a second
+SDK for it: everything still works, but the copy adds 18 MB and an axios with known vulnerabilities.
 
 ## From nothing to live
 

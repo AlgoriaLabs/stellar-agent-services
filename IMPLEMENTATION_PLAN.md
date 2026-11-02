@@ -157,7 +157,7 @@ evidence/          Receipts, payment references, validation records, pilot repor
 | Package | Version | Note |
 | --- | --- | --- |
 | `@x402/core`, `@x402/fetch`, `@x402/stellar` | 2.28.0 | `@x402/stellar` needs `@stellar/stellar-sdk ^16.3.0` |
-| `@stellar/stellar-sdk` | 16.3.1 | Root `overrides` force `@trionlabs/stellar8004` (declares `^15`) onto the same copy. `axios` is overridden to 1.20.0 because the SDK pins a vulnerable 1.18.0 (same fix as Phase 1). |
+| `@stellar/stellar-sdk` | 16.4.1 | Root `overrides` put `@trionlabs/stellar8004` (declares `^15`) on the same copy, and only it: `@creit.tech/stellar-wallets-kit` (approval page, dev only) keeps its `^17`. 16.4.1 is the first 16.x that pins a fixed axios (1.20.0); 16.3.1 pinned a vulnerable 1.18.0. |
 | `@trionlabs/stellar8004` | 0.0.11 | Identity, Reputation and Validation clients; `generateRequestNonce`; metadata helpers |
 | `hono`, `@hono/node-server` | 4.x / 2.x | Example service only. The kit itself is framework-agnostic (Fetch `Request`/`Response`). |
 
@@ -529,7 +529,7 @@ everywhere.
 | Independent providers late or unresponsive | D3 missed | Start outreach in W1, use the template repo, offer incentives (SOW), keep a backup provider |
 | `validation_request` must be signed by the provider owner | Friction for independent providers | One-command `provider-kit request-validation`, approved in the owner's own wallet |
 | A CLI key for `payTo`, then importing it into a browser wallet to use the income | Friction and a secret key on disk | The owner's existing wallet is `payTo` and signs every owner step on a local approval page (`trustline`, `register`, `request-validation`) |
-| `stellar8004` declares stellar-sdk `^15`; x402 needs `^16.3` | Duplicate SDK copies, XDR type mismatch | Root `overrides`, plus a test that only one copy is installed |
+| `stellar8004` declares stellar-sdk `^15`; x402 needs `^16.3` | Duplicate SDK copies: 18 MB and a vulnerable axios, and an XDR type mismatch if SDK objects ever cross between them | Root `overrides`, which `create-stellar-service` writes into each project. `scaffold:check` fails a project with two copies; the rehearsal warns about a plain install. |
 | Reviewers expect mainnet evidence (Phase 1 was mainnet) | Evidence questioned | Agree on testnet with the Ambassador Chapter Lead up front; mainnet is optional follow-up |
 | Users need testnet USDC | Pilot friction | Pre-fund pilot wallets from the team test account |
 

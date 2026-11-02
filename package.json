@@ -38,7 +38,8 @@
     "vitest": "^4.1.12"
   },
   "overrides": {
-    "@stellar/stellar-sdk": "16.3.1",
-    "axios": "1.20.0"
+    "@trionlabs/stellar8004": {
+      "@stellar/stellar-sdk": "16.4.1"
+    }
   }
 }
