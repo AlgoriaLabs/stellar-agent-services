@@ -84,9 +84,10 @@ packages.
 
 A new package can't have a trusted publisher yet, since npm only trusts a workflow for a package that exists. Its
 first version goes out with a token: an npm granular access token with read and write access, new packages
-included, and "Bypass 2FA" ticked, saved as the repository *secret* `NPM_TOKEN` (not a variable). Delete the secret and the token
-after that release, then add the package's trusted publisher on the day of the next one. A new package also needs
-`"private": true` removed; `npm run packages:check` lists any still private, and the publish refuses them.
+included, and "Bypass 2FA" ticked, saved as the repository *secret* `NPM_TOKEN` (not a variable). Delete the
+secret and the token after that release, then add the package's trusted publisher on the day of the next one. A new
+package also needs `"private": true` removed; `npm run packages:check` lists any still private, and the publish
+refuses them.
 
 The `npm` environment can require an approval before each publish (Settings → Environments → npm).
 
