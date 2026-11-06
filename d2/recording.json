@@ -1,0 +1,48 @@
+{
+  "format": "Sampled browser screen recording, approximately two frames per second; pauses between captured segments removed. Selected unmodified screenshots are held at the end for readability. No narration or simulated payment states.",
+  "network": "stellar:testnet",
+  "durationSeconds": 61.576,
+  "video": "job-recovery.mp4",
+  "segments": [
+    {
+      "name": "d2-01-recovery-approval",
+      "sampledFrames": 8,
+      "startedAtMs": 1793960474770,
+      "durationSeconds": 3.954
+    },
+    {
+      "name": "d2-02-interrupted-payment",
+      "sampledFrames": 34,
+      "startedAtMs": 1793960488282,
+      "durationSeconds": 15.87
+    },
+    {
+      "name": "d2-03-lost-response-outcome",
+      "sampledFrames": 25,
+      "startedAtMs": 1793960536592,
+      "durationSeconds": 12.439
+    },
+    {
+      "name": "d2-05-recovery-without-payment",
+      "sampledFrames": 27,
+      "startedAtMs": 1793960578774,
+      "durationSeconds": 13.726
+    },
+    {
+      "name": "d2-06-recovered-result",
+      "sampledFrames": 8,
+      "startedAtMs": 1793960600243,
+      "durationSeconds": 3.819
+    },
+    {
+      "name": "d2-07-same-job-transaction",
+      "sampledFrames": 8,
+      "startedAtMs": 1793960610869,
+      "durationSeconds": 3.768
+    }
+  ],
+  "closingScreenshots": [
+    "03-recovered-no-second-payment.jpg",
+    "04-recovered-job-and-transaction.jpg"
+  ]
+}

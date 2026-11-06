@@ -1,0 +1,75 @@
+{
+  "network": "stellar:testnet",
+  "capturedAt": "2026-11-06T10:25:31.752Z",
+  "transaction": "559d0126e86a062eb9a5891eedb2e6bb1a99a262e3330d9935fc7feb61f93f4b",
+  "ledger": 5587377,
+  "createdAt": "1793960526",
+  "explorerUrl": "https://stellar.expert/explorer/testnet/tx/559d0126e86a062eb9a5891eedb2e6bb1a99a262e3330d9935fc7feb61f93f4b",
+  "jobId": "37fdf22f-4c4d-4b21-ab5c-3030cdd1e19a",
+  "service": "delayed-report",
+  "input": {
+    "topic": "Recover a paid job without a second payment"
+  },
+  "output": {
+    "topic": "Recover a paid job without a second payment",
+    "report": "A report on \"Recover a paid job without a second payment\", written after 10 seconds of careful thought.",
+    "finishedAt": "2026-11-06T10:22:33.705Z"
+  },
+  "approvedTerms": {
+    "network": "stellar:testnet",
+    "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    "amount": "200000",
+    "payTo": "GBX65GLA4KU3PYTZRUVZZ5SM2YAIN46LYG5IKS75GRCQDLDAYHCOHAJS",
+    "payer": "GAM4QVN4VLISUC3UBQX76JNCDQ4HIZSTIL7TYXWWIDEIQS32QMLZTAQS"
+  },
+  "confirmation": {
+    "confirmed": true
+  },
+  "transfers": [
+    {
+      "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      "from": "GAM4QVN4VLISUC3UBQX76JNCDQ4HIZSTIL7TYXWWIDEIQS32QMLZTAQS",
+      "to": "GBX65GLA4KU3PYTZRUVZZ5SM2YAIN46LYG5IKS75GRCQDLDAYHCOHAJS",
+      "amount": "200000"
+    }
+  ],
+  "recovery": {
+    "drill": "DRILL_LOSE_RESPONSE=1; REPORT_DELAY_SECONDS=10",
+    "sameJobBeforeAndAfter": true,
+    "secondApproval": false,
+    "secondPayment": false,
+    "providerStoredStatus": "succeeded"
+  },
+  "historyScan": {
+    "firstLedger": 5587344,
+    "lastLedger": 5587416,
+    "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    "payer": "GAM4QVN4VLISUC3UBQX76JNCDQ4HIZSTIL7TYXWWIDEIQS32QMLZTAQS",
+    "matchingRecoveryTransfers": 1,
+    "payerTransfers": [
+      {
+        "transaction": "29cbeae9ac78018e313e2dc34ee32b52fe3ebba48fe3e99a4ebd8a1e9cd769de",
+        "ledger": 5587345,
+        "from": "GAM4QVN4VLISUC3UBQX76JNCDQ4HIZSTIL7TYXWWIDEIQS32QMLZTAQS",
+        "to": "GBX65GLA4KU3PYTZRUVZZ5SM2YAIN46LYG5IKS75GRCQDLDAYHCOHAJS",
+        "amount": "100000"
+      },
+      {
+        "transaction": "559d0126e86a062eb9a5891eedb2e6bb1a99a262e3330d9935fc7feb61f93f4b",
+        "ledger": 5587377,
+        "from": "GAM4QVN4VLISUC3UBQX76JNCDQ4HIZSTIL7TYXWWIDEIQS32QMLZTAQS",
+        "to": "GBX65GLA4KU3PYTZRUVZZ5SM2YAIN46LYG5IKS75GRCQDLDAYHCOHAJS",
+        "amount": "200000"
+      }
+    ],
+    "scope": "All transfer events of this USDC asset from this throwaway payer in the inclusive ledger range; the earlier 0.01 USDC D1 call is separate."
+  },
+  "method": "Read-only getTransaction proves SUCCESS and the approved transfer [J16]; complete getEvents scan through lastLedger finds one 0.02 USDC transfer for the recovery flow [J11], [J13].",
+  "capturedManifest": {
+    "url": "http://localhost:8788/.well-known/stellar-agent-services.json",
+    "file": "provider-manifest.json",
+    "canonicalSha256": "935b282b64b633118086e9169d7fe83da8ede903665cf74967ee6560ed59df49",
+    "validation": "loadManifest: JSON Schema and checkManifestRules, with localhost development allowed",
+    "source": "Captured from the same unchanged running provider process after the payment."
+  }
+}

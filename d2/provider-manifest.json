@@ -1,0 +1,137 @@
+{
+  "standard": "stellar-agent-services/provider@1",
+  "provider": {
+    "name": "Stellar Agent Services example",
+    "description": "Sample provider for Provider Standard v1.",
+    "dataUse": {
+      "storesInputs": false,
+      "trainsOnInputs": false
+    }
+  },
+  "baseUrl": "http://localhost:8788",
+  "payment": {
+    "protocol": "x402",
+    "x402Version": 2,
+    "accepts": [
+      {
+        "scheme": "exact",
+        "network": "stellar:testnet",
+        "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+        "payTo": "GBX65GLA4KU3PYTZRUVZZ5SM2YAIN46LYG5IKS75GRCQDLDAYHCOHAJS",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+          "areFeesSponsored": true
+        }
+      }
+    ]
+  },
+  "services": [
+    {
+      "name": "text-stats",
+      "description": "Counts the words, sentences and characters in a text.",
+      "price": {
+        "amount": "100000"
+      },
+      "charge": "on-success",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000,
+            "description": "The text to analyse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "words",
+          "sentences",
+          "characters"
+        ],
+        "properties": {
+          "words": {
+            "type": "integer"
+          },
+          "sentences": {
+            "type": "integer"
+          },
+          "characters": {
+            "type": "integer"
+          }
+        }
+      },
+      "title": "Text statistics",
+      "expectedDurationSeconds": 1,
+      "examples": [
+        {
+          "input": {
+            "text": "Hello world."
+          },
+          "output": {
+            "words": 2,
+            "sentences": 1,
+            "characters": 12
+          }
+        }
+      ],
+      "capacity": {
+        "concurrency": 4,
+        "maxQueueWaitSeconds": 49
+      }
+    },
+    {
+      "name": "delayed-report",
+      "description": "Writes a short report on a topic. Takes about 10 seconds, so it answers 202 and is polled.",
+      "price": {
+        "amount": "200000"
+      },
+      "charge": "upfront",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "properties": {
+          "topic": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "topic",
+          "report",
+          "finishedAt"
+        ],
+        "properties": {
+          "topic": {
+            "type": "string"
+          },
+          "report": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "Delayed report",
+      "expectedDurationSeconds": 10,
+      "capacity": {
+        "concurrency": 2,
+        "maxQueueWaitSeconds": 40
+      }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "network": "stellar:testnet",
+  "capturedAt": "2026-11-06T10:20:40.164Z",
+  "transaction": "29cbeae9ac78018e313e2dc34ee32b52fe3ebba48fe3e99a4ebd8a1e9cd769de",
+  "ledger": 5587345,
+  "createdAt": "1793960366",
+  "explorerUrl": "https://stellar.expert/explorer/testnet/tx/29cbeae9ac78018e313e2dc34ee32b52fe3ebba48fe3e99a4ebd8a1e9cd769de",
+  "jobId": "2edc7ead-13e8-4b82-93bc-d9ac1e80843f",
+  "service": "text-stats",
+  "input": {
+    "text": "A safe payment on Stellar testnet."
+  },
+  "output": {
+    "words": 6,
+    "sentences": 1,
+    "characters": 34
+  },
+  "approvedTerms": {
+    "network": "stellar:testnet",
+    "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    "amount": "100000",
+    "payTo": "GBX65GLA4KU3PYTZRUVZZ5SM2YAIN46LYG5IKS75GRCQDLDAYHCOHAJS",
+    "payer": "GAM4QVN4VLISUC3UBQX76JNCDQ4HIZSTIL7TYXWWIDEIQS32QMLZTAQS"
+  },
+  "confirmation": {
+    "confirmed": true
+  },
+  "transfers": [
+    {
+      "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      "from": "GAM4QVN4VLISUC3UBQX76JNCDQ4HIZSTIL7TYXWWIDEIQS32QMLZTAQS",
+      "to": "GBX65GLA4KU3PYTZRUVZZ5SM2YAIN46LYG5IKS75GRCQDLDAYHCOHAJS",
+      "amount": "100000"
+    }
+  ],
+  "method": "Read-only getTransaction; SUCCESS and exactly one approved-asset transfer from the approved payer, with matching payee and amount [J16].",
+  "capturedManifest": {
+    "url": "http://localhost:8787/.well-known/stellar-agent-services.json",
+    "file": "provider-manifest.json",
+    "canonicalSha256": "09ecad3ae5f0cd7d92dd2f3dc1dd4f2e5529acd95083e91db8a53705b59ef1fc",
+    "validation": "loadManifest: JSON Schema and checkManifestRules, with localhost development allowed",
+    "source": "Captured from the same unchanged running provider process after the payment."
+  }
+}
