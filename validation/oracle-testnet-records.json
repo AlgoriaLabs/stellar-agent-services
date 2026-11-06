@@ -1,12 +1,12 @@
 {
   "network": "stellar:testnet",
-  "capturedAt": "2026-11-06T15:44:30.008Z",
+  "capturedAt": "2026-11-06T15:54:39.070Z",
   "agentId": 163,
   "owner": "GBQXS5ZRH5AXDFEMKUNHPJ3VBEOYNKZEYF3TFIVFBULBLIBPSW5ACUZ3",
   "manifestUrl": "https://sas-testnet.79-76-99-174.sslip.io/.well-known/stellar-agent-services.json",
   "requestHash": "57a4b03ab6d4680546df11a415fd8b1efb2a6552361735cc8a3c568dd49a1262",
   "firstLedger": 5591063,
-  "lastLedger": 5591244,
+  "lastLedger": 5591364,
   "completeEventScan": true,
   "contracts": {
     "identity": "CDE3K4COIAGWNNJQQLL26SYI3KBJF5FUDHXG5FA6GYDJCG7T5V7FIWZH",
@@ -56,6 +56,24 @@
       "data": {
         "request_uri": "data:application/json;base64,eyJhZ2VudElkIjoxNjMsIm1hbmlmZXN0Ijp7InVybCI6Imh0dHBzOi8vc2FzLXRlc3RuZXQuNzktNzYtOTktMTc0LnNzbGlwLmlvLy53ZWxsLWtub3duL3N0ZWxsYXItYWdlbnQtc2VydmljZXMuanNvbiJ9LCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0IiwicmVxdWVzdGVkQXQiOiIyMDI2LTExLTA2VDE1OjMxOjE1LjY4NFoiLCJzdGFuZGFyZCI6InN0ZWxsYXItYWdlbnQtc2VydmljZXMvcHJvdmlkZXJAMSIsInR5cGUiOiJ2YWxpZGF0aW9uLXJlcXVlc3QiLCJ2YWxpZGF0b3IiOiJHQjVQS1E3RzY0UUNWNkQyWDNDWlNRWllJTVdITDJVUkJCQVZPM1o1VDRXQTZJTDNKN0JFVkgyMiJ9"
       }
+    },
+    {
+      "contractId": "CC5USZRO26MOIAVNYTTJDS63C2OBBLREOAOET4CPF2EZWO3YFKLMO3SL",
+      "id": "0024014570901241856-0000000000",
+      "ledger": 5591328,
+      "transaction": "adf32dca14608cc0f2cd28c59cd4365871f2314b56270eeed38d1f09c134599f",
+      "topic": [
+        "validation_response",
+        "GB5PKQ7G64QCV6D2X3CZSQZYIMWHL2URBBAVO3Z5T4WA6IL3J7BEVH22",
+        163,
+        "57a4b03ab6d4680546df11a415fd8b1efb2a6552361735cc8a3c568dd49a1262"
+      ],
+      "data": {
+        "response": 100,
+        "response_hash": "b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba",
+        "response_uri": "https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/ef43efd1e489bb94ffdd45afb5b78595601c900f/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.json",
+        "tag": "provider-standard-v1"
+      }
     }
   ],
   "transactions": [
@@ -70,15 +88,21 @@
       "ledger": 5591100,
       "status": "SUCCESS",
       "explorerUrl": "https://stellar.expert/explorer/testnet/tx/4da4ed91a2e927cf1f2b681f892d63d25326b7ada9259b342ee5ba8494aa055a"
+    },
+    {
+      "transaction": "adf32dca14608cc0f2cd28c59cd4365871f2314b56270eeed38d1f09c134599f",
+      "ledger": 5591328,
+      "status": "SUCCESS",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/adf32dca14608cc0f2cd28c59cd4365871f2314b56270eeed38d1f09c134599f"
     }
   ],
   "registryRecord": {
     "validator": "GB5PKQ7G64QCV6D2X3CZSQZYIMWHL2URBBAVO3Z5T4WA6IL3J7BEVH22",
     "agentId": 163,
-    "hasResponse": false,
-    "response": 0,
-    "responseHash": "0000000000000000000000000000000000000000000000000000000000000000",
-    "tag": "",
-    "lastUpdate": 5591100
+    "hasResponse": true,
+    "response": 100,
+    "responseHash": "b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba",
+    "tag": "provider-standard-v1",
+    "lastUpdate": 5591328
   }
 }

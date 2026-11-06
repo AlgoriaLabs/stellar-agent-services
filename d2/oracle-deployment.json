@@ -1,0 +1,44 @@
+{
+  "capturedAt": "2026-11-06T15:53:57.470Z",
+  "cloud": "Existing Oracle A1 VM, eu-frankfurt-1, 1 OCPU, 6 GiB; no additional compute, volume or network resources allocated.",
+  "release": "35f1280de789-a6b3db6f300c",
+  "archiveSha256": "a6b3db6f300c920a68134df01236910e66563aff74265cf03e1bace782c5045a",
+  "sourceCommit": "35f1280de78958e6d34eca4ac472071915584029",
+  "workingTreeChanges": true,
+  "systemd": {
+    "service": "stellar-sas-testnet",
+    "user": "sas-testnet",
+    "enabled": true,
+    "active": true,
+    "memoryLimitMiB": 384,
+    "cpuQuotaPercent": 25,
+    "providerKeys": "none"
+  },
+  "checks": [
+    {
+      "origin": "https://sas-testnet.79-76-99-174.sslip.io",
+      "healthStatus": 200,
+      "health": {
+        "ok": true,
+        "network": "stellar:testnet"
+      },
+      "manifestStatus": 200,
+      "network": "stellar:testnet",
+      "agentId": 163,
+      "manifestSha256": "3f8e38d6abf553fdf74346f403003570b0ef9ad410afab7aa9a8da59a660101f"
+    },
+    {
+      "origin": "https://79-76-99-174.sslip.io",
+      "healthStatus": 200,
+      "health": {
+        "ok": true,
+        "network": "mainnet",
+        "version": "dev"
+      },
+      "manifestStatus": 200,
+      "network": "stellar:pubnet",
+      "agentId": 73,
+      "manifestSha256": "1d26fb98d72beb7a8658355e45069df6992c3f25144af2cca57a76e88969cc5d"
+    }
+  ]
+}
