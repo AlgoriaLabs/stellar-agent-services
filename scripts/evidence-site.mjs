@@ -3,6 +3,7 @@ import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { resolve, join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+import { anchorProblems } from "../packages/verifier/dist/publish.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = process.argv[2];
@@ -14,7 +15,7 @@ if ((await readdir(target)).length) throw new Error("The output directory must b
 const manifest = await readFile(join(root, "evidence/checksums.sha256"), "utf8");
 const paths = [];
 for (const line of manifest.trim().split("\n")) {
-  const match = /^([a-f0-9]{64})  (evidence\/(?:d[12]\/[^/]+\.(?:jpg|mp4|json)|receipts\/[a-f0-9]{64}(?:\.[a-z0-9-]+)?\.(?:json|svg)))$/.exec(line);
+  const match = /^([a-f0-9]{64})  (evidence\/(?:d[12]\/[^/]+\.(?:jpg|mp4|json)|validation\/[a-z0-9-]+\.json|receipts\/[a-f0-9]{64}(?:\.[a-z0-9-]+)?\.(?:json|svg)))$/.exec(line);
   if (!match) throw new Error(`Unexpected evidence checksum entry: ${line}`);
   const [, hash, path] = match;
   const bytes = await readFile(join(root, path));
@@ -35,6 +36,16 @@ if (receipts.length) {
   const { path, receipt } = receipts[0];
   const stem = path.slice(0, -5);
   const badgePaths = paths.filter(each => each.startsWith(`${stem}.`) && each.endsWith(".svg"));
+  const registryPath = "validation/oracle-testnet-records.json";
+  const registry = paths.includes(registryPath) ? JSON.parse(await readFile(join(target, registryPath), "utf8")) : undefined;
+  const anchored = registry?.network === receipt.network && registry?.requestHash &&
+    anchorProblems(registry.registryRecord, receipt, stem.slice("receipts/".length)).length === 0 &&
+    registry.events.some(event => event.topic[0] === "validation_response" &&
+      registry.transactions.some(tx => tx.transaction === event.transaction && tx.status === "SUCCESS"));
+  if (badgePaths.some(each => each.endsWith(".8004-validated.svg")) && !anchored) {
+    throw new Error("The 8004 badge has no matching confirmed registry evidence.");
+  }
+  const oracle = receipt.agentId === 163;
   receiptSection = `<section aria-labelledby="verification">
     <h2 id="verification">D2 · Live verification receipt and badges</h2>
     <p>The actual HTTPS sample was checked with a dedicated testnet payer. Latest check:
@@ -44,14 +55,14 @@ if (receipts.length) {
     <p>${badgePaths.map(each => `<a href="${path}"><img src="${each}" alt="${escape(each.slice(stem.length + 1, -4).replaceAll("-", " "))}: testnet"></a>`).join(" ")}</p>
     <ul>${receipt.results.map(result => `<li><strong>${escape(result.check)}: ${escape(result.status)}</strong>${result.reason ? ` — ${escape(result.reason)}` : ""}${result.findings?.filter(each => each.severity === "fail").map(each => ` — [${escape(each.rule)}] ${escape(each.message)}`).join("") ?? ""}</li>`).join("")}</ul>
     <p><a href="${path}">Canonical verification receipt</a> ·
-      <a href="d2/live-verification.json">Run report and captured manifest</a> ·
-      <a href="d2/verification-payments.json">Independent payment proofs</a></p>
-    <p class="rule">The HTTPS endpoint used a temporary tunnel and was not registered. The receipt is unanchored:
-      no Validation Registry response or 8004 validated badge is claimed. The validator is operated for this
-      project; this is not an independent audit. An owner-approved permanent sample registration and a fresh
-      verification run are required for the registry evidence.</p>
-    <p class="rule">The final run used local sample admission and verifier polling fixes based on the 0.1.0
-      checkout. Those changes have not been released to npm.</p>
+      <a href="${oracle ? "d2/oracle-live-verification.json" : "d2/live-verification.json"}">Run report and captured manifest</a> ·
+      <a href="${oracle ? "d2/oracle-payments.json" : "d2/verification-payments.json"}">Independent payment proofs</a></p>
+    <p class="rule">${oracle ? `The sample runs on the existing Oracle VM as registered testnet agent 163.
+      <a href="https://sas-testnet.79-76-99-174.sslip.io/.well-known/stellar-agent-services.json">Live manifest</a> ·
+      <a href="${registryPath}">Confirmed registry records</a>.
+      ${anchored ? "The Validation Registry response anchors this exact receipt and earns the 8004 validated badge." : "The validation request is confirmed; the response is pending."}` : "This historical receipt used a temporary, unregistered endpoint and is unanchored."}
+      The validator is operated for this project; this is not an independent audit or pilot.</p>
+    <p class="rule">The verifier run used the repository checkout. The client polling fix is not yet released to npm.</p>
     ${receipts.slice(1).map(previous => `<p class="details"><a href="${previous.path}">Earlier receipt (${escape(previous.receipt.checkedAt)})</a>: ${previous.receipt.results.filter(each => each.status !== "passed").map(each => `${escape(each.check)} ${escape(each.status)}`).join("; ")}. Preserved without editing.</p>`).join("")}
   </section>`;
 }

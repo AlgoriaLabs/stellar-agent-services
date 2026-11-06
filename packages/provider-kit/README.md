@@ -306,7 +306,9 @@ GDJB…XA3O (payTo) received 0.01 USDC.
 - **Testnet only.** A provider on Mainnet is refused before anything is signed.
 
 `--json` prints the outcome as JSON on standard output (the job, its status, the payment and the output) and the
-steps on standard error. It exits 0 only when the job succeeded and its payment is confirmed. If the answer to the paid request is lost, it
+steps on standard error. It exits 0 only when the job succeeded and its payment is confirmed.
+When the provider returns `payment_uncertain`, it polls that same job within the follow deadline, without
+signing or sending another payment [J11], [J13]. If the answer to the paid request is lost, it
 says the payment may have gone through and never calls it unpaid: your provider decides it from the chain
 [J13]. If the testnet DEX has no USDC for sale, nothing is paid: try again later, or pay with `stellar-pay` from a
 test wallet of your own, funded at [faucet.circle.com](https://faucet.circle.com) (setup guide §6).

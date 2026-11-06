@@ -1,0 +1,80 @@
+{
+  "network": "stellar:testnet",
+  "capturedAt": "2026-11-06T15:48:38.917Z",
+  "environment": "Separate Linux user and client directory on the existing Oracle A1 VM, Node 24.22.2; same host as provider, not an independent participant.",
+  "before": {
+    "package": "@stellar-agent-services/provider-kit@0.1.0 from npm, fresh cache",
+    "exitCode": 1,
+    "result": {
+      "ok": false,
+      "manifest": "https://sas-testnet.79-76-99-174.sslip.io/.well-known/stellar-agent-services.json",
+      "service": "text-stats",
+      "jobId": "9cb4656e-77e0-4469-a91c-6d139b48027f",
+      "status": "payment_uncertain",
+      "charged": "unknown"
+    },
+    "laterProviderStatus": "succeeded",
+    "recovery": "Original job reconciled on the provider; no replacement payment submitted."
+  },
+  "after": {
+    "sourceCommit": "35f1280de78958e6d34eca4ac472071915584029",
+    "workingTreeChanges": true,
+    "archiveSha256": "170a6dcf6d4021754958df64164d40edf6951c2dcc521905ed67d8b727ef4a50",
+    "install": "Compiled checkout in a new directory, npm ci --omit=dev --ignore-scripts; unreleased client polling fix",
+    "exitCode": 0,
+    "result": {
+      "ok": true,
+      "manifest": "https://sas-testnet.79-76-99-174.sslip.io/.well-known/stellar-agent-services.json",
+      "service": "text-stats",
+      "jobId": "5ad3c01c-e8ba-4be8-8990-0f8e4dc4e47f",
+      "status": "succeeded",
+      "charged": true,
+      "payment": {
+        "amount": "0.01 USDC",
+        "payTo": "GBQXS5ZRH5AXDFEMKUNHPJ3VBEOYNKZEYF3TFIVFBULBLIBPSW5ACUZ3",
+        "transaction": "586ccfeabfd96ebee256967ce6563f2144b34c597d95e26cad91918b3b4dd579",
+        "url": "https://stellar.expert/explorer/testnet/tx/586ccfeabfd96ebee256967ce6563f2144b34c597d95e26cad91918b3b4dd579",
+        "confirmed": true
+      },
+      "output": {
+        "words": 2,
+        "sentences": 1,
+        "characters": 12
+      }
+    },
+    "elapsedPaymentToResultSeconds": 35.6
+  },
+  "proofs": [
+    {
+      "jobId": "9cb4656e-77e0-4469-a91c-6d139b48027f",
+      "transaction": "a1093c9952b4c60910659a7a2b078411d76173a6ca842ea9207be02acc71e7ba",
+      "ledger": 5591115,
+      "approvedTerms": {
+        "network": "stellar:testnet",
+        "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+        "amount": "100000",
+        "payer": "GB5LDCON5VTFU7MJNJXV7YCNTJVPZTFBY6J7OHBRMHT67SXYNX5NHIFH",
+        "payTo": "GBQXS5ZRH5AXDFEMKUNHPJ3VBEOYNKZEYF3TFIVFBULBLIBPSW5ACUZ3"
+      },
+      "confirmation": {
+        "confirmed": true
+      }
+    },
+    {
+      "jobId": "5ad3c01c-e8ba-4be8-8990-0f8e4dc4e47f",
+      "transaction": "586ccfeabfd96ebee256967ce6563f2144b34c597d95e26cad91918b3b4dd579",
+      "ledger": 5591271,
+      "approvedTerms": {
+        "network": "stellar:testnet",
+        "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+        "amount": "100000",
+        "payer": "GDQCSGSAODVYNP2M4UEWNLJOVGLAWVAV3SMLTQCSDPEHW2SWC3J4G5IQ",
+        "payTo": "GBQXS5ZRH5AXDFEMKUNHPJ3VBEOYNKZEYF3TFIVFBULBLIBPSW5ACUZ3"
+      },
+      "confirmation": {
+        "confirmed": true
+      }
+    }
+  ],
+  "limitation": "The scheduled GitHub Actions paid job has not been rerun with this source fix. This client test does not claim fresh-host scaffolding or an independent pilot."
+}

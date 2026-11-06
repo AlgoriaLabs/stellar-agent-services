@@ -220,6 +220,8 @@ async function payStarted(flags: CliFlags, args: string[], io: TryIo, summary: T
     // A development tool on testnet: an http://localhost provider is fine [M6].
     allowLocalhost: true,
     followSeconds: Math.max(120, (service.expectedDurationSeconds ?? 0) * 2 + 30),
+    // Wait for provider reconciliation to decide the original payment; never repay [J11], [J13].
+    followPaymentUncertain: true,
     ...(flags.rpc === undefined ? {} : { rpcUrl: flags.rpc }),
     ...io.client,
   });

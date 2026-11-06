@@ -1,13 +1,16 @@
 {
-  "checkedAt": "2026-11-06T11:14:26.773Z",
+  "checkedAt": "2026-11-06T16:11:17.486Z",
   "siteUrl": "https://algorialabs.github.io/stellar-agent-services/",
   "branch": "codex/d2-evidence",
-  "commit": "3989771c146aa85228d09ae0f15c60fb407759f2",
+  "commit": "b46f4b898ba982aa4d5fe499e3750cd109487c87",
   "authentication": "none",
   "index": {
     "status": 200,
     "latestReceiptPresent": true,
-    "identitySkipDisclosed": true
+    "registeredAgent": 163,
+    "anchoredReceiptPresent": true,
+    "earnedBadges": 5,
+    "independentPilotPendingDisclosed": true
   },
   "artifacts": [
     {
@@ -137,6 +140,34 @@
       "bytes": 8370
     },
     {
+      "path": "evidence/d2/oracle-clean-client.json",
+      "url": "https://algorialabs.github.io/stellar-agent-services/d2/oracle-clean-client.json",
+      "status": 200,
+      "sha256": "39d29042fed44f3f5bc0f7272eb5c0229b1ff5a6c483b7c9e06e5cbe2334780f",
+      "bytes": 3266
+    },
+    {
+      "path": "evidence/d2/oracle-deployment.json",
+      "url": "https://algorialabs.github.io/stellar-agent-services/d2/oracle-deployment.json",
+      "status": 200,
+      "sha256": "a98a1c6abceb3e7dc5540632bb5677cf8111e777878a30aa78eb2c52416c7cd8",
+      "bytes": 1353
+    },
+    {
+      "path": "evidence/d2/oracle-live-verification.json",
+      "url": "https://algorialabs.github.io/stellar-agent-services/d2/oracle-live-verification.json",
+      "status": 200,
+      "sha256": "22b73331f4331ad4bcdb6e5b146cb1c5a3b22d4e395b155ece6b8d302fbb3016",
+      "bytes": 8679
+    },
+    {
+      "path": "evidence/d2/oracle-payments.json",
+      "url": "https://algorialabs.github.io/stellar-agent-services/d2/oracle-payments.json",
+      "status": 200,
+      "sha256": "bc7884887fa024b81d6eda0d65c826e9a7db01e139ec20b43bebad7e5d4c10f9",
+      "bytes": 1715
+    },
+    {
       "path": "evidence/d2/payment-proof.json",
       "url": "https://algorialabs.github.io/stellar-agent-services/d2/payment-proof.json",
       "status": 200,
@@ -247,6 +278,69 @@
       "status": 200,
       "sha256": "b236fa636dd2e786a75d79bac103034bbef2c0eb6ab9f1fd31fc242ddcc2cba9",
       "bytes": 1389
+    },
+    {
+      "path": "evidence/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.8004-validated.svg",
+      "url": "https://algorialabs.github.io/stellar-agent-services/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.8004-validated.svg",
+      "status": 200,
+      "sha256": "e919817b5849b8dc827e50e84b116efa296bdd90d0429ab46509bb23677ad1b8",
+      "bytes": 1409
+    },
+    {
+      "path": "evidence/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.json",
+      "url": "https://algorialabs.github.io/stellar-agent-services/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.json",
+      "status": 200,
+      "sha256": "b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba",
+      "bytes": 3129
+    },
+    {
+      "path": "evidence/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.load-safe.svg",
+      "url": "https://algorialabs.github.io/stellar-agent-services/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.load-safe.svg",
+      "status": 200,
+      "sha256": "16fb343b130c0d512b7d42adeab5cb417d6eeaff7fd6185182d176710b3c3fa6",
+      "bytes": 1371
+    },
+    {
+      "path": "evidence/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.payment-verified.svg",
+      "url": "https://algorialabs.github.io/stellar-agent-services/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.payment-verified.svg",
+      "status": 200,
+      "sha256": "8e0654c70c9214bb40979bec63526a84a55d7a9b9b948431b4878d013d8307f8",
+      "bytes": 1431
+    },
+    {
+      "path": "evidence/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.recovery-verified.svg",
+      "url": "https://algorialabs.github.io/stellar-agent-services/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.recovery-verified.svg",
+      "status": 200,
+      "sha256": "0b1f2255821c8fe71216ad7eab18cf3aeb2b7d245be0236a21ca46ecda51cdb5",
+      "bytes": 1439
+    },
+    {
+      "path": "evidence/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.standard-v1.svg",
+      "url": "https://algorialabs.github.io/stellar-agent-services/receipts/b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.standard-v1.svg",
+      "status": 200,
+      "sha256": "8fd7eb0dfb75e7e0ad04f40a919c64d7fb35607e2c8647c55019c13d2c0cc1e1",
+      "bytes": 1389
+    },
+    {
+      "path": "evidence/validation/oracle-testnet-records.json",
+      "url": "https://algorialabs.github.io/stellar-agent-services/validation/oracle-testnet-records.json",
+      "status": 200,
+      "sha256": "38154a068377cbf20ad341dde883667f251a03156b8e04464ccfe5b4141bc6c5",
+      "bytes": 5242
+    },
+    {
+      "path": "evidence/validation/oracle-testnet-registration.json",
+      "url": "https://algorialabs.github.io/stellar-agent-services/validation/oracle-testnet-registration.json",
+      "status": 200,
+      "sha256": "40659d03683cfa9ec145b41c1c963548a8aeb7bb1bb50c4f833dd3b4ec350c51",
+      "bytes": 487
+    },
+    {
+      "path": "evidence/validation/oracle-testnet-request.json",
+      "url": "https://algorialabs.github.io/stellar-agent-services/validation/oracle-testnet-request.json",
+      "status": 200,
+      "sha256": "57a4b03ab6d4680546df11a415fd8b1efb2a6552361735cc8a3c568dd49a1262",
+      "bytes": 333
     }
   ]
 }

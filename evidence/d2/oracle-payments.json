@@ -1,0 +1,42 @@
+{
+  "network": "stellar:testnet",
+  "capturedAt": "2026-11-06T15:46:04.855Z",
+  "firstLedger": 5591190,
+  "lastLedger": 5591261,
+  "completeEventScan": true,
+  "method": "Complete approved-asset transfer scan for the verifier payer; each transaction independently confirms exact transfer [J16]. C4 recovery reads the original job [J11].",
+  "budgetReserved": "300000",
+  "actualTransferred": "200000",
+  "proofs": [
+    {
+      "transaction": "2c377d49cfd4193190064d4759092b9ef4ecfe32e7170aaacfc08600a83f4983",
+      "ledger": 5591207,
+      "approvedTerms": {
+        "network": "stellar:testnet",
+        "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+        "payer": "GAXGFMBRTAVVLY4KLZWDMWEB3B2ITJAIBOZ6NZWHZ5RBVMTMRUKEMQIO",
+        "payTo": "GBQXS5ZRH5AXDFEMKUNHPJ3VBEOYNKZEYF3TFIVFBULBLIBPSW5ACUZ3",
+        "amount": "100000"
+      },
+      "confirmation": {
+        "confirmed": true
+      },
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/2c377d49cfd4193190064d4759092b9ef4ecfe32e7170aaacfc08600a83f4983"
+    },
+    {
+      "transaction": "8f4654c0de6344910677ec8b08285675efb6953dc092acabff6f6a2a209cf4af",
+      "ledger": 5591216,
+      "approvedTerms": {
+        "network": "stellar:testnet",
+        "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+        "payer": "GAXGFMBRTAVVLY4KLZWDMWEB3B2ITJAIBOZ6NZWHZ5RBVMTMRUKEMQIO",
+        "payTo": "GBQXS5ZRH5AXDFEMKUNHPJ3VBEOYNKZEYF3TFIVFBULBLIBPSW5ACUZ3",
+        "amount": "100000"
+      },
+      "confirmation": {
+        "confirmed": true
+      },
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/8f4654c0de6344910677ec8b08285675efb6953dc092acabff6f6a2a209cf4af"
+    }
+  ]
+}

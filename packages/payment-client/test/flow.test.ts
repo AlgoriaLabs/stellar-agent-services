@@ -133,6 +133,35 @@ describe("payment flow", () => {
 });
 
 describe("job recovery", () => {
+  it("optionally follows reconciliation of the same uncertain job without signing twice [J11], [J13]", async () => {
+    let first = true;
+    const { client, facilitator, method } = await setup({ client: { followPaymentUncertain: true }, tamper: async (request, response) => {
+      if (!first || !request.headers.has("PAYMENT-SIGNATURE") || response.status !== 200) return response;
+      first = false;
+      const view = await response.json();
+      view.status = "payment_uncertain";
+      view.charged = "unknown";
+      delete view.output;
+      delete view.payment;
+      return new Response(JSON.stringify(view), { status: 202, headers: { "Content-Type": "application/json", "Retry-After": "1" } });
+    } });
+    const quote = await client.quote(manifestUrl, "text-stats", { text: "same paid job" });
+    expect(await client.pay(quote, { approved: true })).toMatchObject({ job: { status: "succeeded", output: { words: 3 } }, confirmed: true });
+    expect(method.createPayload).toHaveBeenCalledTimes(1);
+    expect(facilitator.settle).toHaveBeenCalledTimes(1);
+  });
+
+  it("bounds opt-in uncertainty polling and leaves an unresolved payment unknown [J13]", async () => {
+    const facilitator = fakeFacilitator();
+    facilitator.settle.mockRejectedValue(new Error("facilitator timeout"));
+    const { client, method } = await setup({ provider: { facilitator }, client: { followPaymentUncertain: true, followSeconds: 0.1, pollMs: 10 } });
+    const quote = await client.quote(manifestUrl, "text-stats", { text: "still unknown" });
+    expect(await client.pay(quote, { approved: true })).toMatchObject({ job: { status: "payment_uncertain", charged: "unknown" }, confirmed: false });
+    expect(method.createPayload).toHaveBeenCalledTimes(1);
+    expect(facilitator.settle).toHaveBeenCalledTimes(1);
+    await expect(client.pay(quote, { approved: true })).rejects.toThrow(/already paid/);
+  });
+
   it("hands back a job whose settlement the provider can't confirm, without paying again", async () => {
     const facilitator = fakeFacilitator();
     facilitator.settle.mockRejectedValue(new Error("facilitator timeout"));

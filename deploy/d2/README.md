@@ -1,24 +1,19 @@
 # D2 sample deployment
 
-Prepared for the sample's live identity and verification evidence. This is a deployment configuration, not
-evidence of a deployed or registered service. The existing D1/D2 throwaway payout account cannot register:
-its private key was intentionally discarded. Use an owner-controlled wallet instead [I3].
+The sample is deployed on the existing Oracle VM as testnet agent **163**. See the
+[Oracle deployment and runbook](oracle/README.md) and [registry evidence](../../evidence/validation/README.md).
+No new VM, volume or networking resource was allocated. Fly is not needed for this deployment.
 
-The owner supplied `GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC`; its testnet USDC trustline
-was confirmed. The dedicated validator is `GB5PKQ7G64QCV6D2X3CZSQZYIMWHL2URBBAVO3Z5T4WA6IL3J7BEVH22`,
-funded on testnet and held by Stellar CLI alias `sas-d2-validator-20261106` in macOS Keychain (`--secure-store`).
-Its secret was neither written to a file nor displayed. It is operated for this project, not an independent auditor.
-
-Fly login and configuration validation succeeded. The operator still needs to enable deployment in their Fly
-account. The candidate app name is not reserved and no machine or volume was created. The container build
-could not be checked while Docker was stopped.
+The files below remain an optional Fly deployment configuration. They were validated but not deployed;
+the container image was not built because the local Docker daemon was unavailable. The old candidate
+hostname and payout in those files are not the live Oracle settings.
 
 | File | Purpose |
 | --- | --- |
 | `sample.Dockerfile` | Builds this checkout's sample with Node 24; no provider signing key |
 | `fly.toml` | Candidate stable HTTPS origin and a persistent SQLite volume |
 
-Run commands from the repository root. Fly login is already established; reserve an available app name.
+For a separate future Fly deployment, run commands from the repository root and reserve an available app name.
 The candidate is `sas-d2-sample-berkin`. If changed, update both `app` and `PUBLIC_ORIGIN` in `fly.toml`.
 Fly hosting uses the operator's account and may incur hosting charges.
 

@@ -2,9 +2,17 @@
 
 Status: recovery captured and [published](https://algorialabs.github.io/stellar-agent-services/#recovery) on
 2026-11-06. The sample used Stellar testnet and a durable SQLite job store. See [the live verifier runs](../receipts/README.md)
-for receipts and earned badges. The permanent sample registration and Validation Registry record remain outstanding.
+for receipts and earned badges. The stable Oracle sample is now registered as testnet agent 163, with [confirmed registry evidence](../validation/README.md).
 
-## Captured evidence
+## Registered sample evidence
+
+- [Oracle deployment and unchanged mainnet manifest check](oracle-deployment.json).
+- [All C1–C7 checks](oracle-live-verification.json) and [confirmed registry response](../validation/README.md).
+- [Independent verifier payment proofs](oracle-payments.json).
+- [Linux client before/after check](oracle-clean-client.json): npm 0.1.0 returned uncertainty; the original
+  job later reconciled. The unreleased bounded polling fix completes a distinct new call with one payment.
+
+## Captured recovery evidence
 
 - [Job Recovery video](job-recovery.mp4), about 62 seconds.
 - [Initial payment approval](01-recovery-payment-approval.jpg).
@@ -44,8 +52,8 @@ Follow [the wallet recovery walkthrough](../../apps/wallet/README.md), using `de
 - [x] Show the stored result and confirmed transfer, with no new job or payment approval.
 - [x] Prove exactly one matching transfer for this job, using its original transaction and on-chain events.
 - [x] Save the video, screenshots, transaction hash, ledger and explorer link.
-- [ ] Link the live verification receipt and registry response from the evidence index.
-- [x] Link the live unanchored receipt, earned badges and exact C1–C7 results; C2 remains skipped.
+- [x] Link the registered Oracle verification receipt and confirmed registry response from the evidence index.
+- [x] Preserve the earlier unanchored receipts and their skipped C2; the fresh Oracle run passes C1–C7.
 - [x] Publish the evidence files at stable public URLs and check anonymous access and exact checksums.
 
 Recovery calls check-status and get-result and never pays [J11], [J13]. A provider's receipt is a claim until

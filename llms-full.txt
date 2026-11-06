@@ -2472,7 +2472,9 @@ GDJB…XA3O (payTo) received 0.01 USDC.
 - **Testnet only.** A provider on Mainnet is refused before anything is signed.
 
 `--json` prints the outcome as JSON on standard output (the job, its status, the payment and the output) and the
-steps on standard error. It exits 0 only when the job succeeded and its payment is confirmed. If the answer to the paid request is lost, it
+steps on standard error. It exits 0 only when the job succeeded and its payment is confirmed.
+When the provider returns `payment_uncertain`, it polls that same job within the follow deadline, without
+signing or sending another payment [J11], [J13]. If the answer to the paid request is lost, it
 says the payment may have gone through and never calls it unpaid: your provider decides it from the chain
 [J13]. If the testnet DEX has no USDC for sale, nothing is paid: try again later, or pay with `stellar-pay` from a
 test wallet of your own, funded at [faucet.circle.com](https://faucet.circle.com) (setup guide §6).
@@ -2834,6 +2836,10 @@ their template.
 
 Jobs are kept in SQLite (`JOB_DB_PATH`, default `./jobs.sqlite`), so a paid job survives a restart: stop the
 server while a report is queued, start it again, and the report runs.
+
+Set `HOST=127.0.0.1` when a reverse proxy on the same server supplies HTTPS. The default is `0.0.0.0`, which also
+works inside a container. [The Oracle testnet deployment](../../deploy/d2/oracle/README.md) uses loopback and
+a separate persistent job store beside an existing mainnet service.
 
 `text-stats` admits one on-success job at a time and refuses excess work before payment [Q2], [Q3]. This is
 deliberately conservative for the shared testnet facilitator. A live verification run at the former default of
@@ -3792,8 +3798,10 @@ verification read, because collecting a paid result never requires another payme
 7. On `202`, or if the connection drops: check-status, then get-result, never paying again, at the pace the
    provider's `Retry-After` sets. A `409 request_in_progress` means the provider holds the payment and is still
    settling it: the client keeps polling, and hands the job back for `recover()` if settlement outlasts
-   `followSeconds`. A job the provider marks `payment_uncertain` comes back at once: only the provider's
-   reconciliation resolves it ([job-recovery.md](job-recovery.md#reconciliation)), so polling doesn't.
+   `followSeconds`. By default a job marked `payment_uncertain` comes back at once. With
+   `followPaymentUncertain: true`, the client keeps reading that same job within `followSeconds`, at the
+   provider's `Retry-After` pace, while provider reconciliation decides its payment from the chain [J13].
+   It never signs or submits another payment while waiting [J11]. `provider-kit try` enables this bounded wait.
 
 ## Sprint plan
 
@@ -3905,6 +3913,10 @@ npx stellar-pay pay $MANIFEST text-stats '{"text":"Hello agents."}' --dev
 Job Recovery: start the provider with `DRILL_LOSE_RESPONSE=1 REPORT_DELAY_SECONDS=8`, pay `delayed-report`,
 then run the `stellar-pay recover <job-id> --dev` command it prints. `stellar-pay jobs` and
 `stellar-pay journal verify` show the journal.
+
+`followPaymentUncertain: true` optionally follows an uncertain job within `followSeconds` while the provider
+reconciles it [J13]. It only reads the original job and never pays again [J11]. The default returns uncertainty
+immediately, so a UI can offer manual recovery. `provider-kit try` enables the bounded wait.
 
 ## Verification policy
 

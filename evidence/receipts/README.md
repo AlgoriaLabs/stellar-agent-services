@@ -4,7 +4,27 @@ Captured on 2026-11-06 with the actual HTTPS sample, x402 facilitator and Stella
 canonical JSON named by its exact SHA-256. The [public evidence page](https://algorialabs.github.io/stellar-agent-services/#verification)
 serves the latest receipt and earned badges, and retains the earlier receipts.
 
-## Final run
+## Registered Oracle run
+
+[Canonical receipt](b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.json), checked at **2026-11-06 15:42:43 UTC**:
+**C1–C7 all passed**, level **3 (Recoverable)**, score **100**. The sample is testnet agent **163** at the
+[stable Oracle manifest](https://sas-testnet.79-76-99-174.sslip.io/.well-known/stellar-agent-services.json).
+
+The [confirmed registry response](../validation/README.md) anchors this exact receipt. Five badges are earned:
+Standard v1, Payment verified, Recovery verified, Load-safe and 8004 validated.
+
+![8004 validated](b364429e0b6e084fe85100d7e2a6ef05d92c0a1b94f351f6952aadb5ad84ddba.8004-validated.svg)
+
+[Run report and captured manifest](../d2/oracle-live-verification.json) ·
+[Independent RPC transfer proofs](../d2/oracle-payments.json) ·
+[Before/after Linux client check](../d2/oracle-clean-client.json).
+
+The run reserved up to 0.03 test USDC for C4 and two C7 payments. Two transfers of 0.01 settled; the excess
+load job was refused and its signature did not settle after expiry. C5 recovered the original C4 job.
+The validator is operated for this project, with its signing key in macOS Keychain. This is not an independent audit.
+The run used the checkout, not a newly published npm version.
+
+## Historical temporary-endpoint run
 
 [Canonical receipt](695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.json),
 checked at **2026-11-06 11:08:23 UTC**, reached **level 3, Recoverable** (conformance score 100).
@@ -53,16 +73,15 @@ existing follow deadline [J13]. Two offline regression tests prove successful re
 unresolved polling, with one signing operation and no second payment [J11]. No old receipt was edited or combined
 with another run to earn a badge.
 
-## Limits and remaining registry work
+## Limits of the historical receipts
 
 The sample used a temporary Cloudflare quick tunnel, not a permanent deployment. It was not registered, so C2
 was skipped in all three runs. The validator is operated for this project; this is not independent validation.
 Its signing key is in macOS Keychain through Stellar CLI secure storage. Dedicated disposable verifier payers
 were held in memory and never shared with the provider.
 
-These receipts are **unanchored**. No `8004 validated` badge is earned. After permanent deployment, the owner must
-register the sample, approve a validation request, and obtain a fresh receipt whose hash the validator anchors
-on chain. See [the registry checklist](../validation/README.md) and [deployment bundle](../../deploy/d2/README.md).
+These three historical receipts are **unanchored**. No `8004 validated` badge is earned. The fresh registered Oracle receipt above is the one anchored on chain. These historical files remain
+unchanged and do not gain registry badges retroactively.
 
-The final run used the local sample admission and verifier polling fixes, based on the 0.1.0 checkout. Those
+The historical final run used the local sample admission and verifier polling fixes, based on the 0.1.0 checkout. Those
 source changes have not been released to npm; the receipt's tool version remains 0.1.0.

@@ -446,13 +446,14 @@ existing Python API becomes a paid service through gateway mode.
   landed; receipts are stored under their own SHA-256, the on-chain `response_hash`.
   - [x] Capture live testnet verification receipts and earned badges; retain failed and skipped checks honestly
     ([results](evidence/receipts/README.md)). Bounded polling now lets the same uncertain job reconcile [J13].
-- [ ] Validation Registry publishing: `request-validation` (provider) and `validation_response` (verifier) on testnet.
+- [x] Validation Registry publishing: `request-validation` (provider) and `validation_response` (verifier) on testnet.
   - [x] `verifier publish`: `validation_response` through the Stellar CLI keychain, after checking the request, the
     receipt and the `response_uri`; the request document is defined in docs/verification.md.
   - [x] `provider-kit request-validation`: the request document as a protocol type, JSON Schema and test vectors;
     the command checks the registration, the signer and the validator, then the owner's wallet signs it (or the
     Stellar CLI keychain, with `--source`).
-  - [ ] Run both on testnet for the sample provider: the first receipt and Validation Registry record.
+  - [x] Run both on testnet for registered Oracle sample agent 163; C1–C7 passed, score 100, receipt anchored
+    ([confirmed registration, request and response](evidence/validation/README.md), 2026-11-06).
 - [x] Testnet direct-registry discovery and manifest service matching reported implemented in `stellar-agent-search`
   ([DX phase 4](docs/dx-improvements.md#phase-4-from-nothing-to-live-dev-launch-status)).
 - [ ] Confirm the released discovery path, price/network information and validation-derived badges during the pilot.
@@ -468,7 +469,8 @@ existing Python API becomes a paid service through gateway mode.
 - [ ] Five distinct users complete find → approve → pay → receive, and at least one runs a recovery.
 - [ ] Fix pilot-blocking issues and record them in the pilot report.
 - [x] Sample approval/payment and recovery videos, screenshots and payment references captured.
-- [ ] Publish the evidence page, collected videos and payment references; add validation records and pilot report.
+- [x] Publish the evidence page, videos, payment references, anchored receipt and registry records.
+- [ ] Add the completed independent pilot report after real participant sessions.
 
 **Exit:** every row of the SOW §6.1 evidence table is linked from `evidence/README.md`.
 

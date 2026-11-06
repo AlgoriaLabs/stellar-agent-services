@@ -243,6 +243,26 @@ describe("provider-kit try", () => {
     expect(t.output()).not.toContain("Not paid");
   });
 
+  it("waits for a returned uncertain job to reconcile without paying again [J11], [J13]", async () => {
+    const t = setup();
+    let first = true;
+    t.fetch.mockImplementation(async (input, init) => {
+      const response = await t.provider.fetch(new Request(input, init));
+      if (!first || !new Headers(init?.headers).has("PAYMENT-SIGNATURE") || response.status !== 200) return response;
+      first = false;
+      const view = await response.json();
+      view.status = "payment_uncertain";
+      view.charged = "unknown";
+      delete view.output;
+      delete view.payment;
+      return new Response(JSON.stringify(view), { status: 202, headers: { "Content-Type": "application/json", "Retry-After": "1" } });
+    });
+    expect(await run({ manifest: MANIFEST, yes: true }, ["text-stats"], t.io)).toBe(0);
+    expect(t.method.createPayload).toHaveBeenCalledTimes(1);
+    expect(t.facilitator.settle).toHaveBeenCalledTimes(1);
+    expect(t.output()).toContain("confirmed on chain");
+  });
+
   it("finds the provider from a config's baseUrl, without the rest of the provider's environment", async () => {
     const t = setup();
     const config = join(directory, "provider.config.json");

@@ -1,0 +1,30 @@
+# Isolated testnet sample; the existing mainnet provider is a different process and account.
+[Unit]
+Description=Stellar Agent Services testnet sample
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sas-testnet
+Group=sas-testnet
+WorkingDirectory=/opt/stellar-sas-testnet/current
+EnvironmentFile=/etc/stellar-sas-testnet/public.env
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning examples/paid-service/dist/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/stellar-sas-testnet
+UMask=0027
+MemoryMax=384M
+CPUQuota=25%
+CPUWeight=10
+Nice=10
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

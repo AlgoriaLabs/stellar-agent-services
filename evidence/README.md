@@ -5,19 +5,19 @@ with its network, hash, ledger and explorer link, and testnet evidence is labele
 
 **Public evidence:** [videos, screenshots, receipts and payment proofs](https://algorialabs.github.io/stellar-agent-services/).
 
-**Status (2026-11-06): payment/recovery recordings published; live verification captured.** The D1/D2
-folders contain real testnet recordings, screenshots and RPC proofs. The live verification runs are documented
-with their individual failures and skips in [receipts](receipts/README.md). Permanent sample registration,
-Validation Registry records and independent pilot evidence remain outstanding. Local checks and release observations are in
-[readiness.md](readiness.md). The [closeout guide](../docs/sow-closeout.md) gives the remaining sequence.
+**Status (2026-11-06): D1 and D2 technical evidence is published.** The Oracle sample is registered as
+testnet agent 163, passes all C1–C7 checks and has a confirmed Validation Registry response anchoring its
+receipt. Five badges are earned. Recordings and payment proofs remain available. Independent pilot work and
+Chapter Lead acceptance remain outstanding. [Readiness](readiness.md) records the checks and release limits;
+[the closeout guide](../docs/sow-closeout.md) gives the pilot handoff.
 
 | Deliverable | Evidence | Location |
 | --- | --- | --- |
 | D1 | Provider Standard v1 | [docs/provider-standard.md](../docs/provider-standard.md) |
 | D1 | Approval → payment video, screenshots, tx link | [Captured evidence](d1/README.md) — published |
 | D2 | Setup guide | [docs/provider-setup-guide.md](../docs/provider-setup-guide.md) |
-| D2 | Verification receipts and badges | [Live run results](receipts/README.md) — unanchored; read each check's result |
-| D2 | Validation Registry records | [Registry checklist](validation/README.md) — not collected |
+| D2 | Verification receipts and badges | [Live run results](receipts/README.md) — registered Oracle run, five earned badges |
+| D2 | Validation Registry records | [Confirmed registration, request and response](validation/README.md) |
 | D2 | Job Recovery demo | [Captured recovery and single-transfer proof](d2/README.md) — published |
 | D3 | Provider integrations, paid-call references, screenshots | [Pilot checklist](pilot/README.md) — not run |
 | D3 | Pilot report | [Report template](pilot/report.md) — not filled |
@@ -31,4 +31,4 @@ raw journals from screenshots and attachments. Link a completed artifact only af
 independently establish the payments.
 
 [publication.json](publication.json) records the evidence branch commit and anonymous checksum verification of
-the publicly served files. Build the site with `node scripts/evidence-site.mjs <empty-output-directory>`.
+the publicly served files. Run `npm run build`, then build the site with `node scripts/evidence-site.mjs <empty-output-directory>`.

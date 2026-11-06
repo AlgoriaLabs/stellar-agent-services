@@ -21,3 +21,7 @@ For each distinct user:
 
 Fill [report.md](report.md) from observations, link screenshots and payment evidence, and record pilot incentives
 as distributed only when actually distributed. Resolve blocking issues and link the fixes and retest outcomes.
+
+[Invitation drafts](invitation-drafts.md) are prepared for the owner. The registered sample and its
+[verification evidence](../validation/README.md) are ready for demonstration, but do not count as an
+independent provider or user.

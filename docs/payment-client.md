@@ -246,8 +246,10 @@ verification read, because collecting a paid result never requires another payme
 7. On `202`, or if the connection drops: check-status, then get-result, never paying again, at the pace the
    provider's `Retry-After` sets. A `409 request_in_progress` means the provider holds the payment and is still
    settling it: the client keeps polling, and hands the job back for `recover()` if settlement outlasts
-   `followSeconds`. A job the provider marks `payment_uncertain` comes back at once: only the provider's
-   reconciliation resolves it ([job-recovery.md](job-recovery.md#reconciliation)), so polling doesn't.
+   `followSeconds`. By default a job marked `payment_uncertain` comes back at once. With
+   `followPaymentUncertain: true`, the client keeps reading that same job within `followSeconds`, at the
+   provider's `Retry-After` pace, while provider reconciliation decides its payment from the chain [J13].
+   It never signs or submits another payment while waiting [J11]. `provider-kit try` enables this bounded wait.
 
 ## Sprint plan
 

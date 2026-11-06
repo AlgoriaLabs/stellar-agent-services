@@ -11,6 +11,10 @@ their template.
 Jobs are kept in SQLite (`JOB_DB_PATH`, default `./jobs.sqlite`), so a paid job survives a restart: stop the
 server while a report is queued, start it again, and the report runs.
 
+Set `HOST=127.0.0.1` when a reverse proxy on the same server supplies HTTPS. The default is `0.0.0.0`, which also
+works inside a container. [The Oracle testnet deployment](../../deploy/d2/oracle/README.md) uses loopback and
+a separate persistent job store beside an existing mainnet service.
+
 `text-stats` admits one on-success job at a time and refuses excess work before payment [Q2], [Q3]. This is
 deliberately conservative for the shared testnet facilitator. A live verification run at the former default of
 four concurrent jobs encountered settlement errors; its receipt is retained in

@@ -1,8 +1,9 @@
 # Repository readiness: 2026-11-06
 
-Engineering checks, captured live verification and public release observations. This is not a completed live
-pilot or Validation Registry proof. The checkout is based on `ddade601a1f640f7b3f353a4d1b43a0aee8aa757`, with uncommitted
-closeout changes. Node 24.12.0 was used for local checks.
+Engineering checks and public evidence, updated for the stable Oracle sample and confirmed testnet registry
+response. This is not a completed independent pilot. The checkout is based on
+`35f1280de78958e6d34eca4ac472071915584029`, with uncommitted Oracle deployment and client polling changes.
+Node 24.12.0 was used locally; Oracle runs Node 24.22.2.
 
 ## Local checks
 
@@ -10,7 +11,7 @@ closeout changes. Node 24.12.0 was used for local checks.
 | --- | --- |
 | Locked dependency install (`npm ci`) | Passed |
 | TypeScript build (`tsc -b --force`, then `npm run build`) | Passed; initial stale incremental metadata was rebuilt |
-| Complete offline tests (`npm test`) | Passed: 58 files, 1,068 tests, including 34 verification-policy cases and two bounded reconciliation-polling cases |
+| Complete offline tests (`npm test`) | Passed: 58 files, 1,071 tests, including the three new client/CLI bounded polling cases |
 | Wallet Svelte check and production build | Passed, zero check warnings/errors |
 | Owner approval page Svelte check and production build | Passed, zero check warnings/errors |
 | Documentation bundle (`npm run llms`, `npm run llms:check`) | Passed |
@@ -50,9 +51,11 @@ These published packages do not contain the new verification-source enforcement 
   rerun on 2026-11-06 on a fresh Ubuntu runner, again installed, built and passed the unpaid scaffold checks but
   ended at `payment_uncertain`. This does not complete the clean-machine paid setup acceptance check.
 
-The facilitator's underlying failure in the scheduled call is unresolved. Later manual sample payment and
-recovery flows passed on testnet. The verifier's bounded reconciliation polling fix does not change the CLI's
-scheduled `provider-kit try` path; no successful scheduled rerun is claimed.
+The released CLI returned before provider reconciliation completed. The same issue was reproduced on Oracle
+with npm 0.1.0. The checkout now enables bounded same-job uncertainty polling in `provider-kit try`, and a
+separate Linux client workspace completed its call in 35.6 seconds with an independently confirmed payment.
+[The before/after record](d2/oracle-clean-client.json) preserves both original payments. No successful scheduled
+rerun is claimed, and the fix has not been released to npm.
 
 ## Captured testnet payment and recovery
 
@@ -68,30 +71,27 @@ The [public evidence page](https://algorialabs.github.io/stellar-agent-services/
 from the separate `codex/d2-evidence` branch. [Publication verification](publication.json) records anonymous
 downloads and exact SHA-256 checks, independent of authenticated repository access.
 
-## Live D2 verification and deployment preparation
+## Registered Oracle verification
 
-[Live receipts](receipts/README.md) retain every run's failures and skips, not just successful checks. They
-describe a temporary HTTPS sample, not a registered provider. A dedicated testnet validator was created through
-Stellar CLI secure storage in macOS Keychain; no secret was displayed or written to a file. The supplied payout
-wallet already holds its testnet USDC trustline.
+The sample runs at [its stable HTTPS manifest](https://sas-testnet.79-76-99-174.sslip.io/.well-known/stellar-agent-services.json)
+as testnet agent 163. All C1–C7 checks passed, reaching level 3 and score 100. The confirmed registry response
+anchors the canonical receipt and earns all five badges. [Registry proof](validation/README.md) links every
+registration/request/response transaction and the exact public receipt bytes. The validator is project-operated.
 
-The first run proved payment and recovery, but its concurrent load calls encountered facilitator errors.
-The sample now admits one on-success `text-stats` job at a time [Q2], [Q3]. A subsequent run returned uncertainty
-and was later reconciled to its original confirmed transfer. That exposed the verifier stopping its follow
-early; bounded polling now also reads `payment_uncertain` jobs [J11], [J13], with two offline regression cases.
+[Independent payment proofs](d2/oracle-payments.json) cover two 0.01 test USDC transfers. C7 refused the extra
+load payment and checked that it never settled after expiry; C5 recovered the original C4 job.
+Historical temporary-provider receipts retain their original failures and skips.
 
-The final run passed C1, C3, C4, C5, C6 and C7, reaching level 3 (Recoverable), with four earned badges. C2 was
-skipped because the temporary sample was not registered. The paid C7 check accepted one job, refused one before
-payment, confirmed the accepted job's transfer and proved the refused payment never settled after expiry.
-[Independent RPC proof](d2/verification-payments.json) confirms the final run's two 0.01 USDC transfers and the
-earlier uncertain job's original transfer. No second payment was submitted for any of those jobs.
-
-The [permanent sample deployment bundle](../deploy/d2/README.md) is prepared. Fly login and configuration
-validation passed, but no app or volume was provisioned. The operator must enable deployment in their account.
-The Docker daemon was unavailable, so the sample container image build remains unverified.
+[Deployment checks](d2/oracle-deployment.json) confirm both HTTPS origins are healthy, and the mainnet Logo Maker
+manifest remains byte-canonically unchanged. The existing Oracle A1 allocation is reused; no extra VM, volume
+or network resource was provisioned. The service has its own Linux user, SQLite directory and loopback port,
+with 384 MiB/25% CPU limits and boot startup. Signing keys remain off the server. A read-only `provider-kit status` using the deployed public environment
+reports all six stages complete: local, payTo, paid, registered, live and verified. See the
+[runbook](../deploy/d2/oracle/README.md).
 
 ## Remaining acceptance work
 
-Owner registration/validation transactions, a permanent public provider deployment, a complete paid clean-machine
-setup check and the independent pilot remain. Follow [the closeout guide](../docs/sow-closeout.md) for those steps.
-Its acceptance decisions and pilot counts still need owner/Chapter Lead agreement.
+Recruit independent providers and distinct users, execute the pilot and fill its report. Agree conflicting
+SOW counts, sprint dates and testnet evidence acceptance with the Chapter Lead. Review and release the source
+fixes; rerun the scheduled paid CI job after they are available there. Mainnet payments remain deferred until
+funding is available. No mainnet payment or registry transaction was performed in this continuation.

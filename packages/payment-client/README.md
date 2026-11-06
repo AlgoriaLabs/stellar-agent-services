@@ -68,6 +68,10 @@ Job Recovery: start the provider with `DRILL_LOSE_RESPONSE=1 REPORT_DELAY_SECOND
 then run the `stellar-pay recover <job-id> --dev` command it prints. `stellar-pay jobs` and
 `stellar-pay journal verify` show the journal.
 
+`followPaymentUncertain: true` optionally follows an uncertain job within `followSeconds` while the provider
+reconciles it [J13]. It only reads the original job and never pays again [J11]. The default returns uncertainty
+immediately, so a UI can offer manual recovery. `provider-kit try` enables the bounded wait.
+
 ## Verification policy
 
 Configured verification limits are checked at `quote()` and again at `pay()`, before signing [V1]. Install a

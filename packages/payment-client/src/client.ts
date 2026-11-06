@@ -60,6 +60,8 @@ export interface PaymentClientOptions {
   allowLocalhost?: boolean;
   /** How long pay() and recover() follow a running job before returning it. Default 120 s. */
   followSeconds?: number;
+  /** Also follow payment_uncertain within followSeconds. Default false: return uncertainty to the caller [J13]. */
+  followPaymentUncertain?: boolean;
   /** Time between polls while following a job. Default: the provider's Retry-After, or 2000 ms. */
   pollMs?: number;
   /** How long quote() and pay() wait out a busy provider (429 or 503) before giving up. Default 30 s. */
@@ -493,8 +495,8 @@ export class PaymentClient {
   private async follow(baseUrl: string, jobId: string, token: string, job: JobView, retryAfter: number | undefined): Promise<JobView> {
     const deadline = Date.now() + (this.options.followSeconds ?? 120) * 1000;
     while ((job.status !== "succeeded" && job.status !== "failed") || (job.status === "succeeded" && job.output === undefined)) {
-      // Only the provider's reconciliation can resolve it [J13]; polling won't, so hand it back now.
-      if (job.status === "payment_uncertain" || Date.now() >= deadline) return job;
+      // Only provider reconciliation resolves uncertainty [J13]. Opt-in polling reads that same job [J11].
+      if ((job.status === "payment_uncertain" && this.options.followPaymentUncertain !== true) || Date.now() >= deadline) return job;
       const wait = this.options.pollMs ?? retryAfter ?? 2000;
       await sleep(Math.min(wait, deadline - Date.now()));
       const response = await this.getResult(baseUrl, jobId, token);

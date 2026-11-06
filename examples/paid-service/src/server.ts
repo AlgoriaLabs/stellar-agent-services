@@ -11,6 +11,7 @@ import { delayedReport } from "./services/delayed-report.js";
 import { textStats } from "./services/text-stats.js";
 
 const port = Number(process.env["PORT"] ?? "8787");
+const hostname = process.env["HOST"] ?? "0.0.0.0";
 const origin = process.env["PUBLIC_ORIGIN"] ?? `http://localhost:${port}`;
 const payTo = process.env["PAY_TO"];
 if (payTo === undefined) throw new Error("set PAY_TO to the public G... address that receives payments");
@@ -41,9 +42,11 @@ const provider = createProvider({
 await provider.ready();
 
 const app = new Hono();
+// The process is ready only after provider.ready() above; deployment health checks never pay or read jobs.
+app.get("/healthz", (context) => context.json({ ok: true, network: provider.manifest.payment.accepts[0].network }));
 app.all("*", (context) => provider.fetch(context.req.raw));
 
-const server = serve({ fetch: app.fetch, port }, () => {
+const server = serve({ fetch: app.fetch, port, hostname }, () => {
   console.log(`Provider listening on ${origin}`);
   console.log(`Manifest: ${provider.manifestUrl}`);
   console.log(`payTo:    ${payTo}`);

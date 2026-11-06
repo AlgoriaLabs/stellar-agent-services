@@ -9,8 +9,8 @@ remaining acceptance work. Prepared templates are not evidence of completed pilo
 | Area | Available | Still needed for SOW acceptance |
 | --- | --- | --- |
 | D1 | Standard, client, spending controls, publicly hosted approval/limit-block video, screenshots and payment proof | Chapter Lead review |
-| D2 | Kit, guide, C1–C7 verifier, live unanchored receipts/badges, publicly hosted recovery and transfer proof | Permanent sample deployment/registration, fresh verification, live validation request/response |
-| D3 | Scaffolder and onboarding guide | Independent integrations, user flows, findings/fixes, pilot report and public evidence page |
+| D2 | Kit, guide, stable Oracle sample, all C1–C7 passed, anchored receipt/five badges, recovery and payment proofs | Chapter Lead review |
+| D3 | Scaffolder and onboarding guide | Independent integrations, user flows, findings/fixes and completed pilot report |
 | Distribution | Six npm packages at 0.1.0 and a successful public release | A later release for the changes in this checkout |
 | Discovery | Newer implementation notes report testnet registry scanning and manifest service matching | Confirm the released discovery path in the pilot and show the complete find-to-result flow |
 
@@ -29,66 +29,31 @@ agreement. Five flows by one person do not establish five users.
 Also confirm that testnet evidence is accepted. Record the agreement and sprint start date in the pilot report;
 the SOW's submission date does not establish the sprint deadline.
 
-## Prepare the testnet deployment
+## Completed reference deployment and evidence
 
-Use Node 24, a stable HTTPS provider origin, a separate stable HTTPS verifier origin, a persistent job volume and
-a persistent verifier data volume. The provider and verifier are separate processes. Keep their URLs stable:
-registration names the manifest, and validation records name the receipt URL.
+The [sample runs on the existing Oracle A1 VM](../deploy/d2/oracle/README.md), with separate process, user,
+loopback port, SQLite data and HTTPS origin. No new cloud resources were allocated. Its public testnet owner
+is separate from the existing mainnet Logo Maker wallet. The mainnet manifest hash remained unchanged.
 
-1. The [D2 sample deployment bundle](../deploy/d2/README.md) is prepared for this checkout, with a stable Fly
-   origin candidate and persistent storage. The supplied public payout address already has its testnet USDC
-   trustline. Fly login succeeded; the operator still needs to enable deployment in their Fly account.
-   No sample app or volume was created. Its Dockerfile remains unverified because the Docker daemon was unavailable.
-   Alternatively, follow the [setup guide](provider-setup-guide.md) to create a testnet project. The generated Dockerfile and
-   `fly.toml` already describe the provider deployment. For unreleased code, build this checkout and invoke
-   `node packages/create-stellar-service/dist/index.js` instead of the npm release.
-2. Use the owner's public payout address and wallet for owner transactions. Provider configuration contains
-   public values only: `PAY_TO`, `AGENT_ID`, origin, testnet network, facilitator and database path. Use the
-   [sample service](../examples/paid-service/README.md) for the delayed-report recovery demonstration.
-3. The verifier operator prepares a separate Stellar CLI keychain identity and a dedicated testnet payer through
-   their existing credential manager. The payer environment variable is `VERIFIER_PAYER_SECRET`. Neither the
-   provider owner's key nor the validator's key is placed in the provider environment.
-4. On the verifier host, after installing the released verifier, use this command with the chosen HTTPS origin
-   and keychain identity. `watch` makes paid testnet checks and publishes registry responses: the operator must
-   authorize and provision those actions before starting it.
+The sample is registered as testnet agent 163. [Registry evidence](../evidence/validation/README.md) includes
+confirmed registration, request and response transactions, the request document, receipt hash and on-chain
+score/tag. All C1–C7 checks passed. The project-operated validator is separate from the provider and disposable
+payer; it is not an independent auditor. Signing keys stay in local Stellar CLI secure storage.
 
-```bash
-verifier watch --network testnet --source verifier \
-  --public-url https://verifier.example.com --port 8080 \
-  --data /var/lib/stellar-verifier --max-price 0.10 --max-spend 1.00
-```
+Review these completed reference artifacts:
 
-`--max-spend` is a per-verification-run limit, not a lifetime or daily cap. Terminate TLS at the host's reverse
-proxy, preserve `/var/lib/stellar-verifier`, and check `/healthz`. Start one watcher per validator identity.
-Provide the validator's public address explicitly to provider launch; there is no default validator configured.
+1. [D1 approval, spending block, payment and result recording](../evidence/d1/README.md).
+2. [Registered sample receipt and five badges](../evidence/receipts/README.md), with failures/skips from historical runs preserved.
+3. [D2 same-job recovery recording and bounded single-transfer proof](../evidence/d2/README.md) [J11], [J13], [J16].
+4. [Linux client before/after evidence](../evidence/d2/oracle-clean-client.json): npm 0.1.0 returned uncertainty;
+   its original job later reconciled. The unreleased polling fix completed a distinct testnet call and
+   confirmed its transfer. This does not claim a scheduled CI rerun or an independent clean-host integration.
+5. [Public evidence page](https://algorialabs.github.io/stellar-agent-services/) and [publication checks](../evidence/publication.json).
 
-5. In the provider project, review the launch plan, then let the owner approve registration and validation in
-   their wallet. Replace both example values first. The second command may deploy and submits owner-approved
-   transactions; it is a later operator step, not part of the unattended repository checks.
-
-```bash
-npm run launch -- --url https://provider.example.com --validator G... --dry-run --no-open
-npm run launch -- --url https://provider.example.com --validator G... --no-open
-npm run status -- --json
-```
-
-For other hosts use `--no-deploy` and deploy with the saved public settings. Wait for the provider manifest and
-verifier health check before asking a pilot user to pay. Run `provider-kit check` and `verifier check` against
-the public manifest. A passing unpaid check alone does not prove C4 or C5.
-
-## Collect the reference evidence
-
-1. **D1 captured:** review [the video, screenshots and RPC proof](../evidence/d1/README.md). They show a rejected
-   over-budget payment, then the exact terms, approval, result and confirmed transfer of an allowed payment.
-2. **D2:** review [the captured live receipts and badges](../evidence/receipts/README.md), including failed and
-   skipped checks. They describe an unregistered temporary HTTPS endpoint, so none is an anchored registry record.
-   After permanent deployment and registration, run verification again. Retain the identity registration,
-   validation request and response references and receipt hash. Follow [the registry checklist](../evidence/validation/README.md).
-3. **Recovery captured:** review [the drill recording and RPC proof](../evidence/d2/README.md): lost response,
-   recovery of the same job and exactly one matching transfer in the complete observed ledger window [J11], [J13], [J16].
-4. The [public evidence page](https://algorialabs.github.io/stellar-agent-services/) serves the recordings and
-   proofs, with anonymous downloads checked against SHA-256. Its source is the separate `codex/d2-evidence`
-   branch, not an npm release. Add the final registry records there once confirmed.
+The [Oracle runbook](../deploy/d2/oracle/README.md) records maintenance and rollback. For another provider,
+follow the [setup guide](provider-setup-guide.md), use its own public payout, and have its owner sign registry
+steps in their wallet. Never deploy an owner signing key. Mainnet proof remains deferred until funded;
+all completed reference payments and registry records are explicitly testnet.
 
 ## Run the independent pilot
 
