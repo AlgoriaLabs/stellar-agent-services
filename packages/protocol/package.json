@@ -1,6 +1,6 @@
 {
   "name": "@stellar-agent-services/protocol",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Provider Standard v1 as code: manifest, job, receipt and header definitions shared by every package.",
   "type": "module",
   "license": "MIT",
