@@ -87,12 +87,31 @@
         supports the no-second-payment claim [J11], [J13], [J16].</p>
     </section>
   </div>
+  <section aria-labelledby="verification">
+    <h2 id="verification">D2 · Live verification receipt and badges</h2>
+    <p>The actual HTTPS sample was checked with a dedicated testnet payer. Latest check:
+      <time>2026-11-06T11:08:23.014Z</time>. This run reached <strong>level 3</strong>
+      (conformance score 100). The individual checks below also show failures or skips;
+      the conformance level does not certify identity or load.</p>
+    <p><a href="receipts/695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.json"><img src="receipts/695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.load-safe.svg" alt="load safe: testnet"></a> <a href="receipts/695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.json"><img src="receipts/695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.payment-verified.svg" alt="payment verified: testnet"></a> <a href="receipts/695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.json"><img src="receipts/695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.recovery-verified.svg" alt="recovery verified: testnet"></a> <a href="receipts/695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.json"><img src="receipts/695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.standard-v1.svg" alt="standard v1: testnet"></a></p>
+    <ul><li><strong>C1: passed</strong></li><li><strong>C2: skipped</strong> — the manifest has no provider.agentId: the provider is not registered</li><li><strong>C3: passed</strong></li><li><strong>C4: passed</strong></li><li><strong>C5: passed</strong></li><li><strong>C6: passed</strong></li><li><strong>C7: passed</strong></li></ul>
+    <p><a href="receipts/695dcdc2ff60d2d277636323872d96425cbab390f2a88d5859b4b9872fe093e4.json">Canonical verification receipt</a> ·
+      <a href="d2/live-verification.json">Run report and captured manifest</a> ·
+      <a href="d2/verification-payments.json">Independent payment proofs</a></p>
+    <p class="rule">The HTTPS endpoint used a temporary tunnel and was not registered. The receipt is unanchored:
+      no Validation Registry response or 8004 validated badge is claimed. The validator is operated for this
+      project; this is not an independent audit. An owner-approved permanent sample registration and a fresh
+      verification run are required for the registry evidence.</p>
+    <p class="rule">The final run used local sample admission and verifier polling fixes based on the 0.1.0
+      checkout. Those changes have not been released to npm.</p>
+    <p class="details"><a href="receipts/7e18a75da464b7ac1001aef6cae76facd22fb9d244d3726535161761840692a4.json">Earlier receipt (2026-11-06T11:02:18.463Z)</a>: C2 skipped; C4 skipped; C5 skipped. Preserved without editing.</p><p class="details"><a href="receipts/7af1af2b7c28ae68976a516879ca8f260b4ad9c7f6d1b92b3211df65f31bb609.json">Earlier receipt (2026-11-06T10:55:27.921Z)</a>: C2 skipped; C7 failed. Preserved without editing.</p>
+  </section>
   <section class="pending" aria-labelledby="remaining">
     <h2 id="remaining">Remaining evidence</h2>
     <p><strong>D2 live verification:</strong> a stable public sample deployment, its owner-approved identity
-      registration, a live verifier receipt and earned badges, and a confirmed Validation Registry request and
-      response are still pending. Payment proofs above are transaction evidence; they are separate from a
-      Provider Standard verification receipt.</p>
+      registration, and a confirmed Validation Registry request and response are still pending. The captured
+      live receipts above describe a temporary, unregistered endpoint. The permanent sample needs a fresh
+      verification after registration.</p>
     <p><strong>D3 independent pilot:</strong> independent provider integrations, participant flows, findings and
       a completed pilot report are still pending. This page makes no claim of full SOW acceptance.</p>
   </section>
