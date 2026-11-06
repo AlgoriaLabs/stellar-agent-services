@@ -1,0 +1,17 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Stellar Agent Services example",
+  "description": "Sample provider for Provider Standard v1.",
+  "services": [
+    {
+      "name": "stellar-agent-services",
+      "endpoint": "https://sas-testnet.79-76-99-174.sslip.io/.well-known/stellar-agent-services.json",
+      "version": "1"
+    },
+    {
+      "name": "web",
+      "endpoint": "https://sas-testnet.79-76-99-174.sslip.io"
+    }
+  ],
+  "x402": true
+}

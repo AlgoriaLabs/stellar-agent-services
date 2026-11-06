@@ -1,0 +1,84 @@
+{
+  "network": "stellar:testnet",
+  "capturedAt": "2026-11-06T15:44:30.008Z",
+  "agentId": 163,
+  "owner": "GBQXS5ZRH5AXDFEMKUNHPJ3VBEOYNKZEYF3TFIVFBULBLIBPSW5ACUZ3",
+  "manifestUrl": "https://sas-testnet.79-76-99-174.sslip.io/.well-known/stellar-agent-services.json",
+  "requestHash": "57a4b03ab6d4680546df11a415fd8b1efb2a6552361735cc8a3c568dd49a1262",
+  "firstLedger": 5591063,
+  "lastLedger": 5591244,
+  "completeEventScan": true,
+  "contracts": {
+    "identity": "CDE3K4COIAGWNNJQQLL26SYI3KBJF5FUDHXG5FA6GYDJCG7T5V7FIWZH",
+    "reputation": "CBZEAGIEI3HXMDRLF44KLQJQQOH6LCYWWSGJVSYQYQO2HQ6DDGZ7HT55",
+    "validation": "CC5USZRO26MOIAVNYTTJDS63C2OBBLREOAOET4CPF2EZWO3YFKLMO3SL"
+  },
+  "events": [
+    {
+      "contractId": "CDE3K4COIAGWNNJQQLL26SYI3KBJF5FUDHXG5FA6GYDJCG7T5V7FIWZH",
+      "id": "0024013449914773504-0000000001",
+      "ledger": 5591067,
+      "transaction": "3ea07a7cd69cc1e8877476d3b81daaef32fe3761c594922268b1f84aa16c65d6",
+      "topic": [
+        "metadata_set",
+        163,
+        "agentWallet"
+      ],
+      "data": {
+        "value": "4742515853355a52483541584446454d4b554e48504a335642454f594e4b5a45594633544649564642554c424c4942505357354143555a33"
+      }
+    },
+    {
+      "contractId": "CDE3K4COIAGWNNJQQLL26SYI3KBJF5FUDHXG5FA6GYDJCG7T5V7FIWZH",
+      "id": "0024013449914773504-0000000002",
+      "ledger": 5591067,
+      "transaction": "3ea07a7cd69cc1e8877476d3b81daaef32fe3761c594922268b1f84aa16c65d6",
+      "topic": [
+        "registered",
+        163,
+        "GBQXS5ZRH5AXDFEMKUNHPJ3VBEOYNKZEYF3TFIVFBULBLIBPSW5ACUZ3"
+      ],
+      "data": {
+        "agent_uri": "data:application/json;base64,eyJ0eXBlIjoiaHR0cHM6Ly9laXBzLmV0aGVyZXVtLm9yZy9FSVBTL2VpcC04MDA0I3JlZ2lzdHJhdGlvbi12MSIsIm5hbWUiOiJTdGVsbGFyIEFnZW50IFNlcnZpY2VzIGV4YW1wbGUiLCJkZXNjcmlwdGlvbiI6IlNhbXBsZSBwcm92aWRlciBmb3IgUHJvdmlkZXIgU3RhbmRhcmQgdjEuIiwic2VydmljZXMiOlt7Im5hbWUiOiJzdGVsbGFyLWFnZW50LXNlcnZpY2VzIiwiZW5kcG9pbnQiOiJodHRwczovL3Nhcy10ZXN0bmV0Ljc5LTc2LTk5LTE3NC5zc2xpcC5pby8ud2VsbC1rbm93bi9zdGVsbGFyLWFnZW50LXNlcnZpY2VzLmpzb24iLCJ2ZXJzaW9uIjoiMSJ9LHsibmFtZSI6IndlYiIsImVuZHBvaW50IjoiaHR0cHM6Ly9zYXMtdGVzdG5ldC43OS03Ni05OS0xNzQuc3NsaXAuaW8ifV0sIng0MDIiOnRydWV9"
+      }
+    },
+    {
+      "contractId": "CC5USZRO26MOIAVNYTTJDS63C2OBBLREOAOET4CPF2EZWO3YFKLMO3SL",
+      "id": "0024013591648702464-0000000000",
+      "ledger": 5591100,
+      "transaction": "4da4ed91a2e927cf1f2b681f892d63d25326b7ada9259b342ee5ba8494aa055a",
+      "topic": [
+        "validation_request",
+        "GB5PKQ7G64QCV6D2X3CZSQZYIMWHL2URBBAVO3Z5T4WA6IL3J7BEVH22",
+        163,
+        "57a4b03ab6d4680546df11a415fd8b1efb2a6552361735cc8a3c568dd49a1262"
+      ],
+      "data": {
+        "request_uri": "data:application/json;base64,eyJhZ2VudElkIjoxNjMsIm1hbmlmZXN0Ijp7InVybCI6Imh0dHBzOi8vc2FzLXRlc3RuZXQuNzktNzYtOTktMTc0LnNzbGlwLmlvLy53ZWxsLWtub3duL3N0ZWxsYXItYWdlbnQtc2VydmljZXMuanNvbiJ9LCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0IiwicmVxdWVzdGVkQXQiOiIyMDI2LTExLTA2VDE1OjMxOjE1LjY4NFoiLCJzdGFuZGFyZCI6InN0ZWxsYXItYWdlbnQtc2VydmljZXMvcHJvdmlkZXJAMSIsInR5cGUiOiJ2YWxpZGF0aW9uLXJlcXVlc3QiLCJ2YWxpZGF0b3IiOiJHQjVQS1E3RzY0UUNWNkQyWDNDWlNRWllJTVdITDJVUkJCQVZPM1o1VDRXQTZJTDNKN0JFVkgyMiJ9"
+      }
+    }
+  ],
+  "transactions": [
+    {
+      "transaction": "3ea07a7cd69cc1e8877476d3b81daaef32fe3761c594922268b1f84aa16c65d6",
+      "ledger": 5591067,
+      "status": "SUCCESS",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/3ea07a7cd69cc1e8877476d3b81daaef32fe3761c594922268b1f84aa16c65d6"
+    },
+    {
+      "transaction": "4da4ed91a2e927cf1f2b681f892d63d25326b7ada9259b342ee5ba8494aa055a",
+      "ledger": 5591100,
+      "status": "SUCCESS",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/4da4ed91a2e927cf1f2b681f892d63d25326b7ada9259b342ee5ba8494aa055a"
+    }
+  ],
+  "registryRecord": {
+    "validator": "GB5PKQ7G64QCV6D2X3CZSQZYIMWHL2URBBAVO3Z5T4WA6IL3J7BEVH22",
+    "agentId": 163,
+    "hasResponse": false,
+    "response": 0,
+    "responseHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "tag": "",
+    "lastUpdate": 5591100
+  }
+}
