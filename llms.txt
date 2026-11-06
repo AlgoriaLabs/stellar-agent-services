@@ -16,7 +16,7 @@
 
 ## Standard
 
-- [Provider Standard v1](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/provider-standard.md): The normative spec: manifest, services, payment, jobs, capacity, errors, identity, conformance levels. Rule ids M, S, P, J, Q, E, I, X
+- [Provider Standard v1](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/provider-standard.md): The normative spec: manifest, services, payment, jobs, capacity, errors, identity, conformance levels. Rule ids M, S, P, J, Q, E, I, V, X
 - [Standard reference for AI coding agents](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/standard/README-AI.md): The spec as an implementation reference: paths, constants, the create-job algorithm, headers, states, a rule index, common mistakes
 - [Standard summary for people](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/standard/README.md): What the standard does and why, without the detail
 - [Test vectors](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/packages/protocol/test-vectors/README.md): Known-answer tests for an implementation in any language: canonical JSON, binding hashes, headers, manifests, challenges, job states, errors
@@ -56,6 +56,7 @@
 
 ## Optional
 
+- [SOW closeout](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/sow-closeout.md): Readiness, remaining acceptance work, testnet deployment and evidence handoff
 - [Contributing](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/CONTRIBUTING.md): How changes are made: the spec first, then the kit, client and verifier
 - [ERC compatibility](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/erc-compatibility.md): How the standard lines up with ERC-8126 (agent verification) and ERC-8196 (agent authenticated wallet)
 - [Developer experience improvements](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/main/docs/dx-improvements.md): What each phase of the developer-experience work changed for providers, and how it was checked

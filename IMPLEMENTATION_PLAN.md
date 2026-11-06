@@ -7,12 +7,15 @@ Job Recovery, delivered and piloted within one 30-day Instaward sprint.
 - **Source of truth:** Instawards SOW "Stellar Agent MCP" (submitted 29.09.2026, $4,000, 30 days).
 - **Background:** `stellar-agent-search/docs/provider-network-phase-2.md` and `issues/P3-23-provider-network-phase-2.md`.
 - **Network:** Stellar **testnet** for the whole build. Mainnet is a later, separate decision (see [Open decisions](#10-open-decisions)).
-- **Status:** Week 3. The protocol package, the Provider Kit (library, gateway mode, durable SQLite queue, CLI)
-  and the payment client (core, `stellar-pay` CLI and a minimal web approval page) work end to end on testnet.
-  Job Recovery is complete in code, reconciliation and the ledger clock included; the recorded testnet demo is
-  still to do. The verifier is complete in code: checks C1–C7 with on-chain payment proofs, receipts, badges and
-  `validation_response`, and `provider-kit request-validation` asks for it. A first testnet receipt and Validation
-  Registry record are next.
+- **Status (2026-11-06):** the core packages are released at 0.1.0. The kit, client, recovery and C1–C7 verifier
+  are implemented. This checkout adds fail-closed enforcement of configured verification restrictions [V1].
+  Sample approval/payment and recovery demos are recorded with screenshots and on-chain proofs in `evidence/`.
+  [The recordings and proofs are public](https://algorialabs.github.io/stellar-agent-services/); live verification
+  runs and badges are documented in [receipt evidence](evidence/receipts/README.md). Permanent sample
+  registration, an anchored Validation Registry response and the independent pilot remain.
+  Newer implementation notes report testnet discovery implemented in `stellar-agent-search`;
+  the pilot must confirm the full discovery-to-result path. See [SOW closeout](docs/sow-closeout.md) for the
+  handoff and [readiness evidence](evidence/readiness.md) for checks and public release/CI references.
 
 ---
 
@@ -35,12 +38,13 @@ Job Recovery, delivered and piloted within one 30-day Instaward sprint.
 
 ### 1.1 Inconsistencies in the SOW, and the reading we plan against
 
-The SOW gives different numbers in different sections. We plan against the reading that satisfies all of them.
+The SOW gives conflicting numbers. The working interpretation below still needs Chapter Lead agreement; it
+does not literally satisfy D3's phrase "three independent providers".
 
 | Topic | What the SOW says | We plan for |
 | --- | --- | --- |
 | Providers | "two independent providers" (objective, W4, evidence). "three independent providers" (D3). "not more than two" (out of scope). "three working provider integrations" (W4 output). | **3 integrations = our sample provider + 2 independent providers** |
-| Users | "five users" (D3, W4 output). "two users" (objective, W4 work, evidence). "not more than five" (out of scope). | **5 completed user flows** (this also covers "two") |
+| Users | "five users" (D3, W4 output). "two users" (objective, W4 work, evidence). "not more than five" (out of scope). | **5 distinct users**, each completing the flow |
 | Where it lives | "add … to Stellar Agent Search" | Phase 2 of Stellar Agent Search, built in this repo. Discovery stays in `stellar-agent-search`. |
 
 > Action: confirm this reading with the Ambassador Chapter Lead before the sprint starts.
@@ -383,9 +387,9 @@ The sprint start date is still TBD; day 1 is the date the SOW is signed.
 - [x] Payment client, first working version: approval screen, caps, signing, journal.
   - [x] Core, local-key signer and `stellar-pay` CLI (approval prompt, caps, journal, on-chain check).
   - [x] Minimal web approval page (`apps/wallet`), for the D1 video.
-- [ ] One successful testnet payment flow, recorded (tx link, screenshots, short video).
+- [x] One successful testnet payment flow, recorded ([video, screenshots and RPC proof](evidence/d1/README.md)).
   - [x] Testnet tx links.
-  - [ ] Screenshots and the short video.
+  - [x] Screenshots and the short video, captured 2026-11-06; public publication remains outstanding.
 - [ ] Start pilot outreach: shortlist 4–5 candidate providers and 6–7 users.
 
 **Exit:** spec published, approval-before-payment video, testnet tx link.
@@ -429,7 +433,8 @@ existing Python API becomes a paid service through gateway mode.
   - `payment_uncertain`
   - reconciliation: automatic after every sweep, and `provider-kit reconcile` (`--dry-run`, `--rpc`)
   - the response-loss drill
-  - [ ] Record the recovery demo on testnet: one interrupted job, recovered, with exactly one on-chain transfer.
+  - [x] Record the recovery demo on testnet: one interrupted job, recovered, with exactly one on-chain transfer
+    ([video, screenshots and bounded event scan](evidence/d2/README.md), 2026-11-06).
 - [x] Payment client recovery: resume from the journal, never re-sign.
 - [x] Payment client: treat `409 request_in_progress` on create-job and while polling as "ask again later".
 - [x] A ledger clock, shared by reconciliation and the kit: an on-success job's deadline from its payment's
@@ -439,6 +444,8 @@ existing Python API becomes a paid service through gateway mode.
 - [x] `verifier`: checks C1–C7, conformance levels, receipt, badges, and the no-payment `check` command
   (docs/verification.md). Paid checks prove payments on chain by the signed nonce, and that refused payments never
   landed; receipts are stored under their own SHA-256, the on-chain `response_hash`.
+  - [x] Capture live testnet verification receipts and earned badges; retain failed and skipped checks honestly
+    ([results](evidence/receipts/README.md)). Bounded polling now lets the same uncertain job reconcile [J13].
 - [ ] Validation Registry publishing: `request-validation` (provider) and `validation_response` (verifier) on testnet.
   - [x] `verifier publish`: `validation_response` through the Stellar CLI keychain, after checking the request, the
     receipt and the `response_uri`; the request document is defined in docs/verification.md.
@@ -446,7 +453,9 @@ existing Python API becomes a paid service through gateway mode.
     the command checks the registration, the signer and the validator, then the owner's wallet signs it (or the
     Stellar CLI keychain, with `--source`).
   - [ ] Run both on testnet for the sample provider: the first receipt and Validation Registry record.
-- [ ] Discovery integration, option (a) from §5.7, in `stellar-agent-search`.
+- [x] Testnet direct-registry discovery and manifest service matching reported implemented in `stellar-agent-search`
+  ([DX phase 4](docs/dx-improvements.md#phase-4-from-nothing-to-live-dev-launch-status)).
+- [ ] Confirm the released discovery path, price/network information and validation-derived badges during the pilot.
 - [ ] Pilot providers start integrating: send them the guide and template.
 
 **Exit:**
@@ -456,9 +465,10 @@ existing Python API becomes a paid service through gateway mode.
 ### Week 4: Pilot and evidence (D3)
 
 - [ ] Two independent providers live: each verified, each with at least one paid call.
-- [ ] Five users complete find → approve → pay → receive, and at least one runs a recovery.
+- [ ] Five distinct users complete find → approve → pay → receive, and at least one runs a recovery.
 - [ ] Fix pilot-blocking issues and record them in the pilot report.
-- [ ] Evidence page, demo videos, payment references, validation records, pilot report.
+- [x] Sample approval/payment and recovery videos, screenshots and payment references captured.
+- [ ] Publish the evidence page, collected videos and payment references; add validation records and pilot report.
 
 **Exit:** every row of the SOW §6.1 evidence table is linked from `evidence/README.md`.
 
@@ -485,8 +495,8 @@ existing Python API becomes a paid service through gateway mode.
 - [x] A client without `Idempotency-Key` and `Job-Token` → provider-generated id and token, one charge.
 - [x] A challenge whose amount, payTo, asset or network differs from the manifest → the client refuses to sign.
 - [x] A failed spending-limit check → the payment is blocked (fail closed).
-- [ ] A lost response → recovery returns the stored result, with one on-chain transfer. (Provider side and the
-  client's `recover()` are tested offline; the on-chain demo is Week 3.)
+- [x] A lost response → recovery returns the stored result, with one on-chain transfer. Provider/client behavior
+  is tested offline, and [the recorded testnet demo](evidence/d2/README.md) includes a complete bounded transfer scan.
 - [x] An uncertain settlement is decided from the transaction carrying the job's nonce: another job's equal
   transfer never counts, and "not settled" comes only after the expiration ledger closed and the whole window
   was searched. An RPC outage, a window older than the RPC's history, or a ledger still to come leave the job
@@ -541,8 +551,8 @@ everywhere.
 | --- | --- | --- | --- |
 | 1 | ~~Payment client design (§5.6)~~ **Decided 2026-10-21:** docs/payment-client.md | Berkin | W1 day 2 |
 | 2 | SOW provider/user counts reading (§1.1) | Berkin + Ambassador Chapter Lead | Before sprint start |
-| 3 | Testnet discovery approach (§5.7) | Berkin | W2 |
+| 3 | **Implemented per DX phase 4:** direct Identity Registry scan on testnet; confirm the released flow in the pilot | Berkin | Pilot |
 | 4 | Testnet-only evidence accepted, or a final mainnet run | Berkin + Ambassador Chapter Lead | W2 |
-| 5 | npm scope for publishing (placeholder `@stellar-agent-services/*`) | Berkin | W2 (first publish) |
+| 5 | **Released 2026-11-02:** `@stellar-agent-services/*` and `create-stellar-service`, version 0.1.0 | Berkin | Done |
 | 6 | ~~Provider Standard v1 freeze~~ **Decided 2026-10-21, frozen as drafted, except the URL:** `Job-Token` header, manifest path, `maxTimeoutSeconds` range, the URL for the schema `$id` and problem `type` values (`algorialabs.github.io/stellar-agent-services`), plus CORS as SHOULD [J17] | Berkin | W1 |
 | 7 | Shared ERC-8126/8196 conventions: score direction, tags, hashing, policy extensions (docs/erc-compatibility.md) | Berkin + ERC-8126/8196 Stellar team | W1 for hashing, W3 for validation records |

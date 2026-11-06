@@ -20,6 +20,7 @@
 
 import {
   bindingHash,
+  canonicalSha256,
   checkChallenge,
   createJobUrl,
   IDEMPOTENCY_KEY,
@@ -40,6 +41,7 @@ import { loadManifest } from "./manifest.js";
 import { checkPolicy, PAY_ACTION, policyHash, type PolicyDecision, type PolicyViolation, type SpendingPolicy } from "./policy.js";
 import type { Confirmation, PaymentMethod, SignedPayload, Signer } from "./strategies.js";
 import { X402_EXACT_STELLAR, x402ExactStellar } from "./x402-exact-stellar.js";
+import { matchesVerification, type ProviderVerification, type VerificationSource } from "./verification.js";
 
 export interface PaymentClientOptions {
   /** Who pays: localKeySigner(), or a wallet adapter. */
@@ -47,6 +49,8 @@ export interface PaymentClientOptions {
   /** How to pay. The first method that matches the challenge is used. Default: x402ExactStellar(). */
   methods?: PaymentMethod[];
   policy: SpendingPolicy;
+  /** Trusted by the application. Required only when the policy sets verification minimums [V1]. */
+  verificationSource?: VerificationSource;
   journal: Journal;
   secrets: SecretStore;
   fetch?: typeof fetch;
@@ -193,7 +197,7 @@ export class PaymentClient {
     const requirements = challenge.accepts?.[0] ?? ({} as PaymentRequirements);
     const method = this.methodFor(requirements);
     if (method === undefined) challengeViolations.push(noMethod(requirements));
-    const limits = await this.checkLimits(requirements);
+    const limits = await this.checkLimits(requirements, manifest, manifestUrl);
 
     const quote: Quote = {
       manifestUrl,
@@ -255,7 +259,7 @@ export class PaymentClient {
     const method = this.methodFor(quote.requirements);
     if (method === undefined) throw new PaymentRefusedError(noMethod(quote.requirements));
     // Limits are checked again: another payment may have run since the quote.
-    const decision = await this.checkLimits(quote.requirements);
+    const decision = await this.checkLimits(quote.requirements, quote.manifest, quote.manifestUrl);
     if (!decision.allowed) {
       await journal.append("refused", quote.jobId, hash, { reasons: decision.violations.map((v) => `${v.field}: ${v.message}`) });
       throw new PaymentRefusedError(decision.violations.map((v) => v.message).join("; "));
@@ -435,15 +439,36 @@ export class PaymentClient {
     });
   }
 
-  /** The spending policy, plus a policy wallet's own on-chain budget. Both must pass (fail closed). */
-  private async checkLimits(requirements: PaymentRequirements): Promise<PolicyDecision & { walletBudget: string | undefined }> {
+  /** Spending policy, trusted verification [V1], and the wallet's on-chain budget must all pass. */
+  private async checkLimits(
+    requirements: PaymentRequirements,
+    manifest: ProviderManifest,
+    manifestUrl: string,
+  ): Promise<PolicyDecision & { walletBudget: string | undefined }> {
     const { policy, journal, signer } = this.options;
     const terms = pick(requirements);
+    let verification: ProviderVerification | undefined;
+    if (policy.minVerificationScore !== undefined || policy.stellar.minProviderLevel !== undefined) {
+      const subject = {
+        network: terms.network,
+        payTo: terms.payTo,
+        manifestUrl,
+        manifestSha256: await canonicalSha256(manifest),
+        ...(manifest.provider.agentId === undefined ? {} : { agentId: manifest.provider.agentId }),
+      };
+      try {
+        const evidence = await this.options.verificationSource?.read({ ...subject });
+        if (matchesVerification(evidence, subject)) verification = evidence;
+      } catch {
+        // An unavailable source is missing evidence, never permission to sign [V1].
+      }
+    }
     const decision = checkPolicy(policy, {
       action: PAY_ACTION,
       ...terms,
       amount: terms.amount ?? "0",
       spentLast24h: journal.spentSince(new Date(Date.now() - 86400_000)),
+      ...(verification === undefined ? {} : { verification }),
     });
     if (signer.budget === undefined || terms.amount === undefined) return { ...decision, walletBudget: undefined };
 

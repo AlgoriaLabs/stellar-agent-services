@@ -1,3 +1,5 @@
+// Spending limits and verification minimums block payments before signing [V1].
+
 import { USDC_ASSET } from "@stellar-agent-services/protocol";
 import { Keypair } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
@@ -47,5 +49,35 @@ describe("checkPolicy", () => {
     const auto = { ...policy, stellar: { ...policy.stellar, autoApproveUpTo: "100000" } };
     expect(checkPolicy(auto, request).needsApproval).toBe(false);
     expect(checkPolicy(auto, { ...request, amount: "100001" }).needsApproval).toBe(true);
+  });
+
+  it("requires evidence for each configured verification minimum, even zero", () => {
+    const restricted = { ...policy, minVerificationScore: 0, stellar: { ...policy.stellar, minProviderLevel: 0 } };
+    expect(fields(request, restricted)).toEqual(["minVerificationScore", "stellar.minProviderLevel"]);
+    expect(fields({ ...request, verification: { riskScore: 0, level: 0 } }, restricted)).toEqual([]);
+  });
+
+  it("compares the trusted score and provider level independently", () => {
+    const restricted = { ...policy, minVerificationScore: 70, stellar: { ...policy.stellar, minProviderLevel: 2 } };
+    expect(fields({ ...request, verification: { riskScore: 70, level: 2 } }, restricted)).toEqual([]);
+    expect(fields({ ...request, verification: { riskScore: 71, level: 2 } }, restricted)).toEqual(["minVerificationScore"]);
+    expect(fields({ ...request, verification: { riskScore: 10, level: 1 } }, restricted)).toEqual(["stellar.minProviderLevel"]);
+    expect(fields({ ...request, verification: { riskScore: 10 } }, restricted)).toEqual(["stellar.minProviderLevel"]);
+    expect(fields({ ...request, verification: { level: 3 } }, restricted)).toEqual(["minVerificationScore"]);
+  });
+
+  it.each([-1, 0.5, NaN, Infinity, 101])("rejects an invalid score minimum or observation: %s", (score) => {
+    expect(fields({ ...request, verification: { riskScore: 100 } }, { ...policy, minVerificationScore: score }))
+      .toEqual(["minVerificationScore"]);
+    expect(fields({ ...request, verification: { riskScore: score } }, { ...policy, minVerificationScore: 0 }))
+      .toEqual(["minVerificationScore"]);
+  });
+
+  it.each([-1, 0.5, NaN, Infinity, 4])("rejects an invalid level minimum or observation: %s", (level) => {
+    const restricted = { ...policy, stellar: { ...policy.stellar, minProviderLevel: level } };
+    expect(fields({ ...request, verification: { level: 3 } }, restricted)).toEqual(["stellar.minProviderLevel"]);
+    expect(fields({ ...request, verification: { level } }, {
+      ...policy, stellar: { ...policy.stellar, minProviderLevel: 0 },
+    })).toEqual(["stellar.minProviderLevel"]);
   });
 });

@@ -12,6 +12,7 @@
 
 export * from "./client.js";
 export * from "./policy.js";
+export type { ProviderVerification, VerificationSource, VerificationSubject } from "./verification.js";
 export * from "./journal.js";
 export * from "./manifest.js";
 export * from "./onchain.js";

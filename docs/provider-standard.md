@@ -607,6 +607,10 @@ Verification results are published to the Stellar 8004 Validation Registry. See
 
 The checks are listed in [verification.md](verification.md).
 
+- **[V1]** Clients SHOULD enforce any verification requirements configured by their owner before signing. Evidence
+  should come from a trusted source, match the approved manifest, payee and network, and be within that source's
+  validity window. Missing, unreadable or unverifiable evidence should block a payment that requires it.
+
 ## 9. Versioning and extensions
 
 - Changes inside v1 only add optional fields. `standard` stays `stellar-agent-services/provider@1`.

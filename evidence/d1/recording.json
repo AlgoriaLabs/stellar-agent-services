@@ -1,0 +1,66 @@
+{
+  "format": "Sampled browser screen recording, approximately two frames per second; pauses between captured segments removed. Selected unmodified screenshots are held at the end for readability. No narration or simulated payment states.",
+  "network": "stellar:testnet",
+  "durationSeconds": 47.938,
+  "video": "approval-payment.mp4",
+  "segments": [
+    {
+      "name": "d1-01-load-provider",
+      "sampledFrames": 1,
+      "startedAtMs": 1793960219748,
+      "durationSeconds": 0.5
+    },
+    {
+      "name": "d1-02-set-limit",
+      "sampledFrames": 1,
+      "startedAtMs": 1793960230929,
+      "durationSeconds": 0.5
+    },
+    {
+      "name": "d1-03-blocked-payment",
+      "sampledFrames": 2,
+      "startedAtMs": 1793960239496,
+      "durationSeconds": 0.933
+    },
+    {
+      "name": "d1-04-blocked-safety-check",
+      "sampledFrames": 9,
+      "startedAtMs": 1793960270752,
+      "durationSeconds": 4.236
+    },
+    {
+      "name": "d1-05-allowed-approval",
+      "sampledFrames": 9,
+      "startedAtMs": 1793960293889,
+      "durationSeconds": 4.399
+    },
+    {
+      "name": "d1-06-approved-safety-checks",
+      "sampledFrames": 8,
+      "startedAtMs": 1793960310894,
+      "durationSeconds": 3.736
+    },
+    {
+      "name": "d1-07-payment",
+      "sampledFrames": 34,
+      "startedAtMs": 1793960339788,
+      "durationSeconds": 15.747
+    },
+    {
+      "name": "d1-08-payment-outcome",
+      "sampledFrames": 14,
+      "startedAtMs": 1793960370638,
+      "durationSeconds": 6.484
+    },
+    {
+      "name": "d1-09-transaction-reference",
+      "sampledFrames": 7,
+      "startedAtMs": 1793960387865,
+      "durationSeconds": 3.403
+    }
+  ],
+  "closingScreenshots": [
+    "05-payment-confirmed.jpg",
+    "06-result-and-transaction.jpg"
+  ]
+}

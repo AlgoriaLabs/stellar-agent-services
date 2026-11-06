@@ -36,6 +36,7 @@ The main entry point runs in Node and the browser. Journal storage depends on wh
 | `src/x402-exact-stellar.ts` | The built-in payment method: x402 `exact` on Stellar, the only one Provider Standard v1 allows |
 | `src/conformance.ts` | Checks that every signer and payment-method adapter must pass (`./conformance` entry point) |
 | `src/policy.ts` | Spending policy with ERC-8196 field names; `checkPolicy()` fails closed |
+| `src/verification.ts` | Application-trusted verification source; binds evidence to the approved manifest, payee, network and validity window [V1] |
 | `src/journal.ts` | Append-only, hash-chained journal; job tokens kept apart in a `SecretStore` |
 | `src/file-storage.ts` | Journal and job-token storage in files (`./node` entry point) |
 | `src/browser-storage.ts` | Journal and job-token storage in IndexedDB (`./browser` entry point) |
@@ -67,9 +68,27 @@ Job Recovery: start the provider with `DRILL_LOSE_RESPONSE=1 REPORT_DELAY_SECOND
 then run the `stellar-pay recover <job-id> --dev` command it prints. `stellar-pay jobs` and
 `stellar-pay journal verify` show the journal.
 
+## Verification policy
+
+Configured verification limits are checked at `quote()` and again at `pay()`, before signing [V1]. Install a
+`verificationSource` in `PaymentClientOptions` to supply authenticated evidence. Without a source, or when it
+returns missing, stale, mismatched or unreadable evidence, a payment requiring verification is blocked.
+
+- `minVerificationScore` keeps ERC-8196's name and meaning: the **maximum allowed risk score**, 0–100, lower is
+  safer. It compares with the source's `riskScore`, not a receipt's higher-is-better conformance score.
+- `stellar.minProviderLevel` is the minimum Provider Standard §8 level, 0–3.
+- Even a configured value of zero requires evidence. Leaving both fields unset requires no source.
+- Sources are trusted application code. They must authenticate validators and receipt/registry data, bind the
+  answer to the requested subject, set `checkedAt` and `expiresAt`, and bound their network calls. Never use a
+  provider's own claims as proof. No built-in registry/risk-source adapter is supplied yet.
+- Recovery collects an already paid job without consulting the source or signing again [J11], [J13].
+
+See [the design](../../docs/payment-client.md#verification-source) for the interface and trust boundary.
+
 ## Not done in the PoC
 
-- `minVerificationScore` and `stellar.minProviderLevel` are stored but not enforced.
+- No built-in Validation Registry or ERC-8126 risk-source adapter. Configured verification limits fail closed
+  until the application supplies its own trusted source.
 - The wallet secret is a plain file (mode 600). Testnet only.
 - No MCP server yet.
 - Only the built-in signer and method. Adapters for other wallets come later, each in its own package.

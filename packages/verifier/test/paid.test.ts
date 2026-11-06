@@ -3,7 +3,7 @@ import { signTestPayment } from "@stellar-agent-services/provider-kit/testing";
 import { problem, PROBLEM_CONTENT_TYPE, USDC_ASSET, type CheckResult } from "@stellar-agent-services/protocol";
 import { decodePaymentRequiredHeader, encodePaymentRequiredHeader } from "@x402/core/http";
 import type { PaymentRequirements } from "@x402/core/types";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { VerificationReport } from "../src/index.js";
 import { payerKeys, payTo, rewriteJson, setup, textStats, type Tamper } from "./support/harness.js";
 
@@ -24,6 +24,20 @@ function rewriteViews(change: (view: any) => void, filter: (request: Request) =>
       return view;
     });
   };
+}
+
+/** A legitimate interim uncertainty response; the real offline provider has already settled this job. */
+async function uncertainResponse(request: Request, response: Response): Promise<Response> {
+  const view = await response.json();
+  view.status = "payment_uncertain";
+  view.charged = "unknown";
+  delete view.output;
+  delete view.payment;
+  const headers = new Headers(response.headers);
+  headers.set("Retry-After", "2");
+  headers.set("Location", `${new URL(request.url).origin}/jobs/${view.jobId}`);
+  headers.delete("PAYMENT-RESPONSE");
+  return new Response(JSON.stringify(view), { status: 202, headers });
 }
 
 describe("C4 paid call: the verifier's own limits", () => {
@@ -128,6 +142,41 @@ describe("C4 paid call: what the provider gets wrong", () => {
     expect(result(report, "C4")).toMatchObject({ status: "passed", evidence: { paidStatus: null, status: "succeeded" } });
     expect(result(report, "C5").status).toBe("passed");
     expect(facilitator.settled.filter((transaction) => transaction === report.payment?.transaction)).toHaveLength(1);
+  });
+
+  it("waits for an uncertain job to reconcile and proves its original payment [J11], [J13]", async () => {
+    let first = true;
+    const world = setup({ tamper: (request, response) => {
+      if (!first || !isPaidCreateJob(request) || !isJobView(response)) return response;
+      first = false;
+      return uncertainResponse(request, response);
+    } });
+    const sign = vi.fn(world.payer.sign);
+    const report = await world.verify({ payer: { address: world.payer.address, sign }, maxSpend: 100_000n });
+    expect(result(report, "C4")).toMatchObject({ status: "passed", evidence: { paidStatus: 202, status: "succeeded" } });
+    expect(result(report, "C5").status).toBe("passed");
+    expect(sign).toHaveBeenCalledTimes(1);
+    expect(world.facilitator.settled).toEqual([report.payment!.transaction]);
+    expect(report.spent).toBe("100000");
+  });
+
+  it("bounds uncertainty polling and never pays again when reconciliation remains unresolved [J13]", async () => {
+    let now = Date.now();
+    const started = now;
+    const world = setup({ tamper: (request, response) => {
+      const jobAnswer = isPaidCreateJob(request) || (request.method === "GET" && request.url.includes("/jobs/"));
+      return jobAnswer && isJobView(response) ? uncertainResponse(request, response) : response;
+    } });
+    const sign = vi.fn(world.payer.sign);
+    const report = await world.verify({ payer: { address: world.payer.address, sign }, maxSpend: 100_000n,
+      now: () => now, sleep: async ms => { now += ms; } });
+    expect(result(report, "C4")).toMatchObject({ status: "skipped", reason: expect.stringMatching(/payment_uncertain/) });
+    expect(result(report, "C5").status).toBe("skipped");
+    expect(now - started).toBeGreaterThanOrEqual(60_000);
+    expect(now - started).toBeLessThanOrEqual(62_000);
+    expect(sign).toHaveBeenCalledTimes(1);
+    expect(world.facilitator.settled).toHaveLength(1);
+    expect(report.payment).toBeUndefined();
   });
 
   it("follows a job that is still being settled [J7]", async () => {

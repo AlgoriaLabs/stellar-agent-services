@@ -54,6 +54,7 @@ itself can supply it. (The design doc's smart-account row, and erc-compatibility
 | --- | --- |
 | `packages/payment-client/src/strategies.ts` | `Signer`, `PaymentMethod`, `SignedPayload`, `ExpectedPayment`, `Confirmation` |
 | `packages/payment-client/src/client.ts` | `PaymentClient`: the flow that calls the strategies (`quote`, `pay`, `payOnce`, `confirm`, `methodFor`, `checkLimits`) |
+| `packages/payment-client/src/verification.ts` | Application-trusted evidence source and subject/freshness checks [V1] |
 | `packages/payment-client/src/local-key-signer.ts` | Built-in signer: `createEd25519Signer` from `@x402/stellar` |
 | `packages/payment-client/src/x402-exact-stellar.ts` | Built-in method, id `x402-exact-stellar` |
 | `packages/payment-client/src/onchain.ts` | `rpcConfirmPayment`, `checkTransfer`, `TransactionReader`. Reuse them in your `confirm()`. |
@@ -130,6 +131,13 @@ These hold for every adapter. Don't re-implement them in an adapter.
 | CG8 | `sending` with `{ network, asset, amount, payTo, payer: signer.address, method: id }` is durable before the paid request leaves. | `payOnce()` | same as CG3 |
 | CG9 | The method named in `sending` confirms, against the journaled terms, never the receipt. A transaction that already confirmed another job, a missing method or a method that throws gives "not confirmed" with a reason `[J16]`. | `confirm()` | "confirms against the approved payment, not the provider's receipt", "does not confirm a job whose receipt reuses another job's transaction", "does not confirm a recovered payment whose method is no longer installed", "does not confirm a payment whose method throws while checking it" |
 | CG10 | `recover()` never calls `createPayload()`. | `recover()` | "recovers a lost response without paying again" |
+
+CG4 includes configured verification restrictions [V1]. The application installs `verificationSource`, not the
+signer or payment method. Evidence must match the approved manifest hash, URL, payee, network and agent id and
+remain within its validity window. No source, an outage or a missing required metric blocks signing. See
+`test/verification.test.ts` and [the design](../payment-client.md#verification-source). `minVerificationScore`
+retains ERC-8196's maximum-risk semantics; it is not the higher-is-better receipt score. Recovery does not read
+verification evidence.
 
 Journal on the happy path: `intent, approved, sending, settled, result`. When the wallet doesn't sign:
 `intent, approved, refused`.

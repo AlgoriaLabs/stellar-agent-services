@@ -7,9 +7,13 @@ repository, why, and how it was checked. A phase is added here when it lands.
 | --- | --- | --- |
 | 1 | [`provider-kit try`](#phase-1-provider-kit-try): the first paid call in one command | Done |
 | 2 | [`provider-kit init --openapi`](#phase-2-provider-kit-init---openapi): the gateway config from an OpenAPI document | Done |
-| 3 | [`npm create stellar-service`, and how agents see you](#phase-3-npm-create-stellar-service-and-how-agents-see-you): a ready project in one command, and what search sees | Done, in review |
-| 4 | [From nothing to live: `dev`, `launch`, `status`](#phase-4-from-nothing-to-live-dev-launch-status): no wallet until launch, one approval page, verification without a hand-off | Done, in review |
-| 5 | [Mainnet, and the checks before a release](#phase-5-mainnet-and-the-checks-before-a-release): a mainnet project, CI that rehearses the npm publish, daily live checks, releases from a tag | Done, in review |
+| 3 | [`npm create stellar-service`, and how agents see you](#phase-3-npm-create-stellar-service-and-how-agents-see-you): a ready project in one command, and what search sees | Released in 0.1.0 |
+| 4 | [From nothing to live: `dev`, `launch`, `status`](#phase-4-from-nothing-to-live-dev-launch-status): no wallet until launch, one approval page, verification without a hand-off | Released in 0.1.0 |
+| 5 | [Mainnet, and the checks before a release](#phase-5-mainnet-and-the-checks-before-a-release): a mainnet project, CI that rehearses the npm publish, daily live checks, releases from a tag | Released in 0.1.0 |
+
+Release status was checked on 2026-11-06. The sections below retain their implementation-time validation and
+limits; [readiness evidence](../evidence/readiness.md) records newer checks. Live SOW evidence and the independent
+pilot remain outstanding; see [SOW closeout](sow-closeout.md).
 
 Before these phases, the owner's transactions (the USDC trustline, 8004 registration, validation requests) moved
 from a key in the CLI to the developer's own wallet, approved on a page the CLI opens

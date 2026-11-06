@@ -39,6 +39,7 @@ don't build those rules again.
 | --- | --- |
 | The price is checked | The payment request must match the price, payee and network the service published. |
 | Limits are checked | Per-payment and daily limits, plus your wallet's own budget, before anything is signed. |
+| Verification gates apply | Configured risk/level limits require fresh evidence from an application-trusted source; missing evidence blocks signing. |
 | The user approves | Every payment, or only those above an amount the user chose. |
 | One signature per job | Even when a wallet popup is slow or the user clicks twice. |
 | Saved before sending | A journal entry is written before the payment leaves, so a crash never leads to paying twice. |

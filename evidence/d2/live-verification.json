@@ -1,0 +1,293 @@
+{
+  "capturedAt": "2026-11-06T11:08:23.014Z",
+  "endpoint": "Temporary Cloudflare quick tunnel. Not registered and not a permanent deployment.",
+  "validatorSource": "Stellar CLI alias sas-d2-validator-20261106, macOS secure store",
+  "approvedTerms": {
+    "network": "stellar:testnet",
+    "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    "payTo": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+    "maxPrice": "100000",
+    "maxSpend": "300000",
+    "service": "text-stats"
+  },
+  "manifest": {
+    "standard": "stellar-agent-services/provider@1",
+    "provider": {
+      "name": "Stellar Agent Services example",
+      "description": "Sample provider for Provider Standard v1.",
+      "dataUse": {
+        "storesInputs": false,
+        "trainsOnInputs": false
+      }
+    },
+    "baseUrl": "https://bytes-plus-concentrate-arthritis.trycloudflare.com",
+    "payment": {
+      "protocol": "x402",
+      "x402Version": 2,
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "stellar:testnet",
+          "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+          "payTo": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+          "maxTimeoutSeconds": 60,
+          "extra": {
+            "areFeesSponsored": true
+          }
+        }
+      ]
+    },
+    "services": [
+      {
+        "name": "text-stats",
+        "description": "Counts the words, sentences and characters in a text.",
+        "price": {
+          "amount": "100000"
+        },
+        "charge": "on-success",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 10000,
+              "description": "The text to analyse"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "required": [
+            "words",
+            "sentences",
+            "characters"
+          ],
+          "properties": {
+            "words": {
+              "type": "integer"
+            },
+            "sentences": {
+              "type": "integer"
+            },
+            "characters": {
+              "type": "integer"
+            }
+          }
+        },
+        "title": "Text statistics",
+        "expectedDurationSeconds": 1,
+        "examples": [
+          {
+            "input": {
+              "text": "Hello world."
+            },
+            "output": {
+              "words": 2,
+              "sentences": 1,
+              "characters": 12
+            }
+          }
+        ],
+        "capacity": {
+          "concurrency": 1,
+          "maxQueueWaitSeconds": 0
+        }
+      },
+      {
+        "name": "delayed-report",
+        "description": "Writes a short report on a topic. Takes about 40 seconds, so it answers 202 and is polled.",
+        "price": {
+          "amount": "200000"
+        },
+        "charge": "upfront",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "topic"
+          ],
+          "properties": {
+            "topic": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "required": [
+            "topic",
+            "report",
+            "finishedAt"
+          ],
+          "properties": {
+            "topic": {
+              "type": "string"
+            },
+            "report": {
+              "type": "string"
+            },
+            "finishedAt": {
+              "type": "string"
+            }
+          }
+        },
+        "title": "Delayed report",
+        "expectedDurationSeconds": 40,
+        "capacity": {
+          "concurrency": 2,
+          "maxQueueWaitSeconds": 160
+        }
+      }
+    ]
+  },
+  "report": {
+    "manifestUrl": "https://bytes-plus-concentrate-arthritis.trycloudflare.com/.well-known/stellar-agent-services.json",
+    "dev": false,
+    "startedAt": "2026-11-06T11:05:23.440Z",
+    "checkedAt": "2026-11-06T11:08:23.014Z",
+    "level": 3,
+    "score": 100,
+    "results": [
+      {
+        "check": "C1",
+        "status": "passed",
+        "failedRules": [],
+        "evidence": {
+          "url": "https://bytes-plus-concentrate-arthritis.trycloudflare.com/.well-known/stellar-agent-services.json",
+          "status": 200,
+          "bytes": 1932,
+          "network": "stellar:testnet",
+          "services": [
+            "text-stats",
+            "delayed-report"
+          ],
+          "sha256": "02aadbe84e39fefc286e5e9cc294085c0f848cc6f6b629b05e0aeeb83903c963"
+        }
+      },
+      {
+        "check": "C2",
+        "status": "skipped",
+        "failedRules": [],
+        "reason": "the manifest has no provider.agentId: the provider is not registered"
+      },
+      {
+        "check": "C3",
+        "status": "passed",
+        "failedRules": [],
+        "evidence": {
+          "services": [
+            {
+              "service": "text-stats",
+              "input": "option",
+              "amount": "100000",
+              "matches": true,
+              "bazaar": true
+            },
+            {
+              "service": "delayed-report",
+              "input": "sample",
+              "amount": "200000",
+              "matches": true,
+              "bazaar": true
+            }
+          ],
+          "payTo": "authorized"
+        }
+      },
+      {
+        "check": "C4",
+        "status": "passed",
+        "failedRules": [],
+        "evidence": {
+          "service": "text-stats",
+          "input": "option",
+          "jobId": "bd094479-8ad1-490c-8656-85988cf68cc3",
+          "amount": "100000",
+          "paidStatus": 202,
+          "status": "succeeded",
+          "transaction": "d1821d406c2b10eb7cd7d5b60d79d88b5d302008e2b349e664debd8919e01e9a",
+          "ledger": 5587906
+        }
+      },
+      {
+        "check": "C5",
+        "status": "passed",
+        "failedRules": [],
+        "evidence": {
+          "jobId": "bd094479-8ad1-490c-8656-85988cf68cc3",
+          "probes": {
+            "create-job repeated": 200,
+            "create-job repeated with the payment": 200,
+            "create-job with the same id and another input": 422,
+            "create-job with the same id and another token": 422,
+            "check-status": 200,
+            "get-result": 200,
+            "check-status without a token": 404,
+            "check-status with a wrong token": 404,
+            "check-status for an unknown job": 404,
+            "get-result without a token": 404,
+            "get-result with a wrong token": 404,
+            "get-result for an unknown job": 404
+          }
+        }
+      },
+      {
+        "check": "C6",
+        "status": "passed",
+        "failedRules": [],
+        "evidence": {
+          "bodyLimit": {
+            "bytes": 1048577,
+            "status": 413
+          },
+          "preflight": 204,
+          "exchanges": 71,
+          "problemAnswers": 12
+        }
+      },
+      {
+        "check": "C7",
+        "status": "passed",
+        "failedRules": [],
+        "evidence": {
+          "service": "text-stats",
+          "burst": {
+            "requests": 20,
+            "statuses": {
+              "402": 20
+            },
+            "longestRetryAfter": 0
+          },
+          "paid": {
+            "jobs": 2,
+            "accepted": 1,
+            "queued": 0,
+            "finished": 1,
+            "refused": 1,
+            "unchargedButSettled": 0
+          }
+        }
+      }
+    ],
+    "spent": "300000",
+    "network": "stellar:testnet",
+    "manifestSha256": "02aadbe84e39fefc286e5e9cc294085c0f848cc6f6b629b05e0aeeb83903c963",
+    "payment": {
+      "network": "stellar:testnet",
+      "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      "amount": "100000",
+      "payTo": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+      "payer": "GD7KOSL5ZXOBIJSLULOO6I56BMV2V74ZV5FXQI3FRUAJ4LPA5VSGDFYE",
+      "transaction": "d1821d406c2b10eb7cd7d5b60d79d88b5d302008e2b349e664debd8919e01e9a",
+      "settledAt": "2026-11-06T11:06:11.000Z"
+    },
+    "payer": "GD7KOSL5ZXOBIJSLULOO6I56BMV2V74ZV5FXQI3FRUAJ4LPA5VSGDFYE"
+  }
+}

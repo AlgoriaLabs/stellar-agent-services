@@ -1,0 +1,109 @@
+<!doctype html>
+<!-- Public SOW evidence: actual captured artifacts, with unfinished live verification and pilot work labeled. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Provider Standard v1: testnet approval, payment and job recovery evidence.">
+  <title>Stellar Agent Services · Project evidence</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #172a39; background: #f5f7fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 1080px; margin: auto; padding: 44px 24px 64px; }
+    h1 { font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.08; letter-spacing: -.04em; margin: 18px 0; }
+    h2 { margin-top: 0; font-size: 1.4rem; }
+    p, li { line-height: 1.65; }
+    a { color: #085eac; text-underline-offset: 3px; }
+    a:focus-visible, video:focus-visible { outline: 3px solid #a83c16; outline-offset: 4px; }
+    .eyebrow { color: #34566d; font-size: .8rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    .intro { max-width: 740px; font-size: 1.08rem; }
+    .tag { display: inline-block; padding: 5px 11px; border-radius: 20px; background: #dceefc; color: #164b74; font-size: .85rem; }
+    nav { display: flex; gap: 20px; flex-wrap: wrap; margin: 24px 0 32px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    section { border: 1px solid #d8e0e7; background: white; border-radius: 16px; padding: 26px; margin-bottom: 24px; }
+    video { display: block; width: 100%; height: 440px; background: #e9edf2; border-radius: 8px; object-fit: contain; }
+    .details { color: #40586a; font-size: .93rem; }
+    .links { padding-left: 20px; }
+    .links li { margin: 8px 0; }
+    .pending { border-left: 5px solid #a56700; }
+    .pending strong { color: #805000; }
+    .rule { font-size: .9rem; color: #40586a; }
+    footer { font-size: .9rem; color: #40586a; }
+    @media (max-width: 700px) { main { padding: 28px 16px; } .grid { grid-template-columns: 1fr; gap: 0; } section { padding: 20px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Stellar Agent Services · Evidence captured 6 November 2026</div>
+    <h1>Approve once.<br>Recover without paying again.</h1>
+    <span class="tag">Stellar testnet · test USDC</span>
+    <p class="intro">Two recorded calls show spending controls, approval of exact payment terms, a confirmed
+      payment and recovery of a delayed result. These are sample-provider demonstrations. Independent provider
+      and user pilots remain outstanding.</p>
+    <nav aria-label="Project links">
+      <a href="https://github.com/AlgoriaLabs/stellar-agent-services">Open-source repository</a>
+      <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/docs/provider-standard.md">Provider Standard v1</a>
+      <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/docs/provider-setup-guide.md">Provider setup guide</a>
+      <a href="checksums.sha256">Artifact checksums</a>
+    </nav>
+  </header>
+  <div class="grid">
+    <section aria-labelledby="approval">
+      <h2 id="approval">D1 · Approval and payment</h2>
+      <p>An over-budget request is blocked. The allowed request shows its price, recipient, asset, network and
+        safety checks before approval. The result follows a confirmed <strong>0.01 USDC</strong> transfer.</p>
+      <video controls playsinline preload="metadata" poster="d1/05-payment-confirmed.jpg" aria-label="Approval and payment demonstration, approximately 48 seconds">
+        <source src="d1/approval-payment.mp4" type="video/mp4">
+        <a href="d1/approval-payment.mp4">Download the approval video</a>.
+      </video>
+      <p class="details">Text statistics · Ledger 5587345 · Approximately 48 seconds · No audio</p>
+      <ul class="links">
+        <li><a href="https://stellar.expert/explorer/testnet/tx/29cbeae9ac78018e313e2dc34ee32b52fe3ebba48fe3e99a4ebd8a1e9cd769de">View the confirmed payment on Stellar</a></li>
+        <li><a href="d1/payment-proof.json">Decoded RPC payment proof</a> · <a href="d1/provider-manifest.json">Captured manifest</a></li>
+        <li>Spending block: <a href="d1/01-spending-limit-blocked.jpg">outcome</a> · <a href="d1/02-limit-safety-check.jpg">safety check</a></li>
+        <li>Approval: <a href="d1/03-approval-terms.jpg">exact terms</a> · <a href="d1/04-approval-safety-checks.jpg">passing checks</a></li>
+        <li>Result: <a href="d1/05-payment-confirmed.jpg">confirmation</a> · <a href="d1/06-result-and-transaction.jpg">transaction reference</a></li>
+      </ul>
+    </section>
+    <section aria-labelledby="recovery">
+      <h2 id="recovery">D2 · Job Recovery</h2>
+      <p>The sample deliberately loses its response after payment. Recovering the same job returns its stored
+        report and confirms the original <strong>0.02 USDC</strong> transfer. No second approval is requested.</p>
+      <video controls playsinline preload="metadata" poster="d2/03-recovered-no-second-payment.jpg" aria-label="Job recovery demonstration, approximately 62 seconds">
+        <source src="d2/job-recovery.mp4" type="video/mp4">
+        <a href="d2/job-recovery.mp4">Download the recovery video</a>.
+      </video>
+      <p class="details">Delayed report · Ledger 5587377 · Approximately 62 seconds · No audio</p>
+      <ul class="links">
+        <li><a href="https://stellar.expert/explorer/testnet/tx/559d0126e86a062eb9a5891eedb2e6bb1a99a262e3330d9935fc7feb61f93f4b">View the original recovery payment on Stellar</a></li>
+        <li><a href="d2/payment-proof.json">Decoded RPC proof and complete event scan</a> · <a href="d2/provider-manifest.json">Captured manifest</a></li>
+        <li><a href="d2/01-recovery-payment-approval.jpg">Original approval</a> · <a href="d2/02-response-lost-recover-same-job.jpg">Lost response</a></li>
+        <li><a href="d2/03-recovered-no-second-payment.jpg">Recovered result</a> · <a href="d2/04-recovered-job-and-transaction.jpg">Same job and transaction</a></li>
+      </ul>
+      <p class="rule">The full USDC transfer scan from this payer in ledgers 5587344–5587416 found exactly one
+        matching 0.02 USDC transfer. Its other transfer was the separate 0.01 USDC D1 call. This bounded window
+        supports the no-second-payment claim [J11], [J13], [J16].</p>
+    </section>
+  </div>
+  <!-- live-verification -->
+  <section class="pending" aria-labelledby="remaining">
+    <h2 id="remaining">Remaining evidence</h2>
+    <p><strong>D2 live verification:</strong> a stable public sample deployment, its owner-approved identity
+      registration, and a confirmed Validation Registry request and response are still pending. The captured
+      live receipts above describe a temporary, unregistered endpoint. The permanent sample needs a fresh
+      verification after registration.</p>
+    <p><strong>D3 independent pilot:</strong> independent provider integrations, participant flows, findings and
+      a completed pilot report are still pending. This page makes no claim of full SOW acceptance.</p>
+  </section>
+  <footer>
+    <p>Recordings use actual browser screenshots sampled at approximately two frames per second. Pauses between
+      captured segments were removed and closing stills held for readability. No payment state is simulated.
+      <a href="d1/recording.json">D1 recording metadata</a> · <a href="d2/recording.json">D2 recording metadata</a>.</p>
+    <p>All payments shown are on Stellar testnet. Files exclude private keys, job tokens and signed payment payloads.
+      Run <code>shasum -a 256 -c checksums.sha256</code> after downloading the files to check artifact integrity.</p>
+  </footer>
+</main>
+</body>
+</html>

@@ -3,13 +3,32 @@
 Public evidence for the Instaward SOW (section 6.1), filled in during the sprint. Every transaction is listed
 with its network, hash, ledger and explorer link, and testnet evidence is labeled as testnet.
 
+**Public evidence:** [videos, screenshots, receipts and payment proofs](https://algorialabs.github.io/stellar-agent-services/).
+
+**Status (2026-11-06): payment/recovery recordings published; live verification captured.** The D1/D2
+folders contain real testnet recordings, screenshots and RPC proofs. The live verification runs are documented
+with their individual failures and skips in [receipts](receipts/README.md). Permanent sample registration,
+Validation Registry records and independent pilot evidence remain outstanding. Local checks and release observations are in
+[readiness.md](readiness.md). The [closeout guide](../docs/sow-closeout.md) gives the remaining sequence.
+
 | Deliverable | Evidence | Location |
 | --- | --- | --- |
 | D1 | Provider Standard v1 | [docs/provider-standard.md](../docs/provider-standard.md) |
-| D1 | Approval → payment video, screenshots, tx link | `d1/` |
+| D1 | Approval → payment video, screenshots, tx link | [Captured evidence](d1/README.md) — published |
 | D2 | Setup guide | [docs/provider-setup-guide.md](../docs/provider-setup-guide.md) |
-| D2 | Verification receipts and badges | `receipts/` |
-| D2 | Validation Registry records | `validation/` |
-| D2 | Job Recovery demo | `d2/` |
-| D3 | Provider integrations, paid-call references, screenshots | `pilot/` |
-| D3 | Pilot report | `pilot/report.md` |
+| D2 | Verification receipts and badges | [Live run results](receipts/README.md) — unanchored; read each check's result |
+| D2 | Validation Registry records | [Registry checklist](validation/README.md) — not collected |
+| D2 | Job Recovery demo | [Captured recovery and single-transfer proof](d2/README.md) — published |
+| D3 | Provider integrations, paid-call references, screenshots | [Pilot checklist](pilot/README.md) — not run |
+| D3 | Pilot report | [Report template](pilot/report.md) — not filled |
+
+For each transaction include: network, transaction hash, ledger, explorer link, provider id, service and purpose.
+Publish participant aliases, not private contact details. Exclude keys, signed payment payloads, job tokens and
+raw journals from screenshots and attachments. Link a completed artifact only after checking its public access.
+
+[checksums.sha256](checksums.sha256) records the captured media and JSON files. From the repository root, run
+`shasum -a 256 -c evidence/checksums.sha256` to check their file integrity. The linked public ledger transactions
+independently establish the payments.
+
+[publication.json](publication.json) records the evidence branch commit and anonymous checksum verification of
+the publicly served files. Build the site with `node scripts/evidence-site.mjs <empty-output-directory>`.

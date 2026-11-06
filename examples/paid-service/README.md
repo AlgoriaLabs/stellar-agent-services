@@ -11,6 +11,11 @@ their template.
 Jobs are kept in SQLite (`JOB_DB_PATH`, default `./jobs.sqlite`), so a paid job survives a restart: stop the
 server while a report is queued, start it again, and the report runs.
 
+`text-stats` admits one on-success job at a time and refuses excess work before payment [Q2], [Q3]. This is
+deliberately conservative for the shared testnet facilitator. A live verification run at the former default of
+four concurrent jobs encountered settlement errors; its receipt is retained in
+[the verification evidence](../../evidence/receipts/README.md).
+
 Run it with `npx provider-kit dev -- npm start` in this directory, after `npm install && npm run build` at the
 repository root: with `PAY_TO` empty, `dev` makes a throwaway testnet account to be paid to, so you need no wallet yet
 (or run `PAY_TO=G... npm start` with an account of yours). `.env.example` lists the settings; they are public values

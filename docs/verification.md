@@ -178,6 +178,8 @@ The test payer pays for one job of the target service (`--service`, or the cheap
 3. Every job view is checked: the job id is the `Idempotency-Key` (§5.2), `charge` is the manifest's (§3.2),
    `charged` fits the state (§5.6), `200` once finished and otherwise `202` with `Retry-After`, plus `Location` on
    create-job [J8], output only when it may be shown [J14], and a receipt whose terms are the payment's (§5.7).
+   A `payment_uncertain` job is polled within the same bounded follow period while the provider reconciles it
+   from the chain [J13]. Polling only reads the original job [J11]; unresolved uncertainty earns no paid check.
 4. The job must succeed (§5.6), charged, with output that matches `outputSchema` [S1].
 5. The receipt's transaction must have succeeded, carry the payment the verifier signed, and move exactly the
    price from the payer to `payTo` [J16]. The response that settled SHOULD carry `PAYMENT-RESPONSE` [P10].

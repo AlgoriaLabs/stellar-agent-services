@@ -192,12 +192,14 @@ payment side:
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
 | [`examples/python-upstream`](examples/python-upstream) | An existing Python API made a paid service with gateway mode |
 
-**Status:** Week 3 of the plan. A paid call works end to end, from a provider (library or gateway mode, with a
-durable job queue) to the payment client's CLI and web page. Job Recovery is complete in code: providers decide
-uncertain payments from on-chain data ([docs/job-recovery.md](docs/job-recovery.md)). The verifier runs every check
-(C1–C7), proves payments on chain, and issues receipts, badges and Validation Registry responses
-([docs/verification.md](docs/verification.md)). The plan is in
-[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development runs on Stellar **testnet**.
+**Status (2026-11-06):** the core packages are released at 0.1.0. The kit, payment client, recovery and verifier
+are implemented. [Sample payment/recovery evidence is public](https://algorialabs.github.io/stellar-agent-services/),
+and live verification receipts and badges are captured in [evidence/](evidence/README.md). Permanent sample
+registration, an anchored validation response and the independent pilot remain. This checkout
+also enforces configured verification policies through an application-trusted source [V1]. The
+[SOW closeout guide](docs/sow-closeout.md) lists the remaining acceptance work, and
+[readiness evidence](evidence/readiness.md) records checks and release references. The full build history is in
+[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development and pilot evidence use Stellar **testnet**.
 
 To offer a service, start with [`npm create stellar-service`](packages/create-stellar-service), then:
 
@@ -889,6 +891,10 @@ Verification results are published to the Stellar 8004 Validation Registry. See
 
 The checks are listed in [verification.md](verification.md).
 
+- **[V1]** Clients SHOULD enforce any verification requirements configured by their owner before signing. Evidence
+  should come from a trusted source, match the approved manifest, payee and network, and be within that source's
+  validity window. Missing, unreadable or unverifiable evidence should block a payment that requires it.
+
 ## 9. Versioning and extensions
 
 - Changes inside v1 only add optional fields. `standard` stays `stellar-agent-services/provider@1`.
@@ -1040,9 +1046,9 @@ pays one) that follows Provider Standard v1.
 | Any other language or stack | **Native**: implement §3–§12 | §3–§12, §13 |
 | Agent, wallet or app that pays providers | **Client** | §14, [packages/payment-client](../../packages/payment-client) |
 
-The packages are npm workspaces in this repository and are not yet published to npm. Clone the repository and
-run `npm install && npm run build`. Then build inside it, copy `examples/paid-service`, or link a package into
-another project with `npm install <repo>/packages/provider-kit`.
+The packages are published on npm from 0.1.0. Use `npm create stellar-service`, or install the package you need.
+For unreleased changes, clone this repository and run `npm install && npm run build`. Then build inside it,
+copy `examples/paid-service`, or link a package with `npm install <repo>/packages/provider-kit`.
 
 ## 2. Kit path (TypeScript)
 
@@ -1496,6 +1502,8 @@ npx stellar-pay pay http://localhost:8787/.well-known/stellar-agent-services.jso
 - Unpaid create-job → `402`. Compare the challenge with the approved manifest, and refuse to sign on any mismatch
   `[P7]`.
   - Show the price, recipient, network and `charge` before approval `[S3]`.
+- Enforce configured verification limits from trusted evidence matching the approved manifest, payee and network
+  `[V1]`. Missing, unreadable or expired evidence blocks a payment requiring verification. Recheck before signing.
 - Sign once. Send the paid request with the same id, token and input.
 - `429` / `503` from create-job: wait `Retry-After` plus jitter, then send the identical request again `[Q8]`.
   - On a paid request, send the same `PAYMENT-SIGNATURE`.
@@ -1618,6 +1626,7 @@ Errors, identity and extensions:
 - **I1** The 8004 registration lists the manifest under `stellar-agent-services`.
 - **I2** `provider.agentId` is that registration's id.
 - **I3** `payTo` equals `get_agent_wallet(agentId)`.
+- **V1** Clients SHOULD enforce configured verification requirements from trusted, matching, current evidence before signing.
 - **X1** Extra fields go in `extensions` with reverse-DNS keys, and clients ignore unknown ones.
 
 
@@ -2826,6 +2835,11 @@ their template.
 Jobs are kept in SQLite (`JOB_DB_PATH`, default `./jobs.sqlite`), so a paid job survives a restart: stop the
 server while a report is queued, start it again, and the report runs.
 
+`text-stats` admits one on-success job at a time and refuses excess work before payment [Q2], [Q3]. This is
+deliberately conservative for the shared testnet facilitator. A live verification run at the former default of
+four concurrent jobs encountered settlement errors; its receipt is retained in
+[the verification evidence](../../evidence/receipts/README.md).
+
 Run it with `npx provider-kit dev -- npm start` in this directory, after `npm install && npm run build` at the
 repository root: with `PAY_TO` empty, `dev` makes a throwaway testnet account to be paid to, so you need no wallet yet
 (or run `PAY_TO=G... npm start` with an account of yours). `.env.example` lists the settings; they are public values
@@ -2945,6 +2959,7 @@ itself can supply it. (The design doc's smart-account row, and erc-compatibility
 | --- | --- |
 | `packages/payment-client/src/strategies.ts` | `Signer`, `PaymentMethod`, `SignedPayload`, `ExpectedPayment`, `Confirmation` |
 | `packages/payment-client/src/client.ts` | `PaymentClient`: the flow that calls the strategies (`quote`, `pay`, `payOnce`, `confirm`, `methodFor`, `checkLimits`) |
+| `packages/payment-client/src/verification.ts` | Application-trusted evidence source and subject/freshness checks [V1] |
 | `packages/payment-client/src/local-key-signer.ts` | Built-in signer: `createEd25519Signer` from `@x402/stellar` |
 | `packages/payment-client/src/x402-exact-stellar.ts` | Built-in method, id `x402-exact-stellar` |
 | `packages/payment-client/src/onchain.ts` | `rpcConfirmPayment`, `checkTransfer`, `TransactionReader`. Reuse them in your `confirm()`. |
@@ -3021,6 +3036,13 @@ These hold for every adapter. Don't re-implement them in an adapter.
 | CG8 | `sending` with `{ network, asset, amount, payTo, payer: signer.address, method: id }` is durable before the paid request leaves. | `payOnce()` | same as CG3 |
 | CG9 | The method named in `sending` confirms, against the journaled terms, never the receipt. A transaction that already confirmed another job, a missing method or a method that throws gives "not confirmed" with a reason `[J16]`. | `confirm()` | "confirms against the approved payment, not the provider's receipt", "does not confirm a job whose receipt reuses another job's transaction", "does not confirm a recovered payment whose method is no longer installed", "does not confirm a payment whose method throws while checking it" |
 | CG10 | `recover()` never calls `createPayload()`. | `recover()` | "recovers a lost response without paying again" |
+
+CG4 includes configured verification restrictions [V1]. The application installs `verificationSource`, not the
+signer or payment method. Evidence must match the approved manifest hash, URL, payee, network and agent id and
+remain within its validity window. No source, an outage or a missing required metric blocks signing. See
+`test/verification.test.ts` and [the design](../payment-client.md#verification-source). `minVerificationScore`
+retains ERC-8196's maximum-risk semantics; it is not the higher-is-better receipt score. Recovery does not read
+verification evidence.
 
 Journal on the happy path: `intent, approved, sending, settled, result`. When the wallet doesn't sign:
 `intent, approved, refused`.
@@ -3421,6 +3443,7 @@ don't build those rules again.
 | --- | --- |
 | The price is checked | The payment request must match the price, payee and network the service published. |
 | Limits are checked | Per-payment and daily limits, plus your wallet's own budget, before anything is signed. |
+| Verification gates apply | Configured risk/level limits require fresh evidence from an application-trusted source; missing evidence blocks signing. |
 | The user approves | Every payment, or only those above an amount the user chose. |
 | One signature per job | Even when a wallet popup is slow or the user clicks twice. |
 | Saved before sending | A journal entry is written before the payment leaves, so a crash never leads to paying twice. |
@@ -3698,7 +3721,7 @@ How to build, test and submit an adapter, and what we and the integrator each ne
 | `allowedContracts` / `blockedContracts` | The asset contract (USDC SAC) | USDC only |
 | `maxValuePerTx`, `maxValuePerDay` | In the asset's base units, not a native value | 0.10 / 1.00 USDC |
 | `validAfter`, `validUntil` | ERC-8196 | now / +30 days |
-| `minVerificationScore` | ERC-8196, read through a risk-source interface once a Stellar ERC-8126 exists | unset |
+| `minVerificationScore` | ERC-8196 name: maximum allowed provider risk score (0–100, lower is safer), from a trusted source | unset |
 | `stellar.asset` | The one asset the limits apply to | USDC |
 | `stellar.payees` | `{ allow?, block? }` lists of `payTo` addresses, since the real payee is an argument of `transfer` | unset |
 | `stellar.minProviderLevel` | The lowest `provider-standard-v1` conformance level a payee must have | unset (pilot) |
@@ -3707,6 +3730,36 @@ How to build, test and submit an adapter, and what we and the integrator each ne
 `policyHash = sha256(JCS(policy))`. Every journal entry and every approval names the policy hash it ran under.
 Out of the box, every payment asks for approval, which is what the SOW requires. Paying without a prompt is
 something the owner turns on.
+
+### Verification source
+
+The core enforces configured `minVerificationScore` and `stellar.minProviderLevel` at quote time and again before
+signing [V1]. Missing or invalid evidence blocks the payment, including when the configured limit is zero. When
+both limits are unset, no verification read is needed.
+
+`PaymentClientOptions.verificationSource` is application-trusted code implementing:
+
+```ts
+interface VerificationSource {
+  read(subject: VerificationSubject): Promise<ProviderVerification | undefined>;
+}
+```
+
+The subject contains `network`, `payTo`, `manifestUrl`, `manifestSha256` (RFC 8785 canonical JSON) and optional
+`agentId`. The result repeats those fields and adds RFC 3339 `checkedAt` and `expiresAt`, plus optional
+`riskScore` (0–100, lower is safer) and `level` (0–3). The core rejects a different subject, a future check, expired
+evidence or an invalid metric. Each configured restriction requires its own metric.
+
+The source authenticates the evidence: trusted validator selection, registry reads, receipt hashes and the
+validity period it accepts. Its network calls must have deadlines. A raw receipt, a provider's badge or a score
+copied from a manifest is not an authenticated source. No built-in registry/risk-source adapter exists yet.
+
+`minVerificationScore` preserves ERC-8196's maximum-risk meaning despite its name (erc-compatibility.md T4).
+Do not compare it directly with the Provider Standard receipt's higher-is-better `score`.
+
+The web page and CLI do not install a source. Their default policies leave both restrictions unset; importing a
+policy that sets them blocks new payments until a source is installed. Recovery remains available without a
+verification read, because collecting a paid result never requires another payment [J11], [J13].
 
 ### Journal (ERC-8196 hash-chained audit trail)
 
@@ -3821,6 +3874,7 @@ The main entry point runs in Node and the browser. Journal storage depends on wh
 | `src/x402-exact-stellar.ts` | The built-in payment method: x402 `exact` on Stellar, the only one Provider Standard v1 allows |
 | `src/conformance.ts` | Checks that every signer and payment-method adapter must pass (`./conformance` entry point) |
 | `src/policy.ts` | Spending policy with ERC-8196 field names; `checkPolicy()` fails closed |
+| `src/verification.ts` | Application-trusted verification source; binds evidence to the approved manifest, payee, network and validity window [V1] |
 | `src/journal.ts` | Append-only, hash-chained journal; job tokens kept apart in a `SecretStore` |
 | `src/file-storage.ts` | Journal and job-token storage in files (`./node` entry point) |
 | `src/browser-storage.ts` | Journal and job-token storage in IndexedDB (`./browser` entry point) |
@@ -3852,9 +3906,27 @@ Job Recovery: start the provider with `DRILL_LOSE_RESPONSE=1 REPORT_DELAY_SECOND
 then run the `stellar-pay recover <job-id> --dev` command it prints. `stellar-pay jobs` and
 `stellar-pay journal verify` show the journal.
 
+## Verification policy
+
+Configured verification limits are checked at `quote()` and again at `pay()`, before signing [V1]. Install a
+`verificationSource` in `PaymentClientOptions` to supply authenticated evidence. Without a source, or when it
+returns missing, stale, mismatched or unreadable evidence, a payment requiring verification is blocked.
+
+- `minVerificationScore` keeps ERC-8196's name and meaning: the **maximum allowed risk score**, 0–100, lower is
+  safer. It compares with the source's `riskScore`, not a receipt's higher-is-better conformance score.
+- `stellar.minProviderLevel` is the minimum Provider Standard §8 level, 0–3.
+- Even a configured value of zero requires evidence. Leaving both fields unset requires no source.
+- Sources are trusted application code. They must authenticate validators and receipt/registry data, bind the
+  answer to the requested subject, set `checkedAt` and `expiresAt`, and bound their network calls. Never use a
+  provider's own claims as proof. No built-in registry/risk-source adapter is supplied yet.
+- Recovery collects an already paid job without consulting the source or signing again [J11], [J13].
+
+See [the design](../../docs/payment-client.md#verification-source) for the interface and trust boundary.
+
 ## Not done in the PoC
 
-- `minVerificationScore` and `stellar.minProviderLevel` are stored but not enforced.
+- No built-in Validation Registry or ERC-8126 risk-source adapter. Configured verification limits fail closed
+  until the application supplies its own trusted source.
 - The wallet secret is a plain file (mode 600). Testnet only.
 - No MCP server yet.
 - Only the built-in signer and method. Adapters for other wallets come later, each in its own package.
@@ -4124,6 +4196,8 @@ The test payer pays for one job of the target service (`--service`, or the cheap
 3. Every job view is checked: the job id is the `Idempotency-Key` (§5.2), `charge` is the manifest's (§3.2),
    `charged` fits the state (§5.6), `200` once finished and otherwise `202` with `Retry-After`, plus `Location` on
    create-job [J8], output only when it may be shown [J14], and a receipt whose terms are the payment's (§5.7).
+   A `payment_uncertain` job is polled within the same bounded follow period while the provider reconciles it
+   from the chain [J13]. Polling only reads the original job [J11]; unresolved uncertainty earns no paid check.
 4. The job must succeed (§5.6), charged, with output that matches `outputSchema` [S1].
 5. The receipt's transaction must have succeeded, carry the payment the verifier signed, and move exactly the
    price from the payer to `payTo` [J16]. The response that settled SHOULD carry `PAYMENT-RESPONSE` [P10].
@@ -4501,6 +4575,10 @@ Every check that ran passed.
 
 Exit codes: `0` every check that ran passed, `1` a check or the command failed, `2` a usage error. `--json` prints
 the report, or the receipt, on standard output. `watch` runs until SIGINT or SIGTERM, then exits `0`.
+
+The paid checks poll an uncertain job within their existing follow deadline, allowing the provider to reconcile
+it from the chain [J13]. They read the original job and never sign or send another payment while waiting [J11].
+Unresolved uncertainty is skipped and earns no paid check.
 
 As a library:
 

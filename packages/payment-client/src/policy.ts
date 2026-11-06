@@ -3,9 +3,7 @@
 // A failed check blocks the payment; it never passes silently. Amounts are in the asset's base
 // units (USDC: 7 decimals), not a native value.
 //
-// TODO:
-// - minVerificationScore and stellar.minProviderLevel are stored but not enforced yet: they need the
-//   risk source and Validation Registry reads.
+// Configured verification limits require trusted evidence [V1], including when set to zero.
 
 import { canonicalSha256, USDC_ASSET, type StellarNetwork } from "@stellar-agent-services/protocol";
 
@@ -27,6 +25,7 @@ export interface SpendingPolicy {
   /** Unix seconds. */
   validAfter: number;
   validUntil: number;
+  /** ERC-8196 name: the maximum allowed provider risk score, 0–100, lower is safer (erc-compatibility.md T4). */
   minVerificationScore?: number;
   stellar: {
     network: StellarNetwork;
@@ -46,6 +45,8 @@ export interface PaymentRequest {
   payTo: string;
   /** What this policy already paid in the last 24 hours. */
   spentLast24h: bigint;
+  /** Already authenticated by the caller's trusted verification source [V1]. */
+  verification?: { riskScore?: number; level?: number };
   now?: Date;
 }
 
@@ -104,6 +105,22 @@ export function checkPolicy(policy: SpendingPolicy, request: PaymentRequest): Po
   if (amount <= 0n) refuse("amount", "the amount must be above zero");
   if (amount > BigInt(policy.maxValuePerTx)) refuse("maxValuePerTx", "the amount is above the per-payment limit");
   if (request.spentLast24h + amount > BigInt(policy.maxValuePerDay)) refuse("maxValuePerDay", "the payment would exceed the 24-hour limit");
+
+  for (const [field, limit, observed, maximum] of [
+    ["minVerificationScore", policy.minVerificationScore, request.verification?.riskScore, 100],
+    ["stellar.minProviderLevel", policy.stellar.minProviderLevel, request.verification?.level, 3],
+  ] as const) {
+    if (limit === undefined) continue;
+    if (!Number.isInteger(limit) || limit < 0 || limit > maximum) {
+      refuse(field, `[V1] the verification limit must be an integer from 0 to ${maximum}`);
+    } else if (observed === undefined || !Number.isInteger(observed) || observed < 0 || observed > maximum) {
+      refuse(field, "[V1] trusted verification evidence is missing or invalid");
+    } else if (field === "minVerificationScore" ? observed > limit : observed < limit) {
+      refuse(field, field === "minVerificationScore"
+        ? "[V1] the provider exceeds the permitted risk score"
+        : "[V1] the provider is below the required verification level");
+    }
+  }
 
   const allowed = violations.length === 0;
   return { allowed, violations, needsApproval: allowed && amount > BigInt(policy.stellar.autoApproveUpTo) };

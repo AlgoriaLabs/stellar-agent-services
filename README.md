@@ -18,12 +18,14 @@ payment side:
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
 | [`examples/python-upstream`](examples/python-upstream) | An existing Python API made a paid service with gateway mode |
 
-**Status:** Week 3 of the plan. A paid call works end to end, from a provider (library or gateway mode, with a
-durable job queue) to the payment client's CLI and web page. Job Recovery is complete in code: providers decide
-uncertain payments from on-chain data ([docs/job-recovery.md](docs/job-recovery.md)). The verifier runs every check
-(C1–C7), proves payments on chain, and issues receipts, badges and Validation Registry responses
-([docs/verification.md](docs/verification.md)). The plan is in
-[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development runs on Stellar **testnet**.
+**Status (2026-11-06):** the core packages are released at 0.1.0. The kit, payment client, recovery and verifier
+are implemented. [Sample payment/recovery evidence is public](https://algorialabs.github.io/stellar-agent-services/),
+and live verification receipts and badges are captured in [evidence/](evidence/README.md). Permanent sample
+registration, an anchored validation response and the independent pilot remain. This checkout
+also enforces configured verification policies through an application-trusted source [V1]. The
+[SOW closeout guide](docs/sow-closeout.md) lists the remaining acceptance work, and
+[readiness evidence](evidence/readiness.md) records checks and release references. The full build history is in
+[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development and pilot evidence use Stellar **testnet**.
 
 To offer a service, start with [`npm create stellar-service`](packages/create-stellar-service), then:
 

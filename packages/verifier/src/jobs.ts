@@ -263,7 +263,9 @@ export async function followJob(
   let current = first;
   let wait = retryAfterMs(first.exchange);
   // A state that is not one of the standard's was already reported; polling won't make it one.
-  const pending = (status: unknown) => status === "queued" || status === "running";
+  // Uncertainty can resolve from the chain [J13]. Keep reading this job within the same deadline;
+  // never sign or submit another payment while waiting [J11].
+  const pending = (status: unknown) => status === "queued" || status === "running" || status === "payment_uncertain";
   while (pending(current.view["status"]) && ctx.now() < deadline) {
     await ctx.sleep(Math.min(Math.max(wait, 1000), 60_000));
     const exchange = await readJob(ctx, check, expected.jobId, expected.token, true);

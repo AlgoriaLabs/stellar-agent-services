@@ -11,6 +11,9 @@ export const textStats = defineService({
   price: "0.01",
   charge: "on-success",
   expectedDurationSeconds: 1,
+  // Admit one on-success settlement at a time; reject excess work before payment [Q2], [Q3].
+  // The shared testnet facilitator can time out when this sample settles several calls together.
+  capacity: { concurrency: 1, maxQueueWaitSeconds: 0 },
   inputSchema: {
     type: "object",
     required: ["text"],

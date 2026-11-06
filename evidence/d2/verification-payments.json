@@ -1,0 +1,58 @@
+{
+  "network": "stellar:testnet",
+  "capturedAt": "2026-11-06T11:11:17.351Z",
+  "method": "Read-only getTransaction SUCCESS and exactly one approved-asset transfer from the approved payer to payTo, amount 100000 [J16].",
+  "proofs": [
+    {
+      "jobId": "bd094479-8ad1-490c-8656-85988cf68cc3",
+      "purpose": "Final C4 payment and C5 recovery",
+      "transaction": "d1821d406c2b10eb7cd7d5b60d79d88b5d302008e2b349e664debd8919e01e9a",
+      "ledger": 5587906,
+      "approvedTerms": {
+        "network": "stellar:testnet",
+        "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+        "amount": "100000",
+        "payer": "GD7KOSL5ZXOBIJSLULOO6I56BMV2V74ZV5FXQI3FRUAJ4LPA5VSGDFYE",
+        "payTo": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC"
+      },
+      "confirmation": {
+        "confirmed": true
+      },
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/d1821d406c2b10eb7cd7d5b60d79d88b5d302008e2b349e664debd8919e01e9a"
+    },
+    {
+      "jobId": "360a96cf-9c48-4346-951d-f590375dbedd",
+      "purpose": "Final C7 accepted paid load job",
+      "transaction": "83da735876a6ed4e06b182f2a456e1cdcee7f2d2833f6ca005e8fa2b955cc643",
+      "ledger": 5587922,
+      "approvedTerms": {
+        "network": "stellar:testnet",
+        "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+        "amount": "100000",
+        "payer": "GD7KOSL5ZXOBIJSLULOO6I56BMV2V74ZV5FXQI3FRUAJ4LPA5VSGDFYE",
+        "payTo": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC"
+      },
+      "confirmation": {
+        "confirmed": true
+      },
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/83da735876a6ed4e06b182f2a456e1cdcee7f2d2833f6ca005e8fa2b955cc643"
+    },
+    {
+      "jobId": "1b591e1a-6b53-4723-873d-ad115e12466c",
+      "purpose": "Earlier uncertain C4 job: original payment later reconciled",
+      "transaction": "ffaef6a1e9c4ab8a500c7ffe1dc2eac07ce76b77d22ca1216f90ffb4217c561e",
+      "ledger": 5587859,
+      "approvedTerms": {
+        "network": "stellar:testnet",
+        "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+        "amount": "100000",
+        "payer": "GD23PAUPHMUV4TEAZNA2MNN7AQPEAELAE5YJD7HMQCLXKHVPD35WVEXE",
+        "payTo": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC"
+      },
+      "confirmation": {
+        "confirmed": true
+      },
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/ffaef6a1e9c4ab8a500c7ffe1dc2eac07ce76b77d22ca1216f90ffb4217c561e"
+    }
+  ]
+}

@@ -175,7 +175,7 @@ How to build, test and submit an adapter, and what we and the integrator each ne
 | `allowedContracts` / `blockedContracts` | The asset contract (USDC SAC) | USDC only |
 | `maxValuePerTx`, `maxValuePerDay` | In the asset's base units, not a native value | 0.10 / 1.00 USDC |
 | `validAfter`, `validUntil` | ERC-8196 | now / +30 days |
-| `minVerificationScore` | ERC-8196, read through a risk-source interface once a Stellar ERC-8126 exists | unset |
+| `minVerificationScore` | ERC-8196 name: maximum allowed provider risk score (0–100, lower is safer), from a trusted source | unset |
 | `stellar.asset` | The one asset the limits apply to | USDC |
 | `stellar.payees` | `{ allow?, block? }` lists of `payTo` addresses, since the real payee is an argument of `transfer` | unset |
 | `stellar.minProviderLevel` | The lowest `provider-standard-v1` conformance level a payee must have | unset (pilot) |
@@ -184,6 +184,36 @@ How to build, test and submit an adapter, and what we and the integrator each ne
 `policyHash = sha256(JCS(policy))`. Every journal entry and every approval names the policy hash it ran under.
 Out of the box, every payment asks for approval, which is what the SOW requires. Paying without a prompt is
 something the owner turns on.
+
+### Verification source
+
+The core enforces configured `minVerificationScore` and `stellar.minProviderLevel` at quote time and again before
+signing [V1]. Missing or invalid evidence blocks the payment, including when the configured limit is zero. When
+both limits are unset, no verification read is needed.
+
+`PaymentClientOptions.verificationSource` is application-trusted code implementing:
+
+```ts
+interface VerificationSource {
+  read(subject: VerificationSubject): Promise<ProviderVerification | undefined>;
+}
+```
+
+The subject contains `network`, `payTo`, `manifestUrl`, `manifestSha256` (RFC 8785 canonical JSON) and optional
+`agentId`. The result repeats those fields and adds RFC 3339 `checkedAt` and `expiresAt`, plus optional
+`riskScore` (0–100, lower is safer) and `level` (0–3). The core rejects a different subject, a future check, expired
+evidence or an invalid metric. Each configured restriction requires its own metric.
+
+The source authenticates the evidence: trusted validator selection, registry reads, receipt hashes and the
+validity period it accepts. Its network calls must have deadlines. A raw receipt, a provider's badge or a score
+copied from a manifest is not an authenticated source. No built-in registry/risk-source adapter exists yet.
+
+`minVerificationScore` preserves ERC-8196's maximum-risk meaning despite its name (erc-compatibility.md T4).
+Do not compare it directly with the Provider Standard receipt's higher-is-better `score`.
+
+The web page and CLI do not install a source. Their default policies leave both restrictions unset; importing a
+policy that sets them blocks new payments until a source is installed. Recovery remains available without a
+verification read, because collecting a paid result never requires another payment [J11], [J13].
 
 ### Journal (ERC-8196 hash-chained audit trail)
 

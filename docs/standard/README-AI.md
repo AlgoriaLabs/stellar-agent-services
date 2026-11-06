@@ -30,9 +30,9 @@ pays one) that follows Provider Standard v1.
 | Any other language or stack | **Native**: implement §3–§12 | §3–§12, §13 |
 | Agent, wallet or app that pays providers | **Client** | §14, [packages/payment-client](../../packages/payment-client) |
 
-The packages are npm workspaces in this repository and are not yet published to npm. Clone the repository and
-run `npm install && npm run build`. Then build inside it, copy `examples/paid-service`, or link a package into
-another project with `npm install <repo>/packages/provider-kit`.
+The packages are published on npm from 0.1.0. Use `npm create stellar-service`, or install the package you need.
+For unreleased changes, clone this repository and run `npm install && npm run build`. Then build inside it,
+copy `examples/paid-service`, or link a package with `npm install <repo>/packages/provider-kit`.
 
 ## 2. Kit path (TypeScript)
 
@@ -486,6 +486,8 @@ npx stellar-pay pay http://localhost:8787/.well-known/stellar-agent-services.jso
 - Unpaid create-job → `402`. Compare the challenge with the approved manifest, and refuse to sign on any mismatch
   `[P7]`.
   - Show the price, recipient, network and `charge` before approval `[S3]`.
+- Enforce configured verification limits from trusted evidence matching the approved manifest, payee and network
+  `[V1]`. Missing, unreadable or expired evidence blocks a payment requiring verification. Recheck before signing.
 - Sign once. Send the paid request with the same id, token and input.
 - `429` / `503` from create-job: wait `Retry-After` plus jitter, then send the identical request again `[Q8]`.
   - On a paid request, send the same `PAYMENT-SIGNATURE`.
@@ -608,4 +610,5 @@ Errors, identity and extensions:
 - **I1** The 8004 registration lists the manifest under `stellar-agent-services`.
 - **I2** `provider.agentId` is that registration's id.
 - **I3** `payTo` equals `get_agent_wallet(agentId)`.
+- **V1** Clients SHOULD enforce configured verification requirements from trusted, matching, current evidence before signing.
 - **X1** Extra fields go in `extensions` with reverse-DNS keys, and clients ignore unknown ones.

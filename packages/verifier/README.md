@@ -50,6 +50,10 @@ Every check that ran passed.
 Exit codes: `0` every check that ran passed, `1` a check or the command failed, `2` a usage error. `--json` prints
 the report, or the receipt, on standard output. `watch` runs until SIGINT or SIGTERM, then exits `0`.
 
+The paid checks poll an uncertain job within their existing follow deadline, allowing the provider to reconcile
+it from the chain [J13]. They read the original job and never sign or send another payment while waiting [J11].
+Unresolved uncertainty is skipped and earns no paid check.
+
 As a library:
 
 ```ts
