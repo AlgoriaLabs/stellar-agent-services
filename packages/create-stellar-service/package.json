@@ -1,6 +1,6 @@
 {
   "name": "create-stellar-service",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "npm create stellar-service: a new paid AI service on Stellar, or an existing API made one, ready to run, try and deploy (Provider Standard v1, x402 USDC).",
   "type": "module",
   "license": "MIT",
