@@ -81,13 +81,16 @@ The kit's CLI runs the rest, with no secret key anywhere:
 | Run | `provider-kit dev --config <file>`, or `provider-kit dev -- <your server command>` | Runs it on this computer. With `PAY_TO` empty, it is paid to a throwaway testnet account whose key is dropped at once. |
 | Pay once | `provider-kit try [<service>] --yes` | One paid testnet call from a throwaway payer, after the user agreed to pay. Starts the provider when nothing answers (`--start '<command>'` for a library provider). |
 | Go live | `provider-kit launch --config <file>` or `--start '<command>' --url <https origin>` | One approval page in the user's wallet: USDC trustline, 8004 registration [I1]–[I3], validation request. Saves `PAY_TO` and `AGENT_ID`, deploys with `flyctl` when there is a `fly.toml`. Ask the user first; run it with `--no-open` and give them the link. |
+| Go live, no wallet app | `provider-kit launch ... --local-wallet` | The same steps, signed by an account the kit makes on this computer, when the user prefers that to connecting a wallet. Its key stays in the OS keychain: never read, print or export it. On mainnet it prints the account and the XLM to send (about 2.5): give both to the user and wait. |
+| The local wallet | `provider-kit wallet --json`, `provider-kit wallet withdraw --to <G...> --network <net>` | What the account holds, and its USDC paid to an address the user named. `wallet export` is for the user alone, in their own terminal. |
 | Where it stands | `provider-kit status --json` | Each stage, from running here to verified, and the command to run next |
 
 **Mainnet** (`stellar:pubnet`, real USDC) is the same code with `network: "stellar:pubnet"`, a facilitator that settles
 it, and a Soroban RPC (`rpc`), since pubnet has no default one. OpenZeppelin's facilitator,
 `https://channels.openzeppelin.com/x402`, wants an API key: `httpFacilitator(url, { headers: { Authorization:
 process.env.FACILITATOR_AUTH } })` with `FACILITATOR_AUTH="Bearer <key>"`, or `facilitatorHeaders` in a gateway config.
-There, `dev` needs the owner's own `PAY_TO`, and `try` doesn't run: it pays with test money.
+There, `dev` needs the owner's own `PAY_TO`, and `try` doesn't run: it pays with test money. `launch --local-wallet`
+sets `PAY_TO` up without a wallet app, once the user sent the account the XLM it asks for.
 `create-stellar-service --network mainnet` writes these settings. Build and try on testnet first.
 
 ## 3. Constants
