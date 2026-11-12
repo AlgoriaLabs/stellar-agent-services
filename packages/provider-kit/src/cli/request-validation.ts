@@ -54,7 +54,8 @@ async function withWallet(flags: CliFlags, io: OwnerIo, { manifest, manifestUrl,
   const prepared = await prepareValidationRequest(manifest, manifestUrl, { validator, registry, now: () => now });
   printRequest(prepared);
   if (flags["dry-run"]) {
-    console.log(`\nDry run. Without --dry-run, a page opens where the agent owner's wallet signs validation_request on ${network}. Nothing was signed.`);
+    const signer = flags["local-wallet"] ? "the agent owner's local wallet on this computer signs" : "a page opens where the agent owner's wallet signs";
+    console.log(`\nDry run. Without --dry-run, ${signer} validation_request on ${network}. Nothing was signed.`);
     return 0;
   }
   const { agentId } = prepared.request;

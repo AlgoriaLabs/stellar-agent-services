@@ -40,7 +40,8 @@ export async function trustline(flags: CliFlags, io: OwnerIo = ownerIo(flags)): 
   }
   if (flags.source !== undefined) return withStellarCli(flags, io, chain, flags.source, payTo);
   if (flags["dry-run"]) {
-    console.log(`Dry run. Without --dry-run, a page opens where your wallet adds a USDC trustline on ${network}. Nothing was signed.`);
+    const signer = flags["local-wallet"] ? "a local wallet on this computer adds" : "a page opens where your wallet adds";
+    console.log(`Dry run. Without --dry-run, ${signer} a USDC trustline on ${network}. Nothing was signed.`);
     return 0;
   }
 

@@ -7,7 +7,7 @@
 //                                [--memo <text>] [--wallet <G...>] [--yes]
 //       Moves income out: USDC (all of it, unless --amount) or XLM (--amount) to an account of yours. It shows the
 //       exact payment and asks first; --yes pays without asking. The network is always named: money never moves on
-//       a network by default.
+//       a network by default. XLM is paid only from what is above the account's reserve and the fee.
 //   provider-kit wallet export [--wallet <G...>]
 //       Shows the secret key, to import the account into a wallet app (Freighter, xBull, Lobstr...) and manage it
 //       there. Only for a person at a terminal: it is refused when the output is piped or a script runs it, and
@@ -18,7 +18,7 @@
 
 import { createInterface } from "node:readline/promises";
 import { stellarAddressKind, type StellarNetwork } from "@stellar-agent-services/protocol";
-import { explorerUrl, formatUsdc, formatXlm, networkName, rpcOwnerChain, type AccountState, type OwnerChain } from "./owner-chain.js";
+import { CLASSIC_MAX_FEE, explorerUrl, formatUsdc, formatXlm, networkName, rpcOwnerChain, xlmReserve, type AccountState, type OwnerChain } from "./owner-chain.js";
 import { parseNetwork, UsageError, type CliFlags } from "./shared.js";
 import { walletStore, type WalletRecord, type WalletStore } from "./wallet-store.js";
 
@@ -146,6 +146,14 @@ async function withdraw(flags: CliFlags, io: WalletIo): Promise<number> {
   const format = asset === "usdc" ? formatUsdc : formatXlm;
   if (amount <= 0n) return refuse(io, `${record.address} holds no ${asset.toUpperCase()} on ${name}.`);
   if (amount > balance) return refuse(io, `${record.address} holds ${format(balance)} on ${name}, less than ${format(amount)}.`);
+  if (asset === "xlm") {
+    // Stellar keeps the reserve, and the payment has a fee: what is left is the most the account can pay out.
+    const reserve = xlmReserve(state);
+    const spendable = balance - reserve - BigInt(CLASSIC_MAX_FEE);
+    if (amount > spendable) {
+      return refuse(io, `${record.address} holds ${formatXlm(balance)} on ${name}, of which Stellar keeps ${formatXlm(reserve)} in reserve. It can pay out ${formatXlm(spendable > 0n ? spendable : 0n)} at most.`);
+    }
+  }
   // Fail closed: a payment to an account that can't take it is never sent.
   if (!destination.exists) return refuse(io, `${flags.to} doesn't exist on ${name}.`);
   if (asset === "usdc" && !destination.usdcTrustline) return refuse(io, `${flags.to} has no USDC trustline on ${name}, so it can't receive USDC.`);

@@ -288,10 +288,10 @@ provider-kit wallet export                                       # shows the sec
 ```
 
 `withdraw` shows the payment and asks first (`--yes` skips the question), takes `--amount`, `--asset xlm` and
-`--memo` (an exchange deposit needs its memo), and refuses an account that can't receive the money. `export` runs
-only for a person at a terminal. Once the account is in a wallet app such as Freighter, it is an ordinary wallet:
-`launch` without `--local-wallet` signs with it on the approval page. `trustline`, `register` and
-`request-validation` take `--local-wallet` too.
+`--memo` (an exchange deposit needs its memo), and refuses an account that can't receive the money, or XLM the
+account must keep as its reserve. `export` runs only for a person at a terminal. Once the account is in a wallet
+app such as Freighter, it is an ordinary wallet: `launch` without `--local-wallet` signs with it on the approval
+page. `trustline`, `register` and `request-validation` take `--local-wallet` too.
 
 <details>
 <summary>The same steps one by one, and for scripts and CI</summary>

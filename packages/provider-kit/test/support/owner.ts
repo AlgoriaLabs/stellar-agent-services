@@ -20,7 +20,7 @@ export interface FakeChain extends OwnerChain {
   /** Transactions sent, in order. */
   sent: Transaction[];
   /** How the next sends end: success unless queued here. */
-  answers: ("failed" | "unknown")[];
+  answers: ("failed" | "charged" | "unknown")[];
   /** What a successful contract call returns, such as the new agent's id. */
   returnValue?: xdr.ScVal;
   /** Called for each contract call that lands, to update a fake registry. */
@@ -89,6 +89,7 @@ export function fakeChain(network: StellarNetwork = "stellar:testnet"): FakeChai
       const hash = transaction.hash().toString("hex");
       const answer = chain.answers.shift();
       if (answer === "failed") return { status: "failed", hash, reason: "The account sent another transaction first." };
+      if (answer === "charged") return { status: "failed", hash, reason: "The contract call ran out of its budget.", charged: true };
       if (answer === "unknown") return { status: "unknown", hash, reason: "no ledger included it within 30 seconds" };
       if (transaction.operations[0]?.type === "changeTrust") chain.accounts.get(transaction.source)!.usdcTrustline = true;
       const call = calls.get(hash);

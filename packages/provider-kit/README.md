@@ -400,17 +400,19 @@ provider-kit wallet export                  # the secret key, to import into a w
   sized to its steps: 1.5 XLM of reserve (the account, its USDC trustline), and for each registry call 0.12 XLM plus
   0.2 XLM per 1000 bytes it stores, rounded up to half an XLM. That is 2.5 XLM for a typical launch. Before each
   transaction it checks the account can pay that transaction's own fee; when it can't, it asks for the difference
-  and waits, so nothing is sent that the network would refuse. Each wait lasts up to 15 minutes, and the next run
-  goes on with the same account.
-- **The same checks.** It runs the approval session the page runs: each transaction is built when it is due, checked
-  before it is sent, built again at most twice when the network refuses it, and never sent again once its fate is
-  unknown.
+  and waits, so nothing is sent that the network would refuse. Each wait lasts up to 15 minutes, goes on through an
+  RPC outage, and the next run goes on with the same account.
+- **The same checks.** It runs the approval session the page runs: each transaction is built when it is due and
+  checked before it is sent. One the network refuses before a ledger takes it cost nothing, and is built again at
+  most twice. One that failed in a ledger has paid its fee, so it is never sent again by itself: run the command
+  again. One whose fate is unknown is never sent again.
 - **Where the key is.** In the macOS Keychain or the Linux Secret Service, else in a file only your user can read
   (mode 0600). `wallets.json` in provider-kit's directory (`$PROVIDER_KIT_HOME`, else `~/.config/provider-kit`) lists
   the wallets by public address. The key is read back and checked before the address is ever shown. It is never in
   the project, `.env`, the environment, a log or the terminal.
 - **Getting the money out.** `wallet withdraw` pays all the USDC (or `--amount`) to an account that exists and can
-  hold it, on the network you name, after showing the payment and asking (`--yes` skips the question). `wallet export`
+  hold it, on the network you name, after showing the payment and asking (`--yes` skips the question). XLM
+  (`--asset xlm --amount <n>`) is paid only from what is above the account's reserve and the fee. `wallet export`
   shows the secret key only to a person at a terminal, never to a script, a pipe or a coding agent. Import it into
   Freighter or another wallet and the account is an ordinary wallet from then on.
 

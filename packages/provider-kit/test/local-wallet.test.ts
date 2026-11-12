@@ -211,6 +211,54 @@ describe("--local-wallet", () => {
     expect(await trustline({}, localIo(always, store().wallets).io)).toBe(1);
     expect(always.sent).toHaveLength(3);
   });
+
+  it("never sends again by itself a transaction that failed in a ledger: its fee was paid", async () => {
+    const output = vi.spyOn(console, "log").mockImplementation(() => {});
+    const chain = fakeChain();
+    chain.answers.push("charged");
+    const { wallets } = store();
+    expect(await trustline({}, localIo(chain, wallets).io)).toBe(1);
+    expect(chain.sent).toHaveLength(1);
+    expect(output.mock.calls.flat().join("\n")).toContain("its fee was paid, and it wasn't sent again");
+
+    // The next run goes on from what is on chain, with the same wallet.
+    expect(await trustline({}, localIo(chain, wallets).io)).toBe(0);
+    expect(await wallets.list()).toHaveLength(1);
+    expect(chain.sent).toHaveLength(2);
+  });
+
+  it("keeps waiting for XLM while the network doesn't answer", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const chain = fakeChain("stellar:pubnet");
+    const { wallets } = store();
+    const account = chain.account;
+    let outage = false;
+    chain.account = async (address) => {
+      if (outage) throw new Error("fetch failed");
+      return account(address);
+    };
+    let polls = 0;
+    const { io, lines } = localIo(chain, wallets, {
+      sleep: async () => {
+        polls += 1;
+        outage = polls < 3;
+        if (polls === 3) chain.accounts.set((await wallets.list())[0]!.address, { usdcTrustline: false, xlm: 20_000_000n });
+      },
+    });
+
+    expect(await trustline({ network: "mainnet" }, io)).toBe(0);
+    // Said once for the outage, not on every read.
+    expect(lines.filter((line) => line.includes("isn't answering. Still waiting."))).toHaveLength(1);
+    expect(chain.sent).toHaveLength(1);
+  });
+
+  it("says a local wallet would sign on a dry run, and makes none", async () => {
+    const output = vi.spyOn(console, "log").mockImplementation(() => {});
+    const { wallets } = store();
+    expect(await trustline({ "dry-run": true, "local-wallet": true }, localIo(fakeChain(), wallets).io)).toBe(0);
+    expect(output.mock.calls.flat().join("\n")).toContain("a local wallet on this computer adds a USDC trustline");
+    expect(await wallets.list()).toEqual([]);
+  });
 });
 
 describe("provider-kit wallet", () => {
@@ -265,6 +313,17 @@ describe("provider-kit wallet", () => {
     const t = await setUp();
     expect(await t.run({ to: t.mine, network: "testnet", yes: true, asset: "xlm", amount: "0.5" }, "withdraw")).toBe(0);
     expect(t.chain.sent[0]!.operations[0]).toMatchObject({ type: "payment", amount: "0.5000000", asset: { code: "XLM" } });
+  });
+
+  it("pays out XLM only from what is above the reserve and the fee", async () => {
+    const t = await setUp();
+    // It holds 2.5 XLM; the account and its trustline lock 1.5, and the payment's fee is at most 0.001.
+    expect(await t.run({ to: t.mine, network: "testnet", yes: true, asset: "xlm", amount: "1.5" }, "withdraw")).toBe(1);
+    expect(t.chain.sent).toEqual([]);
+    expect(t.output()).toContain("Stellar keeps 1.5 XLM in reserve. It can pay out 0.999 XLM at most.");
+
+    expect(await t.run({ to: t.mine, network: "testnet", yes: true, asset: "xlm", amount: "0.999" }, "withdraw")).toBe(0);
+    expect(t.chain.sent).toHaveLength(1);
   });
 
   it("asks before paying, and pays only on a yes", async () => {

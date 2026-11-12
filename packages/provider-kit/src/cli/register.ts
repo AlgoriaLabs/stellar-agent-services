@@ -72,7 +72,8 @@ async function withWallet(flags: CliFlags, io: OwnerIo, { manifest, manifestUrl,
   const agentId = manifest.provider.agentId;
   if (flags["dry-run"]) {
     const method = agentId === undefined ? "register_with_uri" : "set_agent_uri";
-    console.log(`Dry run. Without --dry-run, a page opens where your wallet signs ${method} on ${network}. Nothing was signed.`);
+    const signer = flags["local-wallet"] ? "a local wallet on this computer signs" : "a page opens where your wallet signs";
+    console.log(`Dry run. Without --dry-run, ${signer} ${method} on ${network}. Nothing was signed.`);
     return { code: 0 };
   }
   if (agentId === undefined && stellarAddressKind(payTo) !== "account") {

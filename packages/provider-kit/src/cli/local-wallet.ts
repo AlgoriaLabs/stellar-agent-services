@@ -20,16 +20,14 @@
 //   it is simulated. When the account is short, it names how much more to send and waits, instead of sending a
 //   transaction the network would refuse. So an estimate that turns out low costs one more transfer, never a failure.
 // - It waits 15 minutes each time. Giving up signs nothing more, and the next run goes on with the same account.
+// A transaction the network refuses before a ledger takes it cost nothing, and is built again, at most twice. One that
+// failed in a ledger has paid its fee: it is never sent again by itself, on either network. The next run goes on.
 
 import { TransactionBuilder, type Keypair, type Transaction } from "@stellar/stellar-sdk";
 import { ApprovalSession, type ApprovalOutcome, type ApprovalPlan } from "./approval.js";
-import { explorerUrl, formatXlm, networkName, type OwnerChain } from "./owner-chain.js";
+import { ACCOUNT_RESERVE, ENTRY_RESERVE, explorerUrl, formatXlm, networkName, xlmReserve, type OwnerChain } from "./owner-chain.js";
 import type { WalletRecord, WalletStore } from "./wallet-store.js";
 
-/** What Stellar locks while an account exists, in stroops: 1 XLM. */
-const ACCOUNT_RESERVE = 10_000_000n;
-/** What it locks for each entry the account holds, such as its USDC trustline: 0.5 XLM. */
-const ENTRY_RESERVE = 5_000_000n;
 /**
  * What a registry call costs at most, in stroops: 0.12 XLM, plus 0.2 XLM for each 1000 bytes it stores. Measured by
  * simulating register_with_uri on Mainnet (600 bytes: 0.22 XLM; 2000: 0.49; 8000: 1.65). Only the first request is
@@ -46,7 +44,7 @@ export const VALIDATION_REQUEST_BYTES = 600;
 /** How long a command waits for XLM to arrive. */
 const FUNDING_WAIT_MS = 15 * 60_000;
 const FUNDING_POLL_MS = 5000;
-/** How often one transaction is built again after the network refused it, such as on a busy ledger. */
+/** How often one transaction is built again after the network refused it before a ledger, such as when it is busy. */
 const REBUILDS = 2;
 
 export interface LocalWalletOptions {
@@ -89,23 +87,34 @@ export async function approveWithLocalWallet(plan: ApprovalPlan, chain: OwnerCha
     if (gaveUp !== undefined) return { status: "failed", reason: gaveUp };
   }
 
-  const session = new ApprovalSession(plan, chain, log);
+  // What the network said of the last transaction, when it didn't go through.
+  let refused: { reason: string; charged: boolean } | undefined;
+  const watched: OwnerChain = {
+    ...chain,
+    async send(transaction) {
+      const sent = await chain.send(transaction);
+      refused = sent.status === "failed" ? { reason: sent.reason, charged: sent.charged === true } : undefined;
+      return sent;
+    },
+  };
+  const session = new ApprovalSession(plan, watched, log);
   await session.connect(address, "Local wallet");
   let rebuilds = 0;
-  let last: string | undefined;
+  let last: { id: string; title: string } | undefined;
   while (session.state === "review") {
     const view = session.view();
     if (view.review === undefined) {
-      // The network refused the transaction, and it can be built again: a new sequence number and simulation.
+      // The network refused the transaction. Before a ledger took it, it cost nothing, and it is built again: a new
+      // sequence number and simulation. Failed in a ledger, it has paid its fee: a person decides to pay it again.
       const active = view.steps.find((step) => step.status === "active");
-      if (active === undefined || rebuilds >= REBUILDS) break;
+      if (active === undefined || refused?.charged || rebuilds >= REBUILDS) break;
       rebuilds += 1;
       await session.rebuild(active.id);
       continue;
     }
     const { review } = view;
-    if (review.stepId !== last) rebuilds = 0;
-    last = review.stepId;
+    if (review.stepId !== last?.id) rebuilds = 0;
+    last = { id: review.stepId, title: review.title };
     const transaction = TransactionBuilder.fromXDR(review.xdr, chain.passphrase) as Transaction;
     if (chain.network === "stellar:pubnet") {
       // Mainnet XLM is the person's own: a transaction the account can't pay for is never sent. They top it up instead.
@@ -137,6 +146,11 @@ export async function approveWithLocalWallet(plan: ApprovalPlan, chain: OwnerCha
     }
   }
   if (state === "done" || state === "failed" || state === "cancelled") return session.finished;
+  // Still at the transaction the network refused: the loop above stopped building it again.
+  if (state === "review" && refused !== undefined && last !== undefined) {
+    const why = refused.charged ? "A ledger included it, so its fee was paid, and it wasn't sent again." : `It was built again ${rebuilds} times, and refused each time.`;
+    return { status: "failed", reason: `${last.title} didn't go through: ${refused.reason} ${why} Run the command again to go on from here.` };
+  }
   // The session waits for something a person would do on the page, such as connecting another account.
   return { status: "failed", reason: error === undefined ? "The local wallet couldn't finish the steps." : `${error.title}: ${error.message}` };
 }
@@ -174,15 +188,15 @@ export function fundingRequest(plan: Pick<ApprovalPlan, "stores" | "network">, a
 async function shortfall(chain: OwnerChain, address: string, fee: bigint, addsEntry: boolean): Promise<{ missing: bigint; holds: bigint; reserve: bigint } | undefined> {
   const state = await chain.account(address);
   if (state.xlm === undefined) return undefined;
-  const entries = BigInt(state.subentries ?? (state.usdcTrustline ? 1 : 0)) + (addsEntry && !state.usdcTrustline ? 1n : 0n);
-  const reserve = ACCOUNT_RESERVE + entries * ENTRY_RESERVE;
+  const reserve = xlmReserve(state, addsEntry && !state.usdcTrustline ? 1 : 0);
   const missing = reserve + fee - state.xlm;
   return missing > 0n ? { missing, holds: state.xlm, reserve } : undefined;
 }
 
 /**
  * Waits until the account exists and holds at least `needed` stroops. Returns why it gave up, or undefined to go on.
- * `asked` is what the person was asked to send, for the message when nothing arrives.
+ * `asked` is what the person was asked to send, for the message when nothing arrives. A read the network doesn't
+ * answer is tried again: an RPC outage doesn't end the wait.
  */
 async function awaitXlm(chain: OwnerChain, address: string, needed: bigint, asked: bigint, options: LocalWalletOptions): Promise<string | undefined> {
   const { log } = options;
@@ -190,13 +204,17 @@ async function awaitXlm(chain: OwnerChain, address: string, needed: bigint, aske
   const now = options.now ?? (() => Date.now());
   log(`  Waiting for it, up to ${FUNDING_WAIT_MS / 60_000} minutes. Ctrl+C stops; running the command again goes on with the same account.`);
   const deadline = now() + FUNDING_WAIT_MS;
+  let answering = true;
   for (;;) {
-    const state = await chain.account(address);
-    if (state.exists && (state.xlm === undefined || state.xlm >= needed)) {
+    const state = await chain.account(address).catch(() => undefined);
+    if (state === undefined && answering) log(`  ${networkName(chain.network)} isn't answering. Still waiting.`);
+    answering = state !== undefined;
+    if (state !== undefined && state.exists && (state.xlm === undefined || state.xlm >= needed)) {
       log(`  ✓ Received${state.xlm === undefined ? "" : `: it holds ${formatXlm(state.xlm)}`}`);
       return undefined;
     }
     if (now() >= deadline) {
+      if (state === undefined) return `${networkName(chain.network)} didn't answer, so whether ${address} received its XLM isn't known. Nothing more was signed. Run the command again: it goes on with the same wallet.`;
       const holds = state.exists && state.xlm !== undefined ? `holds only ${formatXlm(state.xlm)}` : "hasn't received any XLM";
       return `${address} ${holds} on ${networkName(chain.network)}. Nothing more was signed. Send it ${formatXlm(asked)}, then run the command again: it goes on with the same wallet.`;
     }

@@ -34,7 +34,11 @@ import type { PreparedValidationRequest } from "../validation-request.js";
 /** How long a built transaction stays valid: time to review and approve it, even on a hardware wallet. */
 export const OWNER_TX_TIMEOUT_SECONDS = 300;
 /** The most a classic transaction may cost in fees, in stroops: 0.001 XLM. Without surge pricing it costs 0.00001. */
-const CLASSIC_MAX_FEE = "10000";
+export const CLASSIC_MAX_FEE = "10000";
+/** What Stellar locks while an account exists, in stroops: 1 XLM. */
+export const ACCOUNT_RESERVE = 10_000_000n;
+/** What it locks for each entry the account holds, such as its USDC trustline: 0.5 XLM. */
+export const ENTRY_RESERVE = 5_000_000n;
 /** The most test XLM buyTestUsdc() spends: half of what Friendbot gives a new account. */
 const TEST_XLM_SPEND = "5000";
 const RPC_TIMEOUT_MS = 30_000;
@@ -68,8 +72,11 @@ export interface AccountState {
 
 export type SendResult =
   | { status: "success"; hash: string; ledger: number; returnValue?: xdr.ScVal }
-  /** The network refused it or it failed in a ledger: nothing happened, and it can be built again. */
-  | { status: "failed"; hash: string; reason: string }
+  /**
+   * The network refused it or it failed in a ledger: nothing happened, and it can be built again. `charged`: a ledger
+   * included it, so its fee was paid. Refused before a ledger, it cost nothing.
+   */
+  | { status: "failed"; hash: string; reason: string; charged?: boolean }
   /** It may or may not be in a ledger: never send it again without looking it up. */
   | { status: "unknown"; hash: string; reason: string };
 
@@ -215,7 +222,7 @@ export function rpcOwnerChain(network: StellarNetwork, rpcUrl?: string): OwnerCh
       if (response.status === rpc.Api.GetTransactionStatus.SUCCESS) {
         return { status: "success", hash, ledger: response.ledger, ...(response.returnValue === undefined ? {} : { returnValue: response.returnValue }) };
       }
-      if (response.status === rpc.Api.GetTransactionStatus.FAILED) return { status: "failed", hash, reason: describeResult(response.resultXdr) };
+      if (response.status === rpc.Api.GetTransactionStatus.FAILED) return { status: "failed", hash, reason: describeResult(response.resultXdr), charged: true };
       return { status: "unknown", hash, reason: `no ledger included it within ${POLL_ATTEMPTS} seconds` };
     },
   };
@@ -302,6 +309,14 @@ export function formatXlm(stroops: string | number | bigint): string {
 /** USDC base units as USDC, such as "0.01 USDC". */
 export function formatUsdc(units: string | bigint): string {
   return `${decimal(BigInt(units), 2)} USDC`;
+}
+
+/**
+ * The XLM Stellar keeps in reserve for an account, in stroops: for the account itself and each entry it holds, plus
+ * `more` entries it is about to add. That much can't be spent, on fees or on payments.
+ */
+export function xlmReserve(state: AccountState, more = 0): bigint {
+  return ACCOUNT_RESERVE + BigInt((state.subentries ?? (state.usdcTrustline ? 1 : 0)) + more) * ENTRY_RESERVE;
 }
 
 /** An amount with 7 decimals, as Stellar writes assets, with at least `minDecimals` of them. */

@@ -122,8 +122,8 @@ request-validation); with it, --dry-run prints the Stellar CLI command.
 No wallet app: --local-wallet (launch, trustline, register, request-validation) signs the same steps
 with a local wallet instead. provider-kit makes the account, keeps its key in your OS keychain (never
 in the project, never printed) and reuses it for this project. On testnet it needs nothing from you.
-On mainnet it names the account and the XLM to send it (about 2.5), and waits. The account is paid your income:
-provider-kit wallet shows, withdraws and exports it.
+On mainnet it names the account and the XLM to send it (about 2.5), and waits. The account is paid
+your income: provider-kit wallet shows, withdraws and exports it.
 
 The provider never needs a Stellar secret key. Docs: docs/provider-setup-guide.md`;
 
