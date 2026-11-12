@@ -256,6 +256,43 @@ was asked. After you move the manifest, or change the name or description search
 **On a computer without a browser**, such as over SSH, add `--no-open` and open the printed link wherever your
 wallet is: the link reaches only this computer, so forward its port (`ssh -L 8790:localhost:8790`).
 
+### Without a wallet app: `--local-wallet`
+
+`launch` can also make the wallet for you. Nothing is installed or connected, and no page opens:
+
+```bash
+provider-kit launch --config provider.config.json --local-wallet
+```
+
+- **It makes an account on this computer** and signs every step of 3 with it. The account becomes `payTo` and the
+  agent's owner and wallet, so your income arrives there. Run it again and it uses the same account.
+- **On testnet it needs nothing from you**: Friendbot funds the account. **On mainnet it names the account and the
+  XLM to send it**, from any wallet or exchange: about 2.5 XLM for a typical service, up to 4 with the largest
+  registration file. Stellar keeps 1.5 XLM in reserve for the account and its USDC trustline; the rest pays the
+  network fees, which grow with what the registration stores on chain. What isn't spent stays in the account.
+- **It never sends what the account can't pay for.** Before each transaction it compares the account's XLM with that
+  transaction's fee. When the account is short, it says how much more to send and waits. It waits 15 minutes each
+  time; run it again if you need longer, and it goes on with the same account from where it stopped.
+- **The key stays out of your project.** It is kept in your OS keychain (macOS Keychain, Linux Secret Service), or
+  where there is none in a file only your user can read, under `~/.config/provider-kit`. It is never written to
+  `.env`, never printed and never given to the provider, which knows only the public address
+  ([SECURITY.md](../SECURITY.md)). The key lives on this computer only: export it (below) before you rely on the
+  account, or a lost computer loses the account with it.
+
+Manage it with `provider-kit wallet`:
+
+```bash
+provider-kit wallet                                              # each local wallet, and what it holds
+provider-kit wallet withdraw --to <G…> --network mainnet         # pays all its USDC to an account of yours
+provider-kit wallet export                                       # shows the secret key, to import into a wallet app
+```
+
+`withdraw` shows the payment and asks first (`--yes` skips the question), takes `--amount`, `--asset xlm` and
+`--memo` (an exchange deposit needs its memo), and refuses an account that can't receive the money. `export` runs
+only for a person at a terminal. Once the account is in a wallet app such as Freighter, it is an ordinary wallet:
+`launch` without `--local-wallet` signs with it on the approval page. `trustline`, `register` and
+`request-validation` take `--local-wallet` too.
+
 <details>
 <summary>The same steps one by one, and for scripts and CI</summary>
 

@@ -69,6 +69,7 @@ async function withWallet(flags: CliFlags, io: OwnerIo, { manifest, manifestUrl,
       ? {}
       : { account: { address: owner, label: "Agent owner", reason: "The registry takes a request only from the agent's owner, the address approved for it, or an operator of the owner's." } }),
     outline: [{ id: "request-validation", title: "Request validation" }],
+    stores: [prepared.requestUri.length],
     async steps(address) {
       try {
         await prepareValidationRequest(manifest, manifestUrl, { validator, registry, signer: address, now: () => now });

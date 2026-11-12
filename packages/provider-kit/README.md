@@ -195,12 +195,14 @@ Price (`0.01`), charge (`upfront`), duration and capacity are first guesses: set
 | `provider-kit trustline [--config \| --manifest \| --network <testnet\|mainnet>]` | Adds a USDC trustline to `payTo` [P2], approved in its wallet. A new testnet account gets test XLM from Friendbot first. Without `--config` or `--manifest`, it sets up the account the wallet connects and prints it as `PAY_TO`. Signs nothing when the trustline exists. |
 | `provider-kit register (--config \| --manifest)` | Registers in the Stellar 8004 identity registry from the `payTo` account, or updates the registration from the agent's owner, approved in the wallet. Adds the USDC trustline first when it is missing, and saves the new `agentId` to `--config` [I2]. |
 | `provider-kit request-validation (--config \| --manifest) --validator <G…>` | Asks a verifier for validation in the Stellar 8004 Validation Registry. Checks first that a verifier can validate the provider ([I1]–[I3]), that the connected account may ask for the agent, and that the validator is not the provider itself. Puts the request document on chain as a `data:` URI, has the owner's wallet sign it and prints the request hash for the verifier. `--out` writes the request document. |
+| `provider-kit wallet [show \| withdraw \| export]` | Manages a [local wallet](#the-local-wallet): shows each one and what it holds, pays its USDC or XLM to an account of yours (`withdraw --to <G…> --network <net>`, after asking), or shows its secret key to import into a wallet app (`export`, only for a person at a terminal). |
 | `provider-kit reconcile (--config <file> \| --store <file> --network <net>)` | Decides `payment_uncertain` jobs from on-chain data [J13]. `--dry-run` only reports; `--rpc <url>` picks the Soroban RPC. It reads the chain, writes only the job store and signs nothing, so it is safe next to a running provider. Exits 1 while a job is undecided. |
 
 `launch` runs what `trustline`, `register` and `request-validation` run one at a time. Those three take
 `--source <key>` to sign with the [Stellar CLI](https://developers.stellar.org/docs/tools/cli) keychain instead of a
 wallet, for scripts and CI. With `--source`, `--dry-run` prints the Stellar CLI command. `--rpc <url>` picks the
-Soroban RPC.
+Soroban RPC. All four take `--local-wallet` to sign with a [local wallet](#the-local-wallet) instead, with no wallet
+app.
 
 ### The throwaway payout account
 
@@ -378,6 +380,43 @@ How it stays safe:
 The page's source is in `approve/` (Svelte), built into `dist/approve` by `npm run build`. `npm run dev:approve`
 serves it alone for design work.
 
+### The local wallet
+
+`--local-wallet` is the alternative to the approval page, for `launch`, `trustline`, `register` and
+`request-validation`: provider-kit makes the owner's account and signs with it, so there is no wallet app to install
+or connect.
+
+```bash
+provider-kit launch --local-wallet          # makes the account, registers from it, saves it as PAY_TO
+provider-kit wallet                         # the local wallets, and what each holds
+provider-kit wallet withdraw --to <G…> --network mainnet [--amount <n>] [--asset usdc|xlm] [--memo <text>]
+provider-kit wallet export                  # the secret key, to import into a wallet app
+```
+
+- **One account per project.** The first run makes it; later runs find it again, also after a run that stopped half
+  way. When a command needs a particular account (`PAY_TO`, an agent's owner), that account's local wallet signs, and
+  an account whose key isn't here is refused before anything is signed.
+- **Funding.** On testnet Friendbot funds a new account. On mainnet the command prints the account and asks for XLM
+  sized to its steps: 1.5 XLM of reserve (the account, its USDC trustline), and for each registry call 0.12 XLM plus
+  0.2 XLM per 1000 bytes it stores, rounded up to half an XLM. That is 2.5 XLM for a typical launch. Before each
+  transaction it checks the account can pay that transaction's own fee; when it can't, it asks for the difference
+  and waits, so nothing is sent that the network would refuse. Each wait lasts up to 15 minutes, and the next run
+  goes on with the same account.
+- **The same checks.** It runs the approval session the page runs: each transaction is built when it is due, checked
+  before it is sent, built again at most twice when the network refuses it, and never sent again once its fate is
+  unknown.
+- **Where the key is.** In the macOS Keychain or the Linux Secret Service, else in a file only your user can read
+  (mode 0600). `wallets.json` in provider-kit's directory (`$PROVIDER_KIT_HOME`, else `~/.config/provider-kit`) lists
+  the wallets by public address. The key is read back and checked before the address is ever shown. It is never in
+  the project, `.env`, the environment, a log or the terminal.
+- **Getting the money out.** `wallet withdraw` pays all the USDC (or `--amount`) to an account that exists and can
+  hold it, on the network you name, after showing the payment and asking (`--yes` skips the question). `wallet export`
+  shows the secret key only to a person at a terminal, never to a script, a pipe or a coding agent. Import it into
+  Freighter or another wallet and the account is an ordinary wallet from then on.
+
+The key exists on this computer only, and other programs that run as your user can reach it, as with any key kept
+on a computer. Export it, or withdraw regularly, before real income depends on it.
+
 ## Payment safety
 
 - **Local payment checks.** Before the facilitator sees a payment, the kit decodes it: exactly one USDC
@@ -502,6 +541,9 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/cli/approval-view.ts` | What the page shows: the session as JSON, shared with the page |
 | `src/cli/owner-chain.ts` | The owner's transactions: built, checked once signed, sent and followed into a ledger |
 | `src/cli/owner-steps.ts` | Test XLM, the USDC trustline, registration and the validation request, as approval steps |
+| `src/cli/local-wallet.ts` | `--local-wallet`: the owner's steps signed by a local wallet, and the wait for its XLM on mainnet |
+| `src/cli/wallet-store.ts` | Where a local wallet's key is kept: the OS keychain or a private file, and the index of public addresses |
+| `src/cli/wallet.ts` | `provider-kit wallet`: show, withdraw, export |
 | `src/cli/try.ts` | `provider-kit try`: one paid testnet call through the payment client, from a throwaway payer |
 | `src/cli/discovery.ts` | How agents see you, for `provider-kit check`: search text matched as stellar-agent-search matches it, and hints |
 | `approve/` | The approval page (Svelte, Stellar Wallets Kit), built into `dist/approve` |

@@ -89,7 +89,9 @@ answer.
 public address from `fly.toml` or `--url`, one approval page where the user's own wallet signs the USDC trustline, the
 8004 registration and a validation request, then `PAY_TO` and `AGENT_ID` saved, the API's key staged as a Fly secret,
 and with `--deploy` the deploy and the live check. Ask the user first, run it with `--no-open`, give them the link,
-and say what they will approve. `provider-kit status --json` shows where it stands. Never ask the user for a secret
+and say what they will approve. If they would rather not use a wallet app, add `--local-wallet`: the kit makes the
+owner's account on this computer and signs by itself (on mainnet the user sends it the XLM it asks for, about
+2.5), and `provider-kit wallet` shows and withdraws its income. `provider-kit status --json` shows where it stands. Never ask the user for a secret
 key. In CI, `register` and `request-validation` take `--source <key>` instead.
 
 ## 6. Mainnet

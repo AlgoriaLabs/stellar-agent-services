@@ -75,6 +75,15 @@ trustline, the 8004 registration and a validation request in one go, and it may 
 first, run it with `--no-open`, and give them the link. `provider-kit status --json` tells you where a provider stands
 and the one command to run next.
 
+**No wallet app.** Ask the user which they prefer: their own wallet on the approval page, or a local wallet.
+With `--local-wallet`, `launch` makes an account on this computer, keeps its key in the OS keychain and signs
+every step itself, so there is nothing to install or connect. On testnet it needs nothing from the user. On
+mainnet it prints the account and the XLM to send it (about 2.5 XLM for a typical service), and waits up to 15
+minutes: give the user the address and the amount exactly as printed, and run it again if they need longer (it goes
+on with the same account). If a step costs more than the account holds, it asks for the difference the same way. The account is the agent's owner and
+`payTo`, so the income lands there: `provider-kit wallet` shows it, `wallet withdraw` moves it to an address the
+user names, and the user runs `wallet export` themselves to manage it in a wallet app.
+
 A native implementation needs no package: it needs the spec, `packages/protocol/schemas/manifest.schema.json` and
 the test vectors. Changes not released yet run from a clone (`npm install && npm run build`): there,
 `node packages/create-stellar-service/dist/index.js` packs the clone's kit into the new project's `vendor/` folder.
@@ -95,8 +104,12 @@ These come from the spec and [SECURITY.md](SECURITY.md). Breaking one loses or d
    signed in the owner's own wallet: `provider-kit launch` opens a local approval page for all of them, and
    `trustline`, `register` and `request-validation` do one each. In scripts and CI, `--source <key name>` signs through
    the Stellar CLI keychain. Never ask the user for a secret key or seed phrase, and never write one to a file. The
-   only keys the kit makes are throwaway testnet ones, held in memory and never written: `try`'s payer, and the
-   payout account `dev` makes while `PAY_TO` is empty, whose key is dropped once its trustline is signed.
+   only keys the kit makes by itself are throwaway testnet ones, held in memory and never written: `try`'s payer,
+   and the payout account `dev` makes while `PAY_TO` is empty, whose key is dropped once its trustline is signed.
+   When the user chose it, `--local-wallet` has the kit make the owner's account and keep its key in the OS
+   keychain, outside the project ([SECURITY.md](SECURITY.md)). You never read, print or move that key: never run
+   `provider-kit wallet export` (it refuses you), never read the keychain or provider-kit's directory, and run
+   `provider-kit wallet withdraw` only to an address the user gave you for it.
 2. **Never charge twice.** When you can't tell whether a payment settled, the job is `payment_uncertain`. It is
    never `failed` and never charged again. It is decided from the chain `[J13]`. Check-status and get-result
    never charge `[J11]`.

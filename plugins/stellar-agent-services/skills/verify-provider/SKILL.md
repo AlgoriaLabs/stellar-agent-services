@@ -48,6 +48,9 @@ verifier (`--validator <G...>`). Tell the user what they will approve. It saves 
 provider reads them. Use `--start '<command>'` for a library provider, or `--manifest <url>` for one already deployed
 (then set the printed agent id as `provider.agentId` and redeploy). Run step 1 again: C2 must pass.
 `provider-kit status --json` shows each stage. In CI, `register` and `request-validation` take `--source <key>`.
+When the user would rather not use a wallet app, `--local-wallet` has `launch` make the owner's account and sign by
+itself: on mainnet, give the user the address it prints and ask them to send it the XLM it asks for (about 2.5).
+Never read or export its key.
 On mainnet, the page signs real transactions, paid in XLM from the user's account, and `launch` won't call a deploy
 live while it takes payments on another network than the one it is registered on.
 

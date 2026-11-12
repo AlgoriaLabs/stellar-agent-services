@@ -3,7 +3,7 @@
 // page's behalf: it connects its account and signs each transaction the page shows, as a person would.
 
 import { USDC_ISSUER, type StellarNetwork } from "@stellar-agent-services/protocol";
-import { Account, Asset, Contract, Keypair, Networks, Operation, TransactionBuilder, type Transaction, type xdr } from "@stellar/stellar-sdk";
+import { Account, Asset, Contract, Keypair, Memo, Networks, Operation, TransactionBuilder, type Transaction, type xdr } from "@stellar/stellar-sdk";
 import { ApprovalSession, type ApprovalOutcome, type ApprovalPlan } from "../../src/cli/approval.js";
 import type { ApprovalView } from "../../src/cli/approval-view.js";
 import type { ContractCall, OwnerChain, SendResult } from "../../src/cli/owner-chain.js";
@@ -12,7 +12,7 @@ import { registryConfig, type RegistryReader, type ValidationRecord } from "../.
 
 export interface FakeChain extends OwnerChain {
   /** The accounts that exist, and whether each holds a USDC trustline. */
-  accounts: Map<string, { usdcTrustline: boolean }>;
+  accounts: Map<string, { usdcTrustline: boolean; xlm?: bigint; usdc?: bigint }>;
   /** Accounts funded by "Friendbot". */
   funded: string[];
   /** Contract calls built, in order. */
@@ -48,7 +48,12 @@ export function fakeChain(network: StellarNetwork = "stellar:testnet"): FakeChai
     answers: [],
     async account(address) {
       const account = chain.accounts.get(address);
-      return { exists: account !== undefined, usdcTrustline: account?.usdcTrustline ?? false };
+      return {
+        exists: account !== undefined,
+        usdcTrustline: account?.usdcTrustline ?? false,
+        ...(account?.xlm === undefined ? {} : { xlm: account.xlm, subentries: account.usdcTrustline ? 1 : 0 }),
+        ...(account?.usdc === undefined ? {} : { usdc: account.usdc }),
+      };
     },
     async fund(address) {
       chain.funded.push(address);
@@ -64,6 +69,14 @@ export function fakeChain(network: StellarNetwork = "stellar:testnet"): FakeChai
         Operation.changeTrust({ asset: usdc }),
         Operation.pathPaymentStrictReceive({ sendAsset: Asset.native(), sendMax: "5000", destination: address, destAsset: usdc, destAmount, path: [] }),
       );
+    },
+    async pay(address, destination, asset, amount, memo) {
+      sequence += 1n;
+      const builder = new TransactionBuilder(new Account(address, sequence.toString()), { fee: "100", networkPassphrase: passphrase }).addOperation(
+        Operation.payment({ destination, asset: asset === "USDC" ? usdc : Asset.native(), amount: (Number(amount) / 1e7).toFixed(7) }),
+      );
+      if (memo !== undefined) builder.addMemo(Memo.text(memo));
+      return builder.setTimeout(300).build();
     },
     async invoke(address, call) {
       chain.invoked.push({ address, call });

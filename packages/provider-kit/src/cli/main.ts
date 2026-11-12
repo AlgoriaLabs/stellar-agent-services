@@ -11,11 +11,15 @@
 //   register               register or update the 8004 identity (signed in the owner's wallet)
 //   request-validation     ask a verifier for validation in the 8004 Validation Registry (signed the same way)
 //   reconcile              decide payment_uncertain jobs from on-chain data (signs nothing)
+//   wallet                 show a local wallet, withdraw its income, or export it to a wallet app
 //
-// This CLI never holds the owner's key. The owner's transactions are signed in their own wallet, on a page the
-// CLI serves on this computer (approval.ts), or with --source by the Stellar CLI keychain. The only keys it makes
-// are throwaway testnet ones, kept in memory and never written anywhere: try's payer, and dev's payout account
-// (dev-account.ts), whose key is dropped once its USDC trustline is signed.
+// By default this CLI never holds the owner's key. The owner's transactions are signed in their own wallet, on a
+// page the CLI serves on this computer (approval.ts), or with --source by the Stellar CLI keychain. The keys it
+// makes by itself are throwaway testnet ones, kept in memory and never written anywhere: try's payer, and dev's
+// payout account (dev-account.ts), whose key is dropped once its USDC trustline is signed.
+// The one exception is asked for: with --local-wallet, it makes an owner account and keeps its key in the OS
+// keychain, outside the project (wallet-store.ts), and signs the owner's steps with it (local-wallet.ts). The
+// provider still gets only the public address.
 // `serve` is also shipped as a Docker image (packages/provider-kit/Dockerfile).
 
 import { parseArgs } from "node:util";
@@ -31,6 +35,7 @@ import { OPTIONS, UsageError } from "./shared.js";
 import { status } from "./status.js";
 import { trustline } from "./trustline.js";
 import { tryCall } from "./try.js";
+import { wallet } from "./wallet.js";
 
 const USAGE = `provider-kit: run a paid AI service on Stellar (Provider Standard v1)
 
@@ -40,6 +45,7 @@ From nothing to live:
                    [--start '<command>'] [--yes] [--json]
   provider-kit launch [--config <file> | --start '<command>' | --manifest <url>] [--url <https origin>]
                       [--validator <G...> | --no-validation] [--deploy | --no-deploy] [--no-wait]
+                      [--local-wallet]
   provider-kit status [--config <file>] [--url <https origin>] [--json]
 
 More:
@@ -56,6 +62,10 @@ More:
                         [--out <file>] [--dry-run]
   provider-kit reconcile (--config <file> | --store <file> --network <testnet|pubnet>)
                          [--rpc <url>] [--dry-run] [--dev]
+  provider-kit wallet [show] [--network <testnet|mainnet>] [--json]
+  provider-kit wallet withdraw --to <G...> --network <testnet|mainnet> [--amount <n>]
+                               [--asset usdc|xlm] [--memo <text>] [--wallet <G...>] [--yes]
+  provider-kit wallet export [--wallet <G...>]
 
 dev         Runs the provider on this computer: a gateway config (default ./provider.config.json),
             or your own command after --. Reads .env. On testnet, with PAY_TO empty, it makes a
@@ -97,6 +107,10 @@ request-validation
 reconcile   Decides payment_uncertain jobs from on-chain data: paid jobs run (or show their output),
             unpaid ones fail uncharged. A provider with a Soroban RPC does this by itself; --dry-run
             only reports. Exits 1 if any job is still undecided.
+wallet      Manages a local wallet (see below). show lists them with their balances. withdraw pays
+            its USDC (all, or --amount) or XLM (--amount) to an account of yours, after showing the
+            payment and asking; --yes pays without asking. export shows the secret key, to import
+            the account into a wallet app: only to a person at a terminal, never to a script.
 
 Approving in your wallet: launch, trustline, register and request-validation open a page on this
 computer where you connect the wallet you already use (Freighter, xBull, Albedo, Hana, Ledger and
@@ -104,6 +118,12 @@ more), review each transaction and approve it there. provider-kit never sees a k
 the page's port (default 8790); --no-open prints its link without opening a browser, as over SSH.
 --source <key> signs with the Stellar CLI keychain instead, for scripts and CI (trustline, register,
 request-validation); with it, --dry-run prints the Stellar CLI command.
+
+No wallet app: --local-wallet (launch, trustline, register, request-validation) signs the same steps
+with a local wallet instead. provider-kit makes the account, keeps its key in your OS keychain (never
+in the project, never printed) and reuses it for this project. On testnet it needs nothing from you.
+On mainnet it names the account and the XLM to send it (about 2.5), and waits. The account is paid your income:
+provider-kit wallet shows, withdraws and exports it.
 
 The provider never needs a Stellar secret key. Docs: docs/provider-setup-guide.md`;
 
@@ -139,6 +159,8 @@ async function main(argv: string[]): Promise<number> {
       return requestValidation(values);
     case "reconcile":
       return reconcile(values);
+    case "wallet":
+      return wallet(values, args);
     default:
       throw new UsageError(`unknown command "${command}"`);
   }

@@ -103,6 +103,7 @@ async function withWallet(flags: CliFlags, io: OwnerIo, { manifest, manifestUrl,
         ? { address: payTo, label: "Payout account", reason: "The account your service is paid to (payTo). Registering from it makes it the agent's owner and wallet." }
         : { address: owner, label: "Agent owner", reason: "Only the agent's owner, the address approved for it, or an operator of the owner's can change its registration." },
     outline: [{ id: "register", title: agentId === undefined ? "Register" : "Update registration" }],
+    stores: [agentUri.length],
     async steps(address) {
       if (agentId === undefined && address !== payTo) {
         throw new ApprovalError(

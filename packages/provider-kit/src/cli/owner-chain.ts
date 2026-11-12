@@ -20,6 +20,7 @@ import {
   Contract,
   FeeBumpTransaction,
   Keypair,
+  Memo,
   nativeToScVal,
   Operation,
   rpc,
@@ -57,6 +58,12 @@ export interface AccountState {
   exists: boolean;
   /** Whether the account holds a trustline to the network's USDC [P2]. */
   usdcTrustline: boolean;
+  /** Its XLM, in stroops, when it exists and the chain reader reports balances. */
+  xlm?: bigint;
+  /** How many entries it holds that each lock 0.5 XLM of reserve, such as trustlines: reported with `xlm`. */
+  subentries?: number;
+  /** Its USDC, in base units, when it has a trustline and the chain reader reports balances. */
+  usdc?: bigint;
 }
 
 export type SendResult =
@@ -90,6 +97,11 @@ export interface OwnerChain {
    * with test XLM on the testnet DEX. It funds the throwaway payer of `provider-kit try`.
    */
   buyTestUsdc(address: string, amount: string): Promise<Transaction>;
+  /**
+   * A transaction from `address` that pays `amount` (7 decimals, as base units) of USDC or XLM to `destination`, with a
+   * text memo when one is given. It moves a local wallet's income out (cli/wallet.ts).
+   */
+  pay(address: string, destination: string, asset: "USDC" | "XLM", amount: bigint, memo?: string): Promise<Transaction>;
   /** A contract call from `address`, simulated and assembled, ready to sign. Throws an ApprovalError explaining a contract error. */
   invoke(address: string, call: ContractCall): Promise<Transaction>;
   /** Sends a signed transaction and waits for a ledger to include it. */
@@ -109,8 +121,15 @@ export function rpcOwnerChain(network: StellarNetwork, rpcUrl?: string): OwnerCh
   async function account(address: string): Promise<AccountState> {
     const keys = [accountKey(address), trustlineKey(address, usdc)];
     const { entries } = await server.getLedgerEntries(...keys);
-    const found = new Set(entries.map((entry) => entry.key.toXDR("base64")));
-    return { exists: found.has(keys[0]!.toXDR("base64")), usdcTrustline: found.has(keys[1]!.toXDR("base64")) };
+    const found = new Map(entries.map((entry) => [entry.key.toXDR("base64"), entry.val]));
+    const held = found.get(keys[0]!.toXDR("base64"));
+    const line = found.get(keys[1]!.toXDR("base64"));
+    return {
+      exists: held !== undefined,
+      usdcTrustline: line !== undefined,
+      ...(held === undefined ? {} : { xlm: BigInt(held.account().balance().toString()), subentries: held.account().numSubEntries() }),
+      ...(line === undefined ? {} : { usdc: BigInt(line.trustLine().balance().toString()) }),
+    };
   }
 
   async function source(address: string): Promise<Account> {
@@ -156,6 +175,13 @@ export function rpcOwnerChain(network: StellarNetwork, rpcUrl?: string): OwnerCh
         )
         .setTimeout(OWNER_TX_TIMEOUT_SECONDS)
         .build();
+    },
+    async pay(address, destination, asset, amount, memo) {
+      const builder = new TransactionBuilder(await source(address), { fee: CLASSIC_MAX_FEE, networkPassphrase: passphrase }).addOperation(
+        Operation.payment({ destination, asset: asset === "USDC" ? usdc : Asset.native(), amount: decimal(amount) }),
+      );
+      if (memo !== undefined) builder.addMemo(Memo.text(memo));
+      return builder.setTimeout(OWNER_TX_TIMEOUT_SECONDS).build();
     },
     async invoke(address, call) {
       const draft = new TransactionBuilder(await source(address), { fee: BASE_FEE, networkPassphrase: passphrase })
@@ -279,7 +305,7 @@ export function formatUsdc(units: string | bigint): string {
 }
 
 /** An amount with 7 decimals, as Stellar writes assets, with at least `minDecimals` of them. */
-function decimal(units: bigint, minDecimals = 0): string {
+export function decimal(units: bigint, minDecimals = 0): string {
   const whole = units / 10_000_000n;
   const fraction = (units % 10_000_000n).toString().padStart(7, "0").replace(/0+$/, "").padEnd(minDecimals, "0");
   return `${whole}${fraction === "" ? "" : `.${fraction}`}`;
@@ -324,6 +350,10 @@ const RESULT_CODES: Record<string, string> = {
   txBadSeq: "The account sent another transaction first.",
   txBadAuth: "The signature doesn't authorize the account. Accounts that need several signatures aren't supported here.",
   txInsufficientBalance: "The account doesn't have enough XLM for the fee.",
+  paymentUnderfunded: "The account doesn't hold that much. Stellar also keeps part of its XLM in reserve.",
+  paymentNoDestination: "The destination account doesn't exist.",
+  paymentNoTrust: "The destination has no USDC trustline, so it can't receive USDC.",
+  paymentLineFull: "The destination can't hold that much USDC.",
   txNoAccount: "The account doesn't exist.",
   txInsufficientFee: "The fee was too low for the network's load right now.",
   txSorobanInvalid: "The contract call's resources didn't fit.",

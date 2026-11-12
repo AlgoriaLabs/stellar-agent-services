@@ -11,9 +11,11 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ApprovalSession, type ApprovalOutcome, type ApprovalPlan } from "../src/cli/approval.js";
 import { readEnvFile } from "../src/cli/env-file.js";
 import { launch, type LaunchIo } from "../src/cli/launch.js";
+import { approveWithLocalWallet } from "../src/cli/local-wallet.js";
 import type { OwnerChain } from "../src/cli/owner-chain.js";
 import type { Started } from "../src/cli/processes.js";
 import { UsageError, type CliFlags } from "../src/cli/shared.js";
+import { privateFile, walletStore } from "../src/cli/wallet-store.js";
 import { createProvider, defineService, registrationDataUri, registrationFile } from "../src/index.js";
 import { fakeChain, fakeRegistry, ownerIo, signed, walletApproves, type FakeChain } from "./support/owner.js";
 
@@ -382,5 +384,54 @@ describe("provider-kit launch", () => {
     expect(t.output()).toContain("agent 7 doesn't exist in the stellar:testnet identity registry [I2]");
     expect(chain.sent).toEqual([]);
     expect(existsSync("fly.toml")).toBe(true);
+  });
+
+  it("with a local wallet, does every owner step with no wallet app, and updates the registration from it later", async () => {
+    const directory = project();
+    const { chain, registry } = world();
+    const wallets = walletStore({ directory: join(directory, "kit-home"), backends: [privateFile(join(directory, "kit-home"))] });
+    const signs = (lines: string[]): LaunchIo["approve"] => (plan, planChain) => approveWithLocalWallet(plan, planChain, { wallets, project: directory, log: (line) => void lines.push(line) });
+    const t = io({ chain, registry: registry.registry });
+    t.io.approve = signs(t.lines);
+
+    expect(await launch({ validator: VALIDATOR, "no-deploy": true, "local-wallet": true }, t.io)).toBe(0);
+
+    // The account provider-kit made is the agent's owner and wallet, and payTo [I3].
+    const [record] = await wallets.list();
+    const address = record!.address;
+    expect(chain.funded).toEqual([address]);
+    expect(chain.invoked.map(({ call }) => call.method)).toEqual(["register_with_uri", "validation_request"]);
+    expect(chain.sent.every((transaction) => transaction.source === address)).toBe(true);
+    expect(registry.agents.get(42)).toMatchObject({ owner: address, wallet: address });
+    expect(await readEnvFile(join(directory, ".env"))).toMatchObject({ PAY_TO: address, AGENT_ID: "42" });
+    expect(t.output()).toContain(`Launch test is agent 42 on Stellar Testnet, paid to ${address}`);
+
+    // The project holds the public address only: the key is in provider-kit's own directory.
+    const secret = (await wallets.keypair(address))!.secret();
+    expect(t.output()).not.toContain(secret);
+    for (const file of [".env", "fly.toml", "provider.config.json"]) expect(readFileSync(join(directory, file), "utf8")).not.toContain(secret);
+
+    // The manifest moved: the same wallet, now PAY_TO and the agent's owner, signs the update.
+    const sent = chain.sent.length;
+    const moved = io({ chain, registry: registry.registry });
+    moved.io.approve = signs(moved.lines);
+    expect(await launch({ validator: VALIDATOR, "no-deploy": true, "local-wallet": true, url: "https://moved.example.com" }, moved.io)).toBe(0);
+    expect(await wallets.list()).toHaveLength(1);
+    expect(chain.invoked.slice(2).map(({ call }) => call.method)).toEqual(["set_agent_uri", "validation_request"]);
+    expect(chain.sent.slice(sent).every((transaction) => transaction.source === address)).toBe(true);
+  });
+
+  it("with a local wallet, refuses a PAY_TO held in a wallet app: nothing is signed", async () => {
+    const theirs = Keypair.random().publicKey();
+    const directory = project({ env: `PAY_TO=${theirs}\nJOB_DB_PATH=./jobs.sqlite\nAGENT_ID=\nUPSTREAM_KEY=key-from-env\n` });
+    const { chain, registry } = world();
+    const wallets = walletStore({ directory: join(directory, "kit-home"), backends: [privateFile(join(directory, "kit-home"))] });
+    const t = io({ chain, registry: registry.registry });
+    t.io.approve = (plan, planChain) => approveWithLocalWallet(plan, planChain, { wallets, project: directory, log: (line) => void t.lines.push(line) });
+
+    expect(await launch({ validator: VALIDATOR, "no-deploy": true, "local-wallet": true }, t.io)).toBe(1);
+    expect(t.output()).toContain(`${theirs} (payout account) isn't a local wallet on this computer`);
+    expect(chain.sent).toEqual([]);
+    expect(await wallets.list()).toEqual([]);
   });
 });

@@ -93,7 +93,10 @@ testnet account to be paid to and saves its public address in `.env`, so no wall
 `fly.toml`) does `docs/provider-setup-guide.md` §7: it builds the manifest the public address will serve, then opens
 one approval page where the user's own wallet signs the USDC trustline, the 8004 registration and a validation
 request. It saves `PAY_TO` and `AGENT_ID`, and with `--deploy` deploys to Fly.io and waits for the public manifest.
-Ask the user first, run it with `--no-open`, give them the link, and say what they will approve. Then
+Ask the user first, run it with `--no-open`, give them the link, and say what they will approve. If they would
+rather not use a wallet app, `npm run launch -- --local-wallet` makes the owner's account on this computer and signs
+by itself (on mainnet the user sends it the XLM it asks for, about 2.5); `provider-kit wallet` then shows and
+withdraws its income. Then
 `provider-kit status --json`. In CI, `register` and `request-validation` take `--source <key>` instead.
 
 ## 6. Mainnet
