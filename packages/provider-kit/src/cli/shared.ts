@@ -1,6 +1,7 @@
-// What every CLI command shares: the flags, the usage error, and the two ways the owner's transactions are
-// signed: in the owner's own wallet on a local approval page (cli/approval.ts), or with --source by the
-// Stellar CLI, with a key from its keychain.
+// What every CLI command shares: the flags, the usage error, and the ways the owner's transactions are signed:
+// in the owner's own wallet on a local approval page (cli/approval.ts), with --local-wallet by a wallet
+// provider-kit made on this computer (cli/local-wallet.ts), or with --source by the Stellar CLI, with a key
+// from its keychain.
 
 import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -9,7 +10,9 @@ import type { parseArgs } from "node:util";
 import type { StellarNetwork } from "@stellar-agent-services/protocol";
 import { rpcRegistry, type RegistryReader } from "../registration.js";
 import { approveInBrowser, type ApprovalOutcome, type ApprovalPlan } from "./approval.js";
+import { approveWithLocalWallet } from "./local-wallet.js";
 import { rpcOwnerChain, type OwnerChain } from "./owner-chain.js";
+import { walletStore } from "./wallet-store.js";
 
 export const OPTIONS = {
   config: { type: "string", short: "c" },
@@ -44,6 +47,13 @@ export const OPTIONS = {
   // check and status
   json: { type: "boolean" },
   fix: { type: "boolean" },
+  // The local wallet: launch, trustline, register and request-validation sign with it; wallet manages it
+  "local-wallet": { type: "boolean" },
+  wallet: { type: "string" },
+  to: { type: "string" },
+  amount: { type: "string" },
+  asset: { type: "string" },
+  memo: { type: "string" },
 } as const;
 
 export type CliFlags = ReturnType<typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true }>>["values"];
@@ -106,7 +116,7 @@ export interface OwnerIo {
   stellar(): Promise<StellarCli | undefined>;
   registry(network: StellarNetwork, rpcUrl?: string): RegistryReader;
   chain(network: StellarNetwork, rpcUrl?: string): OwnerChain;
-  /** Has the developer approve `plan` in their wallet: the local approval page. */
+  /** Has the developer approve `plan` in their wallet: the local approval page, or with --local-wallet a local wallet. */
   approve(plan: ApprovalPlan, chain: OwnerChain): Promise<ApprovalOutcome>;
   now(): Date;
 }
@@ -114,11 +124,14 @@ export interface OwnerIo {
 export function ownerIo(flags: CliFlags): OwnerIo {
   const port = flags.port === undefined ? undefined : Number(flags.port);
   if (port !== undefined && !(Number.isInteger(port) && port > 0 && port < 65536)) throw new UsageError("--port must be a port number");
+  if (flags["local-wallet"] && flags.source !== undefined) throw new UsageError("--local-wallet or --source, not both");
   return {
     stellar: findStellarCli,
     registry: rpcRegistry,
     chain: rpcOwnerChain,
-    approve: (plan, chain) => approveInBrowser(plan, chain, { open: !flags["no-open"], ...(port === undefined ? {} : { port }) }),
+    approve: flags["local-wallet"]
+      ? (plan, chain) => approveWithLocalWallet(plan, chain, { wallets: walletStore(), project: process.cwd(), log: (line) => console.log(line) })
+      : (plan, chain) => approveInBrowser(plan, chain, { open: !flags["no-open"], ...(port === undefined ? {} : { port }) }),
     now: () => new Date(),
   };
 }

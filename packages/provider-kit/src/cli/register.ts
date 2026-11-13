@@ -72,7 +72,8 @@ async function withWallet(flags: CliFlags, io: OwnerIo, { manifest, manifestUrl,
   const agentId = manifest.provider.agentId;
   if (flags["dry-run"]) {
     const method = agentId === undefined ? "register_with_uri" : "set_agent_uri";
-    console.log(`Dry run. Without --dry-run, a page opens where your wallet signs ${method} on ${network}. Nothing was signed.`);
+    const signer = flags["local-wallet"] ? "a local wallet on this computer signs" : "a page opens where your wallet signs";
+    console.log(`Dry run. Without --dry-run, ${signer} ${method} on ${network}. Nothing was signed.`);
     return { code: 0 };
   }
   if (agentId === undefined && stellarAddressKind(payTo) !== "account") {
@@ -103,6 +104,7 @@ async function withWallet(flags: CliFlags, io: OwnerIo, { manifest, manifestUrl,
         ? { address: payTo, label: "Payout account", reason: "The account your service is paid to (payTo). Registering from it makes it the agent's owner and wallet." }
         : { address: owner, label: "Agent owner", reason: "Only the agent's owner, the address approved for it, or an operator of the owner's can change its registration." },
     outline: [{ id: "register", title: agentId === undefined ? "Register" : "Update registration" }],
+    stores: [agentUri.length],
     async steps(address) {
       if (agentId === undefined && address !== payTo) {
         throw new ApprovalError(

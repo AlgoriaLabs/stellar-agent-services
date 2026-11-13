@@ -19,6 +19,8 @@
 //    manifest serves the agent id on the network it registered on, and checks the registration from outside.
 // No key reaches provider-kit: the wallet signs on a page on this computer (approval.ts). Scripts and CI use `register`
 // and `request-validation` with --source instead.
+// With --local-wallet, a wallet provider-kit makes and keeps on this computer signs the same steps instead of a wallet
+// app (local-wallet.ts): nothing to install or connect. On Mainnet it names the account and waits for XLM to arrive.
 
 import { existsSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
@@ -37,6 +39,7 @@ import { DEV_PAY_TO, payToKind } from "./dev-account.js";
 import { ENV_FILE, loadEnvFile, updateEnvFile } from "./env-file.js";
 import { FLY_TOML, flyApp, flyDeploy, flySecrets, setFlyEnv, type FlyApp, type FlyRunner } from "./fly.js";
 import { explorerUrl, networkName, shortAddress } from "./owner-chain.js";
+import { VALIDATION_REQUEST_BYTES } from "./local-wallet.js";
 import { accountSteps, registerStep, validationRequestStep } from "./owner-steps.js";
 import { freePort, runProgram, startCommand, waitForManifest, type Started } from "./processes.js";
 import { saveAgentId } from "./register.js";
@@ -115,7 +118,7 @@ export async function launch(flags: CliFlags, io: LaunchIo = launchIo(flags)): P
   }
   if (flags.deploy && flags["no-deploy"]) throw new UsageError("--deploy or --no-deploy, not both");
   if (flags.validator !== undefined && flags["no-validation"]) throw new UsageError("--validator or --no-validation, not both");
-  if (flags.source !== undefined) throw new UsageError("launch signs in your wallet. With --source, use provider-kit register and request-validation");
+  if (flags.source !== undefined) throw new UsageError("launch signs in your wallet, or with --local-wallet. With --source, use provider-kit register and request-validation");
   if (flags.validator !== undefined && stellarAddressKind(flags.validator) !== "account") throw new UsageError("--validator must be a G... account address");
 
   const envFile = flags["env-file"] ?? ENV_FILE;
@@ -205,7 +208,8 @@ export async function launch(flags: CliFlags, io: LaunchIo = launchIo(flags)): P
 
   if (flags["dry-run"]) {
     const what = { new: "register a new agent", update: `update agent ${existing}'s registration`, current: `keep agent ${existing}'s registration, which is up to date` }[registration];
-    io.log(`\nDry run. Without --dry-run, a page opens where your wallet would ${what}${validating ? `, and ask ${shortAddress(validator!)} for validation` : ""}. Nothing was signed.`);
+    const signer = flags["local-wallet"] ? "a local wallet on this computer would" : "a page opens where your wallet would";
+    io.log(`\nDry run. Without --dry-run, ${signer} ${what}${validating ? `, and ask ${shortAddress(validator!)} for validation` : ""}. Nothing was signed.`);
     return 0;
   }
 
@@ -236,6 +240,7 @@ export async function launch(flags: CliFlags, io: LaunchIo = launchIo(flags)): P
       network,
       ...accountToConnect(registration, payTo, owner),
       outline,
+      stores: [...(registration === "current" ? [] : [agentUri.length]), ...(validating ? [VALIDATION_REQUEST_BYTES] : [])],
       async steps(address) {
         if (registration === "new" && payTo !== undefined && address !== payTo) {
           throw new ApprovalError("Connect your payout account", `Your wallet connected ${shortAddress(address)}. Switch it to ${shortAddress(payTo)}, PAY_TO: the account that registers becomes the agent's wallet, which must be payTo [I3].`, "connect");

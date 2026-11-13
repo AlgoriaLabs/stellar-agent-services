@@ -38,6 +38,11 @@ export interface ApprovalPlan {
   account?: { address: string; label: string; reason: string };
   /** The steps the page lists before a wallet connects. */
   outline: { id: string; title: string }[];
+  /**
+   * The bytes each contract call of the plan puts on chain, when the command knows them: a registration file, a
+   * validation request. A local wallet sizes its funding request by them (local-wallet.ts). The page doesn't use it.
+   */
+  stores?: number[];
   /** Checks the connected account and returns its steps, in order. Throws an ApprovalError when it can't go on. */
   steps(address: string): Promise<ApprovalStep[]>;
   /** What the page says once every step is done. */

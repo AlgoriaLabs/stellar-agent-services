@@ -398,6 +398,12 @@ standard and shows how agents see it.
 3. It saves \`PAY_TO\` and \`AGENT_ID\` in \`.env\` and \`fly.toml\`, deploys to Fly.io with \`flyctl\` if you say yes, and
    waits until the service answers at its public address.${testnet ? "" : " `FACILITATOR_AUTH` and `SOROBAN_RPC_URL` go to\n   Fly as secrets."}
 
+No wallet app? \`npm run launch -- --local-wallet\` makes the account on this computer and approves the same steps by
+itself. ${testnet ? "On testnet it needs nothing from you." : "It names the account and waits while you send it about 2.5 XLM."}
+The key stays in your OS keychain, never in this project.
+\`npx provider-kit wallet\` shows what the account holds, \`wallet withdraw\` pays it out to an account of yours, and
+\`wallet export\` moves it into a wallet app. More: [the local wallet](${docs}/packages/provider-kit/README.md#the-local-wallet).
+
 \`npm run status\` shows where it stands at any time, from running here to verified, and the command to run next.
 \`npm run deploy\` deploys again after a change.
 

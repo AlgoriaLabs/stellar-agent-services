@@ -20,6 +20,7 @@ import {
   Contract,
   FeeBumpTransaction,
   Keypair,
+  Memo,
   nativeToScVal,
   Operation,
   rpc,
@@ -33,7 +34,11 @@ import type { PreparedValidationRequest } from "../validation-request.js";
 /** How long a built transaction stays valid: time to review and approve it, even on a hardware wallet. */
 export const OWNER_TX_TIMEOUT_SECONDS = 300;
 /** The most a classic transaction may cost in fees, in stroops: 0.001 XLM. Without surge pricing it costs 0.00001. */
-const CLASSIC_MAX_FEE = "10000";
+export const CLASSIC_MAX_FEE = "10000";
+/** What Stellar locks while an account exists, in stroops: 1 XLM. */
+export const ACCOUNT_RESERVE = 10_000_000n;
+/** What it locks for each entry the account holds, such as its USDC trustline: 0.5 XLM. */
+export const ENTRY_RESERVE = 5_000_000n;
 /** The most test XLM buyTestUsdc() spends: half of what Friendbot gives a new account. */
 const TEST_XLM_SPEND = "5000";
 const RPC_TIMEOUT_MS = 30_000;
@@ -57,12 +62,21 @@ export interface AccountState {
   exists: boolean;
   /** Whether the account holds a trustline to the network's USDC [P2]. */
   usdcTrustline: boolean;
+  /** Its XLM, in stroops, when it exists and the chain reader reports balances. */
+  xlm?: bigint;
+  /** How many entries it holds that each lock 0.5 XLM of reserve, such as trustlines: reported with `xlm`. */
+  subentries?: number;
+  /** Its USDC, in base units, when it has a trustline and the chain reader reports balances. */
+  usdc?: bigint;
 }
 
 export type SendResult =
   | { status: "success"; hash: string; ledger: number; returnValue?: xdr.ScVal }
-  /** The network refused it or it failed in a ledger: nothing happened, and it can be built again. */
-  | { status: "failed"; hash: string; reason: string }
+  /**
+   * The network refused it or it failed in a ledger: nothing happened, and it can be built again. `charged`: a ledger
+   * included it, so its fee was paid. Refused before a ledger, it cost nothing.
+   */
+  | { status: "failed"; hash: string; reason: string; charged?: boolean }
   /** It may or may not be in a ledger: never send it again without looking it up. */
   | { status: "unknown"; hash: string; reason: string };
 
@@ -90,6 +104,11 @@ export interface OwnerChain {
    * with test XLM on the testnet DEX. It funds the throwaway payer of `provider-kit try`.
    */
   buyTestUsdc(address: string, amount: string): Promise<Transaction>;
+  /**
+   * A transaction from `address` that pays `amount` (7 decimals, as base units) of USDC or XLM to `destination`, with a
+   * text memo when one is given. It moves a local wallet's income out (cli/wallet.ts).
+   */
+  pay(address: string, destination: string, asset: "USDC" | "XLM", amount: bigint, memo?: string): Promise<Transaction>;
   /** A contract call from `address`, simulated and assembled, ready to sign. Throws an ApprovalError explaining a contract error. */
   invoke(address: string, call: ContractCall): Promise<Transaction>;
   /** Sends a signed transaction and waits for a ledger to include it. */
@@ -109,8 +128,15 @@ export function rpcOwnerChain(network: StellarNetwork, rpcUrl?: string): OwnerCh
   async function account(address: string): Promise<AccountState> {
     const keys = [accountKey(address), trustlineKey(address, usdc)];
     const { entries } = await server.getLedgerEntries(...keys);
-    const found = new Set(entries.map((entry) => entry.key.toXDR("base64")));
-    return { exists: found.has(keys[0]!.toXDR("base64")), usdcTrustline: found.has(keys[1]!.toXDR("base64")) };
+    const found = new Map(entries.map((entry) => [entry.key.toXDR("base64"), entry.val]));
+    const held = found.get(keys[0]!.toXDR("base64"));
+    const line = found.get(keys[1]!.toXDR("base64"));
+    return {
+      exists: held !== undefined,
+      usdcTrustline: line !== undefined,
+      ...(held === undefined ? {} : { xlm: BigInt(held.account().balance().toString()), subentries: held.account().numSubEntries() }),
+      ...(line === undefined ? {} : { usdc: BigInt(line.trustLine().balance().toString()) }),
+    };
   }
 
   async function source(address: string): Promise<Account> {
@@ -157,6 +183,13 @@ export function rpcOwnerChain(network: StellarNetwork, rpcUrl?: string): OwnerCh
         .setTimeout(OWNER_TX_TIMEOUT_SECONDS)
         .build();
     },
+    async pay(address, destination, asset, amount, memo) {
+      const builder = new TransactionBuilder(await source(address), { fee: CLASSIC_MAX_FEE, networkPassphrase: passphrase }).addOperation(
+        Operation.payment({ destination, asset: asset === "USDC" ? usdc : Asset.native(), amount: decimal(amount) }),
+      );
+      if (memo !== undefined) builder.addMemo(Memo.text(memo));
+      return builder.setTimeout(OWNER_TX_TIMEOUT_SECONDS).build();
+    },
     async invoke(address, call) {
       const draft = new TransactionBuilder(await source(address), { fee: BASE_FEE, networkPassphrase: passphrase })
         .addOperation(new Contract(call.contractId).call(call.method, ...call.args))
@@ -189,7 +222,7 @@ export function rpcOwnerChain(network: StellarNetwork, rpcUrl?: string): OwnerCh
       if (response.status === rpc.Api.GetTransactionStatus.SUCCESS) {
         return { status: "success", hash, ledger: response.ledger, ...(response.returnValue === undefined ? {} : { returnValue: response.returnValue }) };
       }
-      if (response.status === rpc.Api.GetTransactionStatus.FAILED) return { status: "failed", hash, reason: describeResult(response.resultXdr) };
+      if (response.status === rpc.Api.GetTransactionStatus.FAILED) return { status: "failed", hash, reason: describeResult(response.resultXdr), charged: true };
       return { status: "unknown", hash, reason: `no ledger included it within ${POLL_ATTEMPTS} seconds` };
     },
   };
@@ -278,8 +311,16 @@ export function formatUsdc(units: string | bigint): string {
   return `${decimal(BigInt(units), 2)} USDC`;
 }
 
+/**
+ * The XLM Stellar keeps in reserve for an account, in stroops: for the account itself and each entry it holds, plus
+ * `more` entries it is about to add. That much can't be spent, on fees or on payments.
+ */
+export function xlmReserve(state: AccountState, more = 0): bigint {
+  return ACCOUNT_RESERVE + BigInt((state.subentries ?? (state.usdcTrustline ? 1 : 0)) + more) * ENTRY_RESERVE;
+}
+
 /** An amount with 7 decimals, as Stellar writes assets, with at least `minDecimals` of them. */
-function decimal(units: bigint, minDecimals = 0): string {
+export function decimal(units: bigint, minDecimals = 0): string {
   const whole = units / 10_000_000n;
   const fraction = (units % 10_000_000n).toString().padStart(7, "0").replace(/0+$/, "").padEnd(minDecimals, "0");
   return `${whole}${fraction === "" ? "" : `.${fraction}`}`;
@@ -324,6 +365,10 @@ const RESULT_CODES: Record<string, string> = {
   txBadSeq: "The account sent another transaction first.",
   txBadAuth: "The signature doesn't authorize the account. Accounts that need several signatures aren't supported here.",
   txInsufficientBalance: "The account doesn't have enough XLM for the fee.",
+  paymentUnderfunded: "The account doesn't hold that much. Stellar also keeps part of its XLM in reserve.",
+  paymentNoDestination: "The destination account doesn't exist.",
+  paymentNoTrust: "The destination has no USDC trustline, so it can't receive USDC.",
+  paymentLineFull: "The destination can't hold that much USDC.",
   txNoAccount: "The account doesn't exist.",
   txInsufficientFee: "The fee was too low for the network's load right now.",
   txSorobanInvalid: "The contract call's resources didn't fit.",

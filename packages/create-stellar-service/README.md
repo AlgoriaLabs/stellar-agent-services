@@ -31,7 +31,8 @@ npm run launch    # goes live: one approval in your wallet, then Fly.io
 `npm run launch` opens a page where your own wallet (Freighter, xBull, Albedo and others) approves the USDC trustline,
 the Stellar 8004 registration and a request for verification, in one go. Then it saves `PAY_TO` and `AGENT_ID`,
 deploys to Fly.io if you say yes, and waits until the service answers at its public address. `npm run status` shows
-where it stands at any time.
+where it stands at any time. With no wallet app, `npm run launch -- --local-wallet` makes the account on this
+computer and signs by itself ([the local wallet](../provider-kit/README.md#the-local-wallet)).
 
 The project depends on the Provider Kit released with this command. To try changes not released yet, run it from a
 clone of the repository, built once (`npm install && npm run build`):

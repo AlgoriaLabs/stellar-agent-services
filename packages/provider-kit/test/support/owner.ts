@@ -3,7 +3,7 @@
 // page's behalf: it connects its account and signs each transaction the page shows, as a person would.
 
 import { USDC_ISSUER, type StellarNetwork } from "@stellar-agent-services/protocol";
-import { Account, Asset, Contract, Keypair, Networks, Operation, TransactionBuilder, type Transaction, type xdr } from "@stellar/stellar-sdk";
+import { Account, Asset, Contract, Keypair, Memo, Networks, Operation, TransactionBuilder, type Transaction, type xdr } from "@stellar/stellar-sdk";
 import { ApprovalSession, type ApprovalOutcome, type ApprovalPlan } from "../../src/cli/approval.js";
 import type { ApprovalView } from "../../src/cli/approval-view.js";
 import type { ContractCall, OwnerChain, SendResult } from "../../src/cli/owner-chain.js";
@@ -12,7 +12,7 @@ import { registryConfig, type RegistryReader, type ValidationRecord } from "../.
 
 export interface FakeChain extends OwnerChain {
   /** The accounts that exist, and whether each holds a USDC trustline. */
-  accounts: Map<string, { usdcTrustline: boolean }>;
+  accounts: Map<string, { usdcTrustline: boolean; xlm?: bigint; usdc?: bigint }>;
   /** Accounts funded by "Friendbot". */
   funded: string[];
   /** Contract calls built, in order. */
@@ -20,7 +20,7 @@ export interface FakeChain extends OwnerChain {
   /** Transactions sent, in order. */
   sent: Transaction[];
   /** How the next sends end: success unless queued here. */
-  answers: ("failed" | "unknown")[];
+  answers: ("failed" | "charged" | "unknown")[];
   /** What a successful contract call returns, such as the new agent's id. */
   returnValue?: xdr.ScVal;
   /** Called for each contract call that lands, to update a fake registry. */
@@ -48,7 +48,12 @@ export function fakeChain(network: StellarNetwork = "stellar:testnet"): FakeChai
     answers: [],
     async account(address) {
       const account = chain.accounts.get(address);
-      return { exists: account !== undefined, usdcTrustline: account?.usdcTrustline ?? false };
+      return {
+        exists: account !== undefined,
+        usdcTrustline: account?.usdcTrustline ?? false,
+        ...(account?.xlm === undefined ? {} : { xlm: account.xlm, subentries: account.usdcTrustline ? 1 : 0 }),
+        ...(account?.usdc === undefined ? {} : { usdc: account.usdc }),
+      };
     },
     async fund(address) {
       chain.funded.push(address);
@@ -65,6 +70,14 @@ export function fakeChain(network: StellarNetwork = "stellar:testnet"): FakeChai
         Operation.pathPaymentStrictReceive({ sendAsset: Asset.native(), sendMax: "5000", destination: address, destAsset: usdc, destAmount, path: [] }),
       );
     },
+    async pay(address, destination, asset, amount, memo) {
+      sequence += 1n;
+      const builder = new TransactionBuilder(new Account(address, sequence.toString()), { fee: "100", networkPassphrase: passphrase }).addOperation(
+        Operation.payment({ destination, asset: asset === "USDC" ? usdc : Asset.native(), amount: (Number(amount) / 1e7).toFixed(7) }),
+      );
+      if (memo !== undefined) builder.addMemo(Memo.text(memo));
+      return builder.setTimeout(300).build();
+    },
     async invoke(address, call) {
       chain.invoked.push({ address, call });
       const transaction = build(address, new Contract(call.contractId).call(call.method, ...call.args));
@@ -76,6 +89,7 @@ export function fakeChain(network: StellarNetwork = "stellar:testnet"): FakeChai
       const hash = transaction.hash().toString("hex");
       const answer = chain.answers.shift();
       if (answer === "failed") return { status: "failed", hash, reason: "The account sent another transaction first." };
+      if (answer === "charged") return { status: "failed", hash, reason: "The contract call ran out of its budget.", charged: true };
       if (answer === "unknown") return { status: "unknown", hash, reason: "no ledger included it within 30 seconds" };
       if (transaction.operations[0]?.type === "changeTrust") chain.accounts.get(transaction.source)!.usdcTrustline = true;
       const call = calls.get(hash);
