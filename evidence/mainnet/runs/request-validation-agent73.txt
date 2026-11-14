@@ -1,0 +1,30 @@
+Validation request:
+{
+  "standard": "stellar-agent-services/provider@1",
+  "type": "validation-request",
+  "agentId": 73,
+  "network": "stellar:pubnet",
+  "manifest": {
+    "url": "https://79-76-99-174.sslip.io/.well-known/stellar-agent-services.json"
+  },
+  "validator": "GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU",
+  "requestedAt": "2026-11-14T13:12:12.803Z"
+}
+
+  request_hash  49a2f06131d3ad85fcfb21d98e3954cb618eda3f6dadab3d437064d033d41a57
+  request_uri   a data: URI holding the request itself (457 characters)
+
+Approve in your wallet
+  Open the link in the browser that has your wallet.
+  Connect GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC (agent owner).
+  Waiting for your approval. Ctrl+C cancels.
+
+  ! This account can't ask for validation: [another wallet account, redacted] may not ask for agent 73's validation: only its owner GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC, the address approved for the agent, or an operator of the owner's may
+  ✓ Connected GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC (Freighter)
+  ✓ Request validation: request 49a2f06131d3… · https://stellar.expert/explorer/public/tx/1e3bbe105d504f8ea012d51807d30448e1270e9e2fec035b70f52046c751bbd8
+Requested: agent 73 asks GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU for validation on stellar:pubnet.
+Next: nothing to send. A verifier running `verifier watch` finds the request on chain, checks the provider and
+answers there, and provider-kit status shows its answer. A verifier working by hand answers with:
+  verifier publish <receipt.json> --request-hash 49a2f06131d3ad85fcfb21d98e3954cb618eda3f6dadab3d437064d033d41a57 --response-uri <https url> --source <its key>
+
+[exited with code 0]

@@ -1,0 +1,59 @@
+{
+  "network": "stellar:pubnet",
+  "agentId": 73,
+  "validator": "GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU",
+  "owner": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+  "validationRegistry": "CBT6WWEVEPT2UFGFGVJJ7ELYGLQAGRYSVGDTGMCJTRWXOH27MWUO7UJG",
+  "request": {
+    "transaction": "1e3bbe105d504f8ea012d51807d30448e1270e9e2fec035b70f52046c751bbd8",
+    "ledger": 65475185,
+    "closedAt": "2026-11-14T13:12:47Z",
+    "successful": true,
+    "signer": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+    "feeChargedXlm": 17.1290734,
+    "rentXlm": 17.1260009,
+    "function": "validation_request",
+    "arguments": [
+      "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+      "GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU",
+      73,
+      "data:application/json;base64,eyJhZ2VudElkIjo3MywibWFuaWZlc3QiOnsidXJsIjoiaHR0cHM6Ly83OS03Ni05OS0xNzQuc3NsaXAuaW8vLndlbGwta25vd24vc3RlbGxhci1hZ2VudC1zZXJ2aWNlcy5qc29uIn0sIm5ldHdvcmsiOiJzdGVsbGFyOnB1Ym5ldCIsInJlcXVlc3RlZEF0IjoiMjAyNi0xMS0xNFQxMzoxMjoxMi44MDNaIiwic3RhbmRhcmQiOiJzdGVsbGFyLWFnZW50LXNlcnZpY2VzL3Byb3ZpZGVyQDEiLCJ0eXBlIjoidmFsaWRhdGlvbi1yZXF1ZXN0IiwidmFsaWRhdG9yIjoiR0JHQ1hZU003TElHT09aN1IzT1hUT1BJUFNGRU1ISFZGQU83SEpNS1RFSEw3S1JFWEdQVzNUVVUifQ==",
+      "49a2f06131d3ad85fcfb21d98e3954cb618eda3f6dadab3d437064d033d41a57"
+    ],
+    "requestDocument": {
+      "agentId": 73,
+      "manifest": {
+        "url": "https://79-76-99-174.sslip.io/.well-known/stellar-agent-services.json"
+      },
+      "network": "stellar:pubnet",
+      "requestedAt": "2026-11-14T13:12:12.803Z",
+      "standard": "stellar-agent-services/provider@1",
+      "type": "validation-request",
+      "validator": "GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU"
+    },
+    "explorer": "https://stellar.expert/explorer/public/tx/1e3bbe105d504f8ea012d51807d30448e1270e9e2fec035b70f52046c751bbd8"
+  },
+  "response": {
+    "transaction": "27cd918b0b52641be137d96f0606ef32249c68be2ba0c024ae70780d2ba0a2d2",
+    "ledger": 65475226,
+    "closedAt": "2026-11-14T13:16:12Z",
+    "successful": true,
+    "signer": "GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU",
+    "feeChargedXlm": 0.0039847,
+    "function": "validation_response",
+    "arguments": [
+      "GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU",
+      "49a2f06131d3ad85fcfb21d98e3954cb618eda3f6dadab3d437064d033d41a57",
+      100,
+      "https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/ee7882ae4ff9c02ac25b46a0485c5b1730a1a396/evidence/mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.json",
+      "39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd",
+      "provider-standard-v1"
+    ],
+    "explorer": "https://stellar.expert/explorer/public/tx/27cd918b0b52641be137d96f0606ef32249c68be2ba0c024ae70780d2ba0a2d2"
+  },
+  "receipt": "receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.json",
+  "unsentAttempt": {
+    "transaction": "966bff563030c4589e306fe75bc46c43cc662ea165546a571106f622b346301e",
+    "note": "first validation_response submission timed out in the Stellar CLI; Horizon and RPC report it not found, and the validator account sequence did not move, so it never landed"
+  }
+}

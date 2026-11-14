@@ -12,7 +12,8 @@ Chapter Lead acceptance remain outstanding.
 
 **Mainnet (2026-11-14):** the verifier paid three live AlgoriaLabs providers with real USDC. Agents 73, 72 and 70
 reached level 3 with score 100, each paid job was recovered without a second charge, and every transfer is
-confirmed on chain. These are project-operated services, not pilot providers. See [mainnet/](mainnet/README.md). [Readiness](readiness.md) records the checks and release limits;
+confirmed on chain. Agent 73's receipt is anchored in the mainnet Validation Registry and earns all five badges.
+These are project-operated services, not pilot providers. See [mainnet/](mainnet/README.md). [Readiness](readiness.md) records the checks and release limits;
 [the closeout guide](../docs/sow-closeout.md) gives the pilot handoff.
 
 | Deliverable | Evidence | Location |
@@ -23,7 +24,7 @@ confirmed on chain. These are project-operated services, not pilot providers. Se
 | D2 | Verification receipts and badges | [Live run results](receipts/README.md) — registered Oracle run, five earned badges |
 | D2 | Validation Registry records | [Confirmed registration, request and response](validation/README.md) |
 | D2 | Job Recovery demo | [Captured recovery and single-transfer proof](d2/README.md) — published |
-| D1, D2 | Mainnet payments, recovery and receipts | [Mainnet run](mainnet/README.md): three paid providers at level 3, real USDC |
+| D1, D2 | Mainnet payments, recovery, receipts and a Validation Registry record | [Mainnet run](mainnet/README.md): three paid providers at level 3, real USDC; agent 73 anchored on chain |
 | D3 | Provider integrations, paid-call references, screenshots | [Pilot checklist](pilot/README.md) — not run |
 | D3 | Pilot report | [Report template](pilot/report.md) — not filled |
 

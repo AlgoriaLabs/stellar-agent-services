@@ -1,0 +1,7 @@
+Validation response for agent 73 on stellar:pubnet:
+  request        49a2f06131d3ad85fcfb21d98e3954cb618eda3f6dadab3d437064d033d41a57
+  response       100 (level 3), tag provider-standard-v1
+  response_uri   https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/ee7882ae4ff9c02ac25b46a0485c5b1730a1a396/evidence/mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.json
+  response_hash  39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd
+Signing with "sas-mainnet-validator" (GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU)...
+Published. Badges: verifier badge /Users/berkingurcan/Documents/stellar-agent-services/evidence/mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.json --request-hash 49a2f06131d3ad85fcfb21d98e3954cb618eda3f6dadab3d437064d033d41a57

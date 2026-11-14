@@ -12,7 +12,7 @@ remaining acceptance work. Prepared templates are not evidence of completed pilo
 | D2 | Kit, guide, stable Oracle sample, all C1–C7 passed, anchored receipt/five badges, recovery and payment proofs | Chapter Lead review |
 | D3 | Scaffolder and onboarding guide | Independent integrations, user flows, findings/fixes and completed pilot report |
 | Distribution | Six npm packages at 0.1.1 (released 2026-11-06, with the reconciliation fix) | A later release for `--local-wallet` |
-| Mainnet | Three paid providers at level 3 with real USDC, receipts and on-chain transfers | Validation Registry records, signed by the agent owner |
+| Mainnet | Three paid providers at level 3 with real USDC, receipts, on-chain transfers, and agent 73's Validation Registry record | Nothing for the SOW |
 | Discovery | Newer implementation notes report testnet registry scanning and manifest service matching | Confirm the released discovery path in the pilot and show the complete find-to-result flow |
 
 Public release and CI references, and local check results, belong in [readiness evidence](../evidence/readiness.md).
@@ -62,8 +62,8 @@ testnet.
 the kit and registered in the mainnet 8004 registry, with real USDC. Agents 73 (logo), 72 (pitch deck) and 70
 (text to speech) reached level 3 with score 100. Each paid job was recovered without a second charge, and the
 three transfers (0.10, 0.10 and 0.005 USDC) are confirmed on chain. Agent 74's paid jobs failed and were not
-charged. These services are project-operated, so they do not count as independent pilot providers. Mainnet
-Validation Registry records still need the agent owner's signature.
+charged. Agent 73's receipt is anchored in the mainnet Validation Registry (request and response confirmed) and
+earns all five badges. These services are project-operated, so they do not count as independent pilot providers.
 
 ## Run the independent pilot
 

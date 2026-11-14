@@ -27,13 +27,39 @@ this page is not D3 pilot evidence. It shows that the standard, the kit and the 
   second transfer exists [J11], [J13].
 - **Pitch Deck recovered a lost response.** The paid create-job got no answer (`paidStatus: null`). The job still
   finished and the verifier collected it, without paying again. This is Job Recovery working on mainnet.
-- **Badges.** Agents 73 and 70 earned Standard v1, Payment verified, Recovery verified and Load-safe. Agent 72
-  earned the first three.
+- **Badges.** Agent 73 earned all five: Standard v1, Payment verified, Recovery verified, Load-safe and 8004
+  validated. Agent 70 earned the first four, and agent 72 the first three.
 
 ![Standard v1](receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.standard-v1.svg)
 ![Payment verified](receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.payment-verified.svg)
 ![Recovery verified](receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.recovery-verified.svg)
 ![Load-safe](receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.load-safe.svg)
+![8004 validated](receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.8004-validated.svg)
+
+## Validation Registry record on mainnet
+
+Agent 73's receipt is anchored in the mainnet Stellar 8004 Validation Registry. The agent owner asked our validator
+for validation, signing in Freighter on the `provider-kit request-validation` approval page. The validator answered
+with `verifier publish`, signing through the Stellar CLI.
+
+| Field | Value |
+| --- | --- |
+| Validation request | [1e3bbe10…](https://stellar.expert/explorer/public/tx/1e3bbe105d504f8ea012d51807d30448e1270e9e2fec035b70f52046c751bbd8), ledger 65475185, signed by owner `GDZTNESU…44SC` |
+| Validation response | [27cd918b…](https://stellar.expert/explorer/public/tx/27cd918b0b52641be137d96f0606ef32249c68be2ba0c024ae70780d2ba0a2d2), ledger 65475226, signed by validator `GBGCXYSM…3TUU` |
+| Request hash | `49a2f06131d3ad85fcfb21d98e3954cb618eda3f6dadab3d437064d033d41a57`, the SHA-256 of the request document on chain |
+| Response | score 100, level 3, tag `provider-standard-v1` |
+| `response_hash` | `39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd`, the receipt's SHA-256 |
+| `response_uri` | [the receipt at commit ee7882a](https://raw.githubusercontent.com/AlgoriaLabs/stellar-agent-services/ee7882ae4ff9c02ac25b46a0485c5b1730a1a396/evidence/mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.json), served byte for byte |
+| Registry contract | `CBT6WWEVEPT2UFGFGVJJ7ELYGLQAGRYSVGDTGMCJTRWXOH27MWUO7UJG` |
+
+`verifier publish` checked the request's agent and validator, the receipt's age and the public bytes before signing.
+`verifier badge --request-hash` then read the record back and issued the 8004 validated badge.
+[validation.json](validation.json) holds both transactions, their decoded arguments and the request document.
+Logs: [request](runs/request-validation-agent73.txt), [response](runs/publish-agent73.txt).
+
+The receipt was made at 12:53 UTC, about 20 minutes before the request; `publish` accepts receipts up to 24 hours
+old. The first response submission timed out in the Stellar CLI ([log](runs/publish-agent73-timeout.txt)). Horizon
+and RPC never saw it, and the validator's sequence number had not moved, so it was sent again.
 
 ## All six mainnet services, unpaid checks
 
@@ -66,6 +92,15 @@ Provider findings, for the owners of these services:
 - **Agent 70, Text to Speech.** The server was unreachable for a few seconds about every 40 seconds, with no
   requests from us. Two runs failed on connection errors before a third passed. It looks like a restart loop.
 
+Registry cost:
+
+- **The mainnet validation request cost 17.13 XLM.** Of that, 17.126 XLM was rent: the transaction wrote the
+  Validation Registry's contract code entry and extended its lifetime. The registry had little mainnet use, so the
+  first caller after a long idle paid the extension. The response that followed cost 0.004 XLM, and agent 73's
+  registrations cost about 0.2 XLM each. The kit's own fee check refused the first attempt, when the owner account
+  held 4.87 XLM, before anything was signed. The docs' "about 2.5 XLM" estimate for going live on mainnet does not
+  cover a request that pays this rent.
+
 Verifier and environment notes:
 
 - One run failed to sign with `Cannot convert undefined or null to object`. Signing then worked for every provider
@@ -89,7 +124,14 @@ The console output of every run is in [runs/](runs).
 
 ## Not done
 
-- **Validation Registry records on mainnet.** A record needs the agent's owner to sign a validation request naming
-  the validator, then `verifier publish` with the receipt served at a public HTTPS URL. The owner wallets are not
-  on this computer, so this waits for the owner.
-- **Withdrawing what is left.** The payer holds 0.295 USDC and about 3 XLM; the validator holds 2 XLM.
+- **Records for agents 70 and 72.** Only agent 73 has a mainnet Validation Registry record.
+
+## Closing the accounts
+
+Both accounts were merged into the agent owner, `GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC`, after the
+runs. The payer sent its 0.295 USDC, removed its trustline and merged
+([0f7a9e41…](https://stellar.expert/explorer/public/tx/0f7a9e41c6403102e4d33d5a395746da8a5aa8842d0ac0ba15e819d8f0c53c9a),
+ledger 65475396). The validator merged
+([bed44e0b…](https://stellar.expert/explorer/public/tx/bed44e0bd201b05c67b9ee46581c1e7dad338ec261ce1e3d4a12ae5e55a1a316),
+ledger 65475403). The validation record stays in the registry contract. Both keys remain in the macOS Keychain, so
+either account can be funded again.
