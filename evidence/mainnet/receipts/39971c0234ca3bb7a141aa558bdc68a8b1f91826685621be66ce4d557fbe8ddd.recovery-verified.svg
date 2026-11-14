@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="161" height="20" role="img" aria-label="Recovery verified: mainnet">
+<title>Recovery verified: Provider Standard v1, this provider, Stellar mainnet</title>
+<desc>Verification receipt sha256 39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd, checked 2026-11-14T12:53:35.670Z by GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU</desc>
+<linearGradient id="badge-recovery-verified-s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+<clipPath id="badge-recovery-verified-r"><rect width="161" height="20" rx="3" fill="#fff"/></clipPath>
+<g clip-path="url(#badge-recovery-verified-r)"><rect width="106" height="20" fill="#555"/><rect x="106" width="55" height="20" fill="#44cc11"/><rect width="161" height="20" fill="url(#badge-recovery-verified-s)"/></g>
+<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
+<text x="530" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="960">Recovery verified</text><text x="530" y="140" transform="scale(.1)" textLength="960">Recovery verified</text>
+<text x="1335" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="450">mainnet</text><text x="1335" y="140" transform="scale(.1)" textLength="450">mainnet</text>
+</g>
+</svg>

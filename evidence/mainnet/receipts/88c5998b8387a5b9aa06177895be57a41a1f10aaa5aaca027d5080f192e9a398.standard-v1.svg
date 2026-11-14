@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="133" height="20" role="img" aria-label="Standard v1: mainnet">
+<title>Standard v1: Provider Standard v1, this provider, Stellar mainnet</title>
+<desc>Verification receipt sha256 88c5998b8387a5b9aa06177895be57a41a1f10aaa5aaca027d5080f192e9a398, checked 2026-11-14T12:51:21.194Z by GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU</desc>
+<linearGradient id="badge-standard-v1-s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+<clipPath id="badge-standard-v1-r"><rect width="133" height="20" rx="3" fill="#fff"/></clipPath>
+<g clip-path="url(#badge-standard-v1-r)"><rect width="78" height="20" fill="#555"/><rect x="78" width="55" height="20" fill="#44cc11"/><rect width="133" height="20" fill="url(#badge-standard-v1-s)"/></g>
+<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
+<text x="390" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="680">Standard v1</text><text x="390" y="140" transform="scale(.1)" textLength="680">Standard v1</text>
+<text x="1055" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="450">mainnet</text><text x="1055" y="140" transform="scale(.1)" textLength="450">mainnet</text>
+</g>
+</svg>

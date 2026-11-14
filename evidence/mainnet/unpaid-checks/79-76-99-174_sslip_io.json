@@ -1,0 +1,104 @@
+{
+  "manifestUrl": "https://79-76-99-174.sslip.io/.well-known/stellar-agent-services.json",
+  "dev": false,
+  "startedAt": "2026-11-14T12:31:49.531Z",
+  "checkedAt": "2026-11-14T12:31:51.967Z",
+  "level": 1,
+  "score": 33,
+  "results": [
+    {
+      "check": "C1",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "url": "https://79-76-99-174.sslip.io/.well-known/stellar-agent-services.json",
+        "status": 200,
+        "bytes": 4516,
+        "network": "stellar:pubnet",
+        "services": [
+          "logo-design"
+        ],
+        "agentId": 73,
+        "sha256": "1d26fb98d72beb7a8658355e45069df6992c3f25144af2cca57a76e88969cc5d"
+      }
+    },
+    {
+      "check": "C2",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "agentId": 73,
+        "registry": "CBGPDCJIHQ32G42BE7F2CIT3YW6XRN5ED6GQJHCRZSNAYH6TGMCL6X35",
+        "agentUri": "data:",
+        "registrationSha256": "b0e043ad736d196def9c3f87b5cd7355575c41be8cc18161e1cbfd55078bdbcc",
+        "wallet": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC"
+      }
+    },
+    {
+      "check": "C3",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "services": [
+          {
+            "service": "logo-design",
+            "input": "example",
+            "amount": "1000000",
+            "matches": true,
+            "bazaar": true
+          }
+        ],
+        "payTo": "authorized"
+      }
+    },
+    {
+      "check": "C4",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C5",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C6",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "bodyLimit": {
+          "bytes": 4097,
+          "status": 413
+        },
+        "preflight": 204,
+        "exchanges": 25,
+        "problemAnswers": 3
+      }
+    },
+    {
+      "check": "C7",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "service": "logo-design",
+        "burst": {
+          "requests": 20,
+          "statuses": {
+            "402": 19,
+            "429": 1
+          },
+          "longestRetryAfter": 60
+        },
+        "paid": {
+          "skipped": "no test payer: run verifier verify --pay"
+        }
+      }
+    }
+  ],
+  "spent": "0",
+  "network": "stellar:pubnet",
+  "agentId": 73,
+  "manifestSha256": "1d26fb98d72beb7a8658355e45069df6992c3f25144af2cca57a76e88969cc5d"
+}

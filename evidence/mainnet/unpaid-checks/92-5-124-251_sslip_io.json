@@ -1,0 +1,120 @@
+{
+  "manifestUrl": "https://92-5-124-251.sslip.io/.well-known/stellar-agent-services.json",
+  "dev": false,
+  "startedAt": "2026-11-14T12:31:26.125Z",
+  "checkedAt": "2026-11-14T12:31:28.329Z",
+  "level": 1,
+  "score": 33,
+  "results": [
+    {
+      "check": "C1",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "url": "https://92-5-124-251.sslip.io/.well-known/stellar-agent-services.json",
+        "status": 200,
+        "bytes": 11474,
+        "network": "stellar:pubnet",
+        "services": [
+          "narrate-short",
+          "narrate-medium",
+          "narrate-long"
+        ],
+        "agentId": 70,
+        "sha256": "b4e794720d51b7f4c18f315cd339956831bcbae7f511fbb448b8ea25096a8ccf"
+      }
+    },
+    {
+      "check": "C2",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "agentId": 70,
+        "registry": "CBGPDCJIHQ32G42BE7F2CIT3YW6XRN5ED6GQJHCRZSNAYH6TGMCL6X35",
+        "agentUri": "data:",
+        "registrationSha256": "477b84529f768bd981f7f366c9cc23de716306a0824cca55489d635e7d3e1bd0",
+        "wallet": "GALPEETZO4OEOL7MAID2RCGGXNMPS6ROBLCQ5G267ZX7DSWXDGKESFQX"
+      }
+    },
+    {
+      "check": "C3",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "services": [
+          {
+            "service": "narrate-short",
+            "input": "example",
+            "amount": "50000",
+            "matches": true,
+            "bazaar": true
+          },
+          {
+            "service": "narrate-medium",
+            "input": "example",
+            "amount": "200000",
+            "matches": true,
+            "bazaar": true
+          },
+          {
+            "service": "narrate-long",
+            "input": "example",
+            "amount": "500000",
+            "matches": true,
+            "bazaar": true
+          }
+        ],
+        "payTo": "authorized"
+      }
+    },
+    {
+      "check": "C4",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C5",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C6",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "bodyLimit": {
+          "bytes": 8193,
+          "status": 413
+        },
+        "preflight": 204,
+        "exchanges": 29,
+        "problemAnswers": 20
+      }
+    },
+    {
+      "check": "C7",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "service": "narrate-short",
+        "burst": {
+          "requests": 20,
+          "statuses": {
+            "402": 4,
+            "429": 16
+          },
+          "longestRetryAfter": 35
+        },
+        "paid": {
+          "skipped": "no test payer: run verifier verify --pay"
+        }
+      }
+    }
+  ],
+  "spent": "0",
+  "network": "stellar:pubnet",
+  "agentId": 70,
+  "manifestSha256": "b4e794720d51b7f4c18f315cd339956831bcbae7f511fbb448b8ea25096a8ccf"
+}

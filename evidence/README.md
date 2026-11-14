@@ -8,7 +8,11 @@ with its network, hash, ledger and explorer link, and testnet evidence is labele
 **Status (2026-11-06): D1 and D2 technical evidence is published.** The Oracle sample is registered as
 testnet agent 163, passes all C1–C7 checks and has a confirmed Validation Registry response anchoring its
 receipt. Five badges are earned. Recordings and payment proofs remain available. Independent pilot work and
-Chapter Lead acceptance remain outstanding. [Readiness](readiness.md) records the checks and release limits;
+Chapter Lead acceptance remain outstanding.
+
+**Mainnet (2026-11-14):** the verifier paid three live AlgoriaLabs providers with real USDC. Agents 73, 72 and 70
+reached level 3 with score 100, each paid job was recovered without a second charge, and every transfer is
+confirmed on chain. These are project-operated services, not pilot providers. See [mainnet/](mainnet/README.md). [Readiness](readiness.md) records the checks and release limits;
 [the closeout guide](../docs/sow-closeout.md) gives the pilot handoff.
 
 | Deliverable | Evidence | Location |
@@ -19,6 +23,7 @@ Chapter Lead acceptance remain outstanding. [Readiness](readiness.md) records th
 | D2 | Verification receipts and badges | [Live run results](receipts/README.md) — registered Oracle run, five earned badges |
 | D2 | Validation Registry records | [Confirmed registration, request and response](validation/README.md) |
 | D2 | Job Recovery demo | [Captured recovery and single-transfer proof](d2/README.md) — published |
+| D1, D2 | Mainnet payments, recovery and receipts | [Mainnet run](mainnet/README.md): three paid providers at level 3, real USDC |
 | D3 | Provider integrations, paid-call references, screenshots | [Pilot checklist](pilot/README.md) — not run |
 | D3 | Pilot report | [Report template](pilot/report.md) — not filled |
 

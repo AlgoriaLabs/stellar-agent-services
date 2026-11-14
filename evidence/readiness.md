@@ -89,9 +89,19 @@ with 384 MiB/25% CPU limits and boot startup. Signing keys remain off the server
 reports all six stages complete: local, payTo, paid, registered, live and verified. See the
 [runbook](../deploy/d2/oracle/README.md).
 
+## Mainnet: 2026-11-14
+
+The npm verifier 0.1.1 paid three live AlgoriaLabs providers on mainnet with real USDC. Agents 73, 72 and 70
+reached level 3 with score 100; three transfers settled (0.10, 0.10 and 0.005 USDC), and no paid job was charged
+twice. All six registered AlgoriaLabs services (agents 69–74) passed the unpaid checks. Provider findings and
+failed runs are kept as captured. See [mainnet/](mainnet/README.md).
+
+Since this page was first written: 0.1.1 was released on 2026-11-06 with the bounded polling fix, and the daily
+live workflow's paid testnet job has passed on most days since (one failure, on 2026-11-09).
+
 ## Remaining acceptance work
 
 Recruit independent providers and distinct users, execute the pilot and fill its report. Agree conflicting
 SOW counts, sprint dates and testnet evidence acceptance with the Chapter Lead. Review and release the source
-fixes; rerun the scheduled paid CI job after they are available there. Mainnet payments remain deferred until
-funding is available. No mainnet payment or registry transaction was performed in this continuation.
+fixes; rerun the scheduled paid CI job after they are available there. Mainnet payments are now captured
+(above); mainnet Validation Registry records still need the agent owner's signature.

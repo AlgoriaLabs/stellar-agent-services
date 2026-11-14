@@ -1,0 +1,17 @@
+Provider Standard v1 verify with test payer GA2P2QPSAUA3I7JN2KG3JWHXKCJ4WERZO7FODZAXCVKYLG7RZXFZV4NB: https://92-5-124-251.sslip.io/.well-known/stellar-agent-services.json
+  ✓ C1 Manifest
+  ✓ C2 Identity
+  ✓ C3 Challenge
+  ✓ C4 Paid call
+  ✓ C5 Recovery
+  ✓ C6 Hygiene
+  ✓ C7 Load
+
+Level 3 (Recoverable): score 100 of 100.
+Identity (C2) passed: with a Validation Registry record, the provider is Registered.
+Load (C7) passed: Load-safe.
+The test payer signed for 0.005 USDC.
+Every check that ran passed.
+Receipt: mainnet-run/agent70-try4/0476f538340fcb9b97d54baf47d456b20c6f895ec7d856d1681773d3c46a1d15.json
+  response_hash 0476f538340fcb9b97d54baf47d456b20c6f895ec7d856d1681773d3c46a1d15
+  Publish the file exactly as written, then: verifier publish mainnet-run/agent70-try4/0476f538340fcb9b97d54baf47d456b20c6f895ec7d856d1681773d3c46a1d15.json --request-hash <hex> --response-uri <its https URL> --source <key>
