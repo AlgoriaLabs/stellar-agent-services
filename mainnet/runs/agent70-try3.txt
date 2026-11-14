@@ -1,0 +1,19 @@
+Provider Standard v1 verify with test payer GA2P2QPSAUA3I7JN2KG3JWHXKCJ4WERZO7FODZAXCVKYLG7RZXFZV4NB: https://92-5-124-251.sslip.io/.well-known/stellar-agent-services.json
+  ✓ C1 Manifest
+  ✓ C2 Identity
+  ✓ C3 Challenge
+  - C4 Paid call: skipped, the payment could not be signed: Cannot convert undefined or null to object
+  - C5 Recovery: skipped, C4 did not leave a finished paid job to recover
+  ✗ C6 Hygiene
+      ✗ [§5.4] create-job for "narrate-short" could not be reached (fetch failed: connect ECONNREFUSED 92.5.124.251:443) to a body of 8193 bytes; it must refuse a body over maxInputBytes (8192) with 413 payload_too_large
+      ! [J17] the CORS preflight for create-job could not be reached (fetch failed: connect ECONNREFUSED 92.5.124.251:443) without allowing GET, POST and the headers Content-Type, Idempotency-Key, Job-Token, PAYMENT-SIGNATURE
+  ✗ C7 Load
+      ✗ [Q1] 20 of 20 create-job requests sent at once could not be reached (fetch failed: connect ECONNREFUSED 92.5.124.251:443); load must be answered with 402, or 429 or 503 with Retry-After
+
+Level 0 (not Described): score 0 of 100.
+Identity (C2) passed: with a Validation Registry record, the provider is Registered.
+The test payer signed for 0.00 USDC.
+2 check(s) failed.
+Receipt: mainnet-run/agent70-try3/842f18a040dc374819547becd00f2723215ae861029655459cbc4280ba43a5ae.json
+  response_hash 842f18a040dc374819547becd00f2723215ae861029655459cbc4280ba43a5ae
+  Publish the file exactly as written, then: verifier publish mainnet-run/agent70-try3/842f18a040dc374819547becd00f2723215ae861029655459cbc4280ba43a5ae.json --request-hash <hex> --response-uri <its https URL> --source <key>

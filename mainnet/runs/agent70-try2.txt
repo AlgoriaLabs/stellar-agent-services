@@ -1,0 +1,14 @@
+Provider Standard v1 verify with test payer GA2P2QPSAUA3I7JN2KG3JWHXKCJ4WERZO7FODZAXCVKYLG7RZXFZV4NB: https://92-5-124-251.sslip.io/.well-known/stellar-agent-services.json
+  ✗ C1 Manifest
+      ✗ [M1] the manifest URL could not be reached (fetch failed: connect ECONNREFUSED 92.5.124.251:443)
+  - C2 Identity: skipped, the manifest could not be used (C1)
+  - C3 Challenge: skipped, the manifest could not be used (C1)
+  - C4 Paid call: skipped, C1 failed, and the verifier pays only a provider whose manifest a client would accept
+  - C5 Recovery: skipped, C4 did not leave a finished paid job to recover
+  - C6 Hygiene: skipped, the provider could not be probed (C1)
+  - C7 Load: skipped, the manifest could not be used (C1)
+
+Level 0 (not Described): score 0 of 100.
+The test payer signed for 0.00 USDC.
+1 check(s) failed.
+verifier: the manifest names no network, so the receipt needs one

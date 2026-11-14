@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="159" height="20" role="img" aria-label="Payment verified: mainnet">
+<title>Payment verified: Provider Standard v1, this provider, Stellar mainnet</title>
+<desc>Verification receipt sha256 0476f538340fcb9b97d54baf47d456b20c6f895ec7d856d1681773d3c46a1d15, checked 2026-11-14T12:55:51.035Z by GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU</desc>
+<linearGradient id="badge-payment-verified-s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+<clipPath id="badge-payment-verified-r"><rect width="159" height="20" rx="3" fill="#fff"/></clipPath>
+<g clip-path="url(#badge-payment-verified-r)"><rect width="104" height="20" fill="#555"/><rect x="104" width="55" height="20" fill="#44cc11"/><rect width="159" height="20" fill="url(#badge-payment-verified-s)"/></g>
+<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
+<text x="520" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="940">Payment verified</text><text x="520" y="140" transform="scale(.1)" textLength="940">Payment verified</text>
+<text x="1315" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="450">mainnet</text><text x="1315" y="140" transform="scale(.1)" textLength="450">mainnet</text>
+</g>
+</svg>

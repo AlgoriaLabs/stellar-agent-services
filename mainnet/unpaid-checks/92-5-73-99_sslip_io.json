@@ -1,0 +1,104 @@
+{
+  "manifestUrl": "https://92-5-73-99.sslip.io/.well-known/stellar-agent-services.json",
+  "dev": false,
+  "startedAt": "2026-11-14T12:31:43.530Z",
+  "checkedAt": "2026-11-14T12:31:45.881Z",
+  "level": 1,
+  "score": 33,
+  "results": [
+    {
+      "check": "C1",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "url": "https://92-5-73-99.sslip.io/.well-known/stellar-agent-services.json",
+        "status": 200,
+        "bytes": 2675,
+        "network": "stellar:pubnet",
+        "services": [
+          "pitch-deck"
+        ],
+        "agentId": 72,
+        "sha256": "0a8625e068b0b841acef10f4255544c486b16d41efd3453cf7094a74073b980b"
+      }
+    },
+    {
+      "check": "C2",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "agentId": 72,
+        "registry": "CBGPDCJIHQ32G42BE7F2CIT3YW6XRN5ED6GQJHCRZSNAYH6TGMCL6X35",
+        "agentUri": "data:",
+        "registrationSha256": "acac850eeec690ad1f09a9d4d5c968203dfdb178fe93e9b6ec969f0fca4c1cd4",
+        "wallet": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC"
+      }
+    },
+    {
+      "check": "C3",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "services": [
+          {
+            "service": "pitch-deck",
+            "input": "example",
+            "amount": "1000000",
+            "matches": true,
+            "bazaar": true
+          }
+        ],
+        "payTo": "authorized"
+      }
+    },
+    {
+      "check": "C4",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C5",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C6",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "bodyLimit": {
+          "bytes": 4097,
+          "status": 413
+        },
+        "preflight": 204,
+        "exchanges": 25,
+        "problemAnswers": 3
+      }
+    },
+    {
+      "check": "C7",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "service": "pitch-deck",
+        "burst": {
+          "requests": 20,
+          "statuses": {
+            "402": 19,
+            "429": 1
+          },
+          "longestRetryAfter": 60
+        },
+        "paid": {
+          "skipped": "no test payer: run verifier verify --pay"
+        }
+      }
+    }
+  ],
+  "spent": "0",
+  "network": "stellar:pubnet",
+  "agentId": 72,
+  "manifestSha256": "0a8625e068b0b841acef10f4255544c486b16d41efd3453cf7094a74073b980b"
+}

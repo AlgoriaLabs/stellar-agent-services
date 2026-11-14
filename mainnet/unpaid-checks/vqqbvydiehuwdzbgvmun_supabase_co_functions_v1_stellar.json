@@ -1,0 +1,103 @@
+{
+  "manifestUrl": "https://vqqbvydiehuwdzbgvmun.supabase.co/functions/v1/stellar/.well-known/stellar-agent-services.json",
+  "dev": false,
+  "startedAt": "2026-11-14T12:31:31.981Z",
+  "checkedAt": "2026-11-14T12:31:39.676Z",
+  "level": 1,
+  "score": 33,
+  "results": [
+    {
+      "check": "C1",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "url": "https://vqqbvydiehuwdzbgvmun.supabase.co/functions/v1/stellar/.well-known/stellar-agent-services.json",
+        "status": 200,
+        "bytes": 4952,
+        "network": "stellar:pubnet",
+        "services": [
+          "phone-call"
+        ],
+        "agentId": 71,
+        "sha256": "65076758e770d8ccb0576e0829240a88581a768786feff426a738acf365d8ae8"
+      }
+    },
+    {
+      "check": "C2",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "agentId": 71,
+        "registry": "CBGPDCJIHQ32G42BE7F2CIT3YW6XRN5ED6GQJHCRZSNAYH6TGMCL6X35",
+        "agentUri": "data:",
+        "registrationSha256": "6a657d8d1cd26c74cd929e9357793cd3637a85a2eb6a0c13badf888d802eb590",
+        "wallet": "GBJKC563MYDURY24H5TNSS7GG7TXCDNGNF3YBPYZ3BDUYEQRCKQL7ORH"
+      }
+    },
+    {
+      "check": "C3",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "services": [
+          {
+            "service": "phone-call",
+            "input": "example",
+            "amount": "10000000",
+            "matches": true,
+            "bazaar": true
+          }
+        ],
+        "payTo": "authorized"
+      }
+    },
+    {
+      "check": "C4",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C5",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C6",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "bodyLimit": {
+          "bytes": 4097,
+          "status": 413
+        },
+        "preflight": 204,
+        "exchanges": 25,
+        "problemAnswers": 2
+      }
+    },
+    {
+      "check": "C7",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "service": "phone-call",
+        "burst": {
+          "requests": 20,
+          "statuses": {
+            "402": 20
+          },
+          "longestRetryAfter": 0
+        },
+        "paid": {
+          "skipped": "no test payer: run verifier verify --pay"
+        }
+      }
+    }
+  ],
+  "spent": "0",
+  "network": "stellar:pubnet",
+  "agentId": 71,
+  "manifestSha256": "65076758e770d8ccb0576e0829240a88581a768786feff426a738acf365d8ae8"
+}

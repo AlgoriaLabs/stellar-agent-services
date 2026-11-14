@@ -1,0 +1,113 @@
+{
+  "manifestUrl": "https://92-5-5-99.sslip.io/.well-known/stellar-agent-services.json",
+  "dev": false,
+  "startedAt": "2026-11-14T12:31:55.614Z",
+  "checkedAt": "2026-11-14T12:31:58.077Z",
+  "level": 1,
+  "score": 33,
+  "results": [
+    {
+      "check": "C1",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "url": "https://92-5-5-99.sslip.io/.well-known/stellar-agent-services.json",
+        "status": 200,
+        "bytes": 7073,
+        "network": "stellar:pubnet",
+        "services": [
+          "make-grid"
+        ],
+        "agentId": 74,
+        "sha256": "ed61a8749ddddf6b736e916b51153ac1b514d5f28cd695dce83a37f791b9e687"
+      }
+    },
+    {
+      "check": "C2",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "agentId": 74,
+        "registry": "CBGPDCJIHQ32G42BE7F2CIT3YW6XRN5ED6GQJHCRZSNAYH6TGMCL6X35",
+        "agentUri": "data:",
+        "registrationSha256": "9c8c630e229f8ad4347de39ade7f4ea52e989375b62ce09312ca3b6d04c58f3d",
+        "wallet": "GC6QX6IULYURZ6G2MU2VNJLWTDOH6TIZLDQIYL4L2GJHNYPGDSDSU2HM"
+      }
+    },
+    {
+      "check": "C3",
+      "status": "passed",
+      "failedRules": [],
+      "warnings": [
+        "P6"
+      ],
+      "findings": [
+        {
+          "rule": "P6",
+          "severity": "warn",
+          "message": "create-job for \"make-grid\": the challenge has no Bazaar discovery extension"
+        }
+      ],
+      "evidence": {
+        "services": [
+          {
+            "service": "make-grid",
+            "input": "example",
+            "amount": "100000",
+            "matches": true,
+            "bazaar": false
+          }
+        ],
+        "payTo": "authorized"
+      }
+    },
+    {
+      "check": "C4",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C5",
+      "status": "skipped",
+      "failedRules": [],
+      "reason": "no test payer: run verifier verify --pay"
+    },
+    {
+      "check": "C6",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "bodyLimit": {
+          "bytes": 10485761,
+          "status": 413
+        },
+        "preflight": 204,
+        "exchanges": 25,
+        "problemAnswers": 2
+      }
+    },
+    {
+      "check": "C7",
+      "status": "passed",
+      "failedRules": [],
+      "evidence": {
+        "service": "make-grid",
+        "burst": {
+          "requests": 20,
+          "statuses": {
+            "402": 20
+          },
+          "longestRetryAfter": 0
+        },
+        "paid": {
+          "skipped": "no test payer: run verifier verify --pay"
+        }
+      }
+    }
+  ],
+  "spent": "0",
+  "network": "stellar:pubnet",
+  "agentId": 74,
+  "manifestSha256": "ed61a8749ddddf6b736e916b51153ac1b514d5f28cd695dce83a37f791b9e687"
+}

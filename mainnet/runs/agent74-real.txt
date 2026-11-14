@@ -1,0 +1,19 @@
+Provider Standard v1 verify with test payer GA2P2QPSAUA3I7JN2KG3JWHXKCJ4WERZO7FODZAXCVKYLG7RZXFZV4NB: https://92-5-5-99.sslip.io/.well-known/stellar-agent-services.json
+  ✓ C1 Manifest
+  ✓ C2 Identity
+  ✓ C3 Challenge
+      ! [P6] create-job for "make-grid": the challenge has no Bazaar discovery extension
+  ✗ C4 Paid call
+      ✗ [§5.6] the paid job failed with "service_failed" for the option input
+  - C5 Recovery: skipped, C4 did not leave a finished paid job to recover
+  ✓ C6 Hygiene
+  ✓ C7 Load
+
+Level 1 (Described): score 33 of 100.
+Identity (C2) passed: with a Validation Registry record, the provider is Registered.
+Load (C7) passed: Load-safe.
+The test payer signed for 0.01 USDC.
+1 check(s) failed.
+Receipt: mainnet-run/agent74-real/88c5998b8387a5b9aa06177895be57a41a1f10aaa5aaca027d5080f192e9a398.json
+  response_hash 88c5998b8387a5b9aa06177895be57a41a1f10aaa5aaca027d5080f192e9a398
+  Publish the file exactly as written, then: verifier publish mainnet-run/agent74-real/88c5998b8387a5b9aa06177895be57a41a1f10aaa5aaca027d5080f192e9a398.json --request-hash <hex> --response-uri <its https URL> --source <key>

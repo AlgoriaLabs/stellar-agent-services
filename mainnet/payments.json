@@ -1,0 +1,114 @@
+{
+  "network": "stellar:pubnet",
+  "source": "https://horizon.stellar.org",
+  "readAt": "2026-11-14T12:58:15Z",
+  "usdcAsset": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+  "payer": "GA2P2QPSAUA3I7JN2KG3JWHXKCJ4WERZO7FODZAXCVKYLG7RZXFZV4NB",
+  "validator": "GBGCXYSM7LIGOOZ7R3OXTOPIPSFEMHHVFAO7HJMKTEHL7KREXGPW3TUU",
+  "payments": [
+    {
+      "check": "C4",
+      "agentId": 73,
+      "service": "logo-design",
+      "transaction": "233cf09586366dc92442faad6f23ee01f8409c766da66dc1af30da7b83359475",
+      "ledger": 65474953,
+      "closedAt": "2026-11-14T12:53:27Z",
+      "successful": true,
+      "submittedBy": "GDIKNENWYQC2HATEFJLP4FDZEU5NQDJ2WHRQ7S7WX4AVZ44O46BAIGGW",
+      "usdcTransfers": [
+        {
+          "from": "GA2P2QPSAUA3I7JN2KG3JWHXKCJ4WERZO7FODZAXCVKYLG7RZXFZV4NB",
+          "to": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+          "amount": "0.1000000",
+          "asset": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+        }
+      ],
+      "receipt": "receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.json",
+      "explorer": "https://stellar.expert/explorer/public/tx/233cf09586366dc92442faad6f23ee01f8409c766da66dc1af30da7b83359475"
+    },
+    {
+      "check": "C4",
+      "agentId": 72,
+      "service": "pitch-deck",
+      "transaction": "39c0c24369c974d67c02a293f684d5fd0d37fbd4e92b48a906b4d1602fd9028f",
+      "ledger": 65474968,
+      "closedAt": "2026-11-14T12:54:42Z",
+      "successful": true,
+      "submittedBy": "GCEPT4LBUHDC4MCWZ4H2LSFZQ355AG2IUQ6WY5Y7NYMGIZXH5ZQNINDU",
+      "usdcTransfers": [
+        {
+          "from": "GA2P2QPSAUA3I7JN2KG3JWHXKCJ4WERZO7FODZAXCVKYLG7RZXFZV4NB",
+          "to": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+          "amount": "0.1000000",
+          "asset": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+        }
+      ],
+      "receipt": "receipts/e10d1b0e143535af5ec661eefcd376d2e0c15d44145f258dbd91049a4484b098.json",
+      "explorer": "https://stellar.expert/explorer/public/tx/39c0c24369c974d67c02a293f684d5fd0d37fbd4e92b48a906b4d1602fd9028f"
+    },
+    {
+      "check": "C4",
+      "agentId": 70,
+      "service": "narrate-short",
+      "transaction": "edc3e2540e11021aec0444481163e7bf9eb665247255872329d42e374ae6c860",
+      "ledger": 65474980,
+      "closedAt": "2026-11-14T12:55:42Z",
+      "successful": true,
+      "submittedBy": "GADBOJLDOTD5TJTVSTGBWRXOSTAMNA6VLOXS6DOY76X3R3YKPGUUY4SM",
+      "usdcTransfers": [
+        {
+          "from": "GA2P2QPSAUA3I7JN2KG3JWHXKCJ4WERZO7FODZAXCVKYLG7RZXFZV4NB",
+          "to": "GALPEETZO4OEOL7MAID2RCGGXNMPS6ROBLCQ5G267ZX7DSWXDGKESFQX",
+          "amount": "0.0050000",
+          "asset": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+        }
+      ],
+      "receipt": "receipts/0476f538340fcb9b97d54baf47d456b20c6f895ec7d856d1681773d3c46a1d15.json",
+      "explorer": "https://stellar.expert/explorer/public/tx/edc3e2540e11021aec0444481163e7bf9eb665247255872329d42e374ae6c860"
+    }
+  ],
+  "setup": [
+    {
+      "what": "payer funded (create_account, 3 XLM)",
+      "transaction": "0e8f704b8b14754643981edc6b8e7d16fcce10cde717db5db37d56e15a98b8d1",
+      "ledger": 65474711,
+      "closedAt": "2026-11-14T12:33:17Z",
+      "successful": true,
+      "explorer": "https://stellar.expert/explorer/public/tx/0e8f704b8b14754643981edc6b8e7d16fcce10cde717db5db37d56e15a98b8d1"
+    },
+    {
+      "what": "validator funded (create_account, 2 XLM)",
+      "transaction": "3d34de522f9f85a7fc0fe0eafe7dee6ad0090dba4387d1eca55e763a551e5df2",
+      "ledger": 65474719,
+      "closedAt": "2026-11-14T12:33:57Z",
+      "successful": true,
+      "explorer": "https://stellar.expert/explorer/public/tx/3d34de522f9f85a7fc0fe0eafe7dee6ad0090dba4387d1eca55e763a551e5df2"
+    },
+    {
+      "what": "payer USDC trustline (change_trust)",
+      "transaction": "13932d2883c7c248b936a9c4110c18b619937f303ac5221945b3d97f00bfdb96",
+      "ledger": 65474726,
+      "closedAt": "2026-11-14T12:34:32Z",
+      "successful": true,
+      "explorer": "https://stellar.expert/explorer/public/tx/13932d2883c7c248b936a9c4110c18b619937f303ac5221945b3d97f00bfdb96"
+    }
+  ],
+  "balances": {
+    "payer": {
+      "address": "GA2P2QPSAUA3I7JN2KG3JWHXKCJ4WERZO7FODZAXCVKYLG7RZXFZV4NB",
+      "usdc": "0.2950000"
+    },
+    "agent 72 and 73 payTo": {
+      "address": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+      "usdc": "0.2000000"
+    },
+    "agent 69 and 70 payTo": {
+      "address": "GALPEETZO4OEOL7MAID2RCGGXNMPS6ROBLCQ5G267ZX7DSWXDGKESFQX",
+      "usdc": "0.0050000"
+    },
+    "agent 74 payTo": {
+      "address": "GC6QX6IULYURZ6G2MU2VNJLWTDOH6TIZLDQIYL4L2GJHNYPGDSDSU2HM",
+      "usdc": "0.0000000"
+    }
+  }
+}
