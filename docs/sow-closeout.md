@@ -16,8 +16,8 @@ remaining acceptance work. Prepared templates are not evidence of completed pilo
 | Discovery | Newer implementation notes report testnet registry scanning and manifest service matching | Confirm the released discovery path in the pilot and show the complete find-to-result flow |
 
 Public release and CI references, and local check results, belong in [readiness evidence](../evidence/readiness.md).
-The latest observed daily live workflow failed its paid testnet call; do not treat ordinary CI as a live payment
-proof. A trusted registry/risk-source adapter remains application integration work; configured verification limits
+Since 0.1.1 the daily live workflow's paid testnet call has passed on every day but one (2026-11-09); do not treat
+ordinary CI as a live payment proof. A trusted registry/risk-source adapter remains application integration work; configured verification limits
 now block new payments unless a trusted source can satisfy them [V1].
 
 ## Acceptance decisions for the owner

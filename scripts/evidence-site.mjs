@@ -15,7 +15,7 @@ if ((await readdir(target)).length) throw new Error("The output directory must b
 const manifest = await readFile(join(root, "evidence/checksums.sha256"), "utf8");
 const paths = [];
 for (const line of manifest.trim().split("\n")) {
-  const match = /^([a-f0-9]{64})  (evidence\/(?:d[12]\/[^/]+\.(?:jpg|mp4|json)|validation\/[a-z0-9-]+\.json|receipts\/[a-f0-9]{64}(?:\.[a-z0-9-]+)?\.(?:json|svg)))$/.exec(line);
+  const match = /^([a-f0-9]{64})  (evidence\/(?:d[12]\/[^/]+\.(?:jpg|mp4|json)|validation\/[a-z0-9-]+\.json|(?:mainnet\/)?receipts\/[a-f0-9]{64}(?:\.[a-z0-9-]+)?\.(?:json|svg)|mainnet\/(?:[a-z]+\.json|runs\/[a-z0-9-]+\.txt|unpaid-checks\/[a-z0-9_-]+\.json)))$/.exec(line);
   if (!match) throw new Error(`Unexpected evidence checksum entry: ${line}`);
   const [, hash, path] = match;
   const bytes = await readFile(join(root, path));
@@ -62,9 +62,24 @@ if (receipts.length) {
       <a href="${registryPath}">Confirmed registry records</a>.
       ${anchored ? "The Validation Registry response anchors this exact receipt and earns the 8004 validated badge." : "The validation request is confirmed; the response is pending."}` : "This historical receipt used a temporary, unregistered endpoint and is unanchored."}
       The validator is operated for this project; this is not an independent audit or pilot.</p>
-    <p class="rule">The verifier run used the repository checkout. The client polling fix is not yet released to npm.</p>
+    <p class="rule">The verifier run used the repository checkout. The client polling fix was released to npm in 0.1.1 on 2026-11-06.</p>
     ${receipts.slice(1).map(previous => `<p class="details"><a href="${previous.path}">Earlier receipt (${escape(previous.receipt.checkedAt)})</a>: ${previous.receipt.results.filter(each => each.status !== "passed").map(each => `${escape(each.check)} ${escape(each.status)}`).join("; ")}. Preserved without editing.</p>`).join("")}
   </section>`;
+}
+// The mainnet section is static HTML; refuse to publish its 8004 badge unless the captured response anchors that receipt.
+const mainnetBadges = paths.filter(each => /^mainnet\/receipts\/[a-f0-9]{64}\.8004-validated\.svg$/.test(each));
+if (mainnetBadges.length) {
+  const validation = JSON.parse(await readFile(join(target, "mainnet/validation.json"), "utf8"));
+  for (const badge of mainnetBadges) {
+    const sha256 = badge.slice("mainnet/receipts/".length, -".8004-validated.svg".length);
+    const receipt = JSON.parse(await readFile(join(target, `mainnet/receipts/${sha256}.json`), "utf8"));
+    const [validator, , score, , responseHash, tag] = validation.response?.arguments ?? [];
+    if (validation.network !== "stellar:pubnet" || !validation.response?.successful || validation.receipt !== `receipts/${sha256}.json` ||
+      responseHash !== sha256 || validator !== receipt.validator || validation.agentId !== receipt.agentId ||
+      score !== receipt.score || tag !== "provider-standard-v1") {
+      throw new Error(`The mainnet 8004 badge ${badge} has no matching confirmed registry evidence.`);
+    }
+  }
 }
 const template = await readFile(join(root, "evidence/index.html"), "utf8");
 if (!template.includes("<!-- live-verification -->")) throw new Error("The page is missing its live receipt section marker.");

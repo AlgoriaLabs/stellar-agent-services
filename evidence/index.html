@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Provider Standard v1: testnet approval, payment and job recovery evidence.">
+  <meta name="description" content="Provider Standard v1: testnet approval, payment and job recovery evidence, and paid mainnet verification.">
   <title>Stellar Agent Services · Project evidence</title>
   <style>
     :root { color-scheme: light; font-family: system-ui, sans-serif; color: #172a39; background: #f5f7fa; }
@@ -36,12 +36,12 @@
 <body>
 <main>
   <header>
-    <div class="eyebrow">Stellar Agent Services · Evidence captured 6 November 2026</div>
+    <div class="eyebrow">Stellar Agent Services · Evidence captured 6–14 November 2026</div>
     <h1>Approve once.<br>Recover without paying again.</h1>
-    <span class="tag">Stellar testnet · test USDC</span>
+    <span class="tag">Stellar testnet · test USDC</span> <span class="tag">Stellar mainnet · USDC</span>
     <p class="intro">Two recorded calls show spending controls, approval of exact payment terms, a confirmed
-      payment and recovery of a delayed result. These are sample-provider demonstrations. Independent provider
-      and user pilots remain outstanding.</p>
+      payment and recovery of a delayed result. A mainnet run then paid three live providers with real USDC.
+      These are project-operated providers. Independent provider and user pilots remain outstanding.</p>
     <nav aria-label="Project links">
       <a href="https://github.com/AlgoriaLabs/stellar-agent-services">Open-source repository</a>
       <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/docs/provider-standard.md">Provider Standard v1</a>
@@ -88,6 +88,32 @@
     </section>
   </div>
   <!-- live-verification -->
+  <section aria-labelledby="mainnet">
+    <h2 id="mainnet">Mainnet · Paid verification with real USDC</h2>
+    <p>On 14 November 2026 the npm verifier 0.1.1 paid three live AlgoriaLabs providers, registered in the mainnet
+      8004 registry. Each reached <strong>level 3</strong> with score 100. Recovery read each paid job again
+      without a second charge: the payer made exactly three USDC transfers [J11], [J13].</p>
+    <ul class="links">
+      <li>Agent 73, Logo Agent, 0.10 USDC:
+        <a href="https://stellar.expert/explorer/public/tx/233cf09586366dc92442faad6f23ee01f8409c766da66dc1af30da7b83359475">ledger 65474953</a> ·
+        <a href="mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.json">receipt</a></li>
+      <li>Agent 72, Pitch Deck, 0.10 USDC:
+        <a href="https://stellar.expert/explorer/public/tx/39c0c24369c974d67c02a293f684d5fd0d37fbd4e92b48a906b4d1602fd9028f">ledger 65474968</a> ·
+        <a href="mainnet/receipts/e10d1b0e143535af5ec661eefcd376d2e0c15d44145f258dbd91049a4484b098.json">receipt</a>.
+        Its paid response was lost; the job was recovered without paying again. Load check failed.</li>
+      <li>Agent 70, Text to Speech, 0.005 USDC:
+        <a href="https://stellar.expert/explorer/public/tx/edc3e2540e11021aec0444481163e7bf9eb665247255872329d42e374ae6c860">ledger 65474980</a> ·
+        <a href="mainnet/receipts/0476f538340fcb9b97d54baf47d456b20c6f895ec7d856d1681773d3c46a1d15.json">receipt</a></li>
+      <li><a href="mainnet/payments.json">On-chain payment proofs</a> · <a href="mainnet/validation.json">Validation Registry records</a></li>
+    </ul>
+    <p><a href="mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.json"><img src="mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.standard-v1.svg" alt="standard v1: mainnet"> <img src="mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.payment-verified.svg" alt="payment verified: mainnet"> <img src="mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.recovery-verified.svg" alt="recovery verified: mainnet"> <img src="mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.load-safe.svg" alt="load safe: mainnet"> <img src="mainnet/receipts/39971c0234ca3bb7a141aa558bdc68a8b1f91826685621be66ce4d557fbe8ddd.8004-validated.svg" alt="8004 validated: mainnet"></a></p>
+    <p class="rule">Agent 73's receipt is anchored in the mainnet Validation Registry
+      (<a href="https://stellar.expert/explorer/public/tx/1e3bbe105d504f8ea012d51807d30448e1270e9e2fec035b70f52046c751bbd8">request</a>,
+      <a href="https://stellar.expert/explorer/public/tx/27cd918b0b52641be137d96f0606ef32249c68be2ba0c024ae70780d2ba0a2d2">response</a>)
+      and earns all five badges. Agent 74's paid jobs failed and were not charged. The validator is operated for
+      this project; this is not an independent audit or pilot. Full findings and failed runs:
+      <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/evidence/mainnet/README.md">mainnet evidence</a>.</p>
+  </section>
   <section class="pending" aria-labelledby="remaining">
     <h2 id="remaining">Remaining evidence</h2>
     <p><strong>D2 live verification:</strong> the stable Oracle testnet sample is registered as agent 163 and
@@ -99,7 +125,8 @@
     <p>Recordings use actual browser screenshots sampled at approximately two frames per second. Pauses between
       captured segments were removed and closing stills held for readability. No payment state is simulated.
       <a href="d1/recording.json">D1 recording metadata</a> · <a href="d2/recording.json">D2 recording metadata</a>.</p>
-    <p>All payments shown are on Stellar testnet. Files exclude private keys, job tokens and signed payment payloads.
+    <p>The D1 and D2 payments are on Stellar testnet; the mainnet section uses real USDC. Files exclude private
+      keys, job tokens and signed payment payloads.
       Run <code>shasum -a 256 -c checksums.sha256</code> after downloading the files to check artifact integrity.</p>
   </footer>
 </main>

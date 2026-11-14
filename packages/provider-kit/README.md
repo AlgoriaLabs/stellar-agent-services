@@ -398,7 +398,9 @@ provider-kit wallet export                  # the secret key, to import into a w
   an account whose key isn't here is refused before anything is signed.
 - **Funding.** On testnet Friendbot funds a new account. On mainnet the command prints the account and asks for XLM
   sized to its steps: 1.5 XLM of reserve (the account, its USDC trustline), and for each registry call 0.12 XLM plus
-  0.2 XLM per 1000 bytes it stores, rounded up to half an XLM. That is 2.5 XLM for a typical launch. Before each
+  0.2 XLM per 1000 bytes it stores, rounded up to half an XLM. That is 2.5 XLM for a typical launch. A call that
+  falls due to extend a registry contract's rent costs much more (a mainnet validation request once cost 17.13 XLM);
+  the per-transaction check below catches it. Before each
   transaction it checks the account can pay that transaction's own fee; when it can't, it asks for the difference
   and waits, so nothing is sent that the network would refuse. Each wait lasts up to 15 minutes, goes on through an
   RPC outage, and the next run goes on with the same account.

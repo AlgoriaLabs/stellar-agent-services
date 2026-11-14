@@ -99,7 +99,7 @@ Registry cost:
   first caller after a long idle paid the extension. The response that followed cost 0.004 XLM, and agent 73's
   registrations cost about 0.2 XLM each. The kit's own fee check refused the first attempt, when the owner account
   held 4.87 XLM, before anything was signed. The docs' "about 2.5 XLM" estimate for going live on mainnet does not
-  cover a request that pays this rent.
+  cover a request that pays this rent; the setup guide, the provider-kit README and AGENTS.md now say so.
 
 Verifier and environment notes:
 

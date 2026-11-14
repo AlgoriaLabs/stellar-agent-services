@@ -81,7 +81,8 @@ With `--local-wallet`, `launch` makes an account on this computer, keeps its key
 every step itself, so there is nothing to install or connect. On testnet it needs nothing from the user. On
 mainnet it prints the account and the XLM to send it (about 2.5 XLM for a typical service), and waits up to 15
 minutes: give the user the address and the amount exactly as printed, and run it again if they need longer (it goes
-on with the same account). If a step costs more than the account holds, it asks for the difference the same way. The account is the agent's owner and
+on with the same account). If a step costs more than the account holds, it asks for the difference the same way:
+a validation request that pays the registry's rent extension can cost over 17 XLM on mainnet. The account is the agent's owner and
 `payTo`, so the income lands there: `provider-kit wallet` shows it, `wallet withdraw` moves it to an address the
 user names, and the user runs `wallet export` themselves to manage it in a wallet app.
 

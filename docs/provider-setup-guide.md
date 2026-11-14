@@ -274,6 +274,10 @@ provider-kit launch --config provider.config.json --local-wallet
   XLM to send it**, from any wallet or exchange: about 2.5 XLM for a typical service, up to 4 with the largest
   registration file. Stellar keeps 1.5 XLM in reserve for the account and its USDC trustline; the rest pays the
   network fees, which grow with what the registration stores on chain. What isn't spent stays in the account.
+  Now and then the validation request costs far more: when the Validation Registry's code is due for a rent
+  extension, the caller pays it. On mainnet on 2026-11-14 that request cost 17.13 XLM, nearly all of it rent
+  ([evidence](../evidence/mainnet/README.md#findings)). The kit sees this fee before signing and asks for the
+  difference, as below.
 - **It never sends what the account can't pay for.** Before each transaction it compares the account's XLM with that
   transaction's fee. When the account is short, it says how much more to send and waits. It waits 15 minutes each
   time; run it again if you need longer, and it goes on with the same account from where it stopped.
