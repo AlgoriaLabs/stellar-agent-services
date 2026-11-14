@@ -419,6 +419,27 @@ provider-kit wallet export                  # the secret key, to import into a w
 The key exists on this computer only, and other programs that run as your user can reach it, as with any key kept
 on a computer. Export it, or withdraw regularly, before real income depends on it.
 
+## Discovery documents
+
+Agents and catalogs that don't know the standard look for two files on an API's origin. The kit serves both. It
+makes them from the manifest, so they can't disagree with it (spec §2.5):
+
+| Path | What it is |
+| --- | --- |
+| `/openapi.json` | OpenAPI 3.1. Each service is a paid operation with `x-payment-info` (a fixed price in USD, protocol `x402`), its schemas and its example inputs. check-status and get-result are there too. |
+| `/llms.txt` | A plain-text guide for models: the services, their prices, how to pay and how to recover a job. |
+
+- **Nothing to configure.** `discoveryDocuments: false`, in `createProvider()` or the gateway config, turns both
+  off, for an origin that already serves its own files there.
+- **They live on the origin of `baseUrl`,** like the default manifest path. A proxy that forwards only a path
+  prefix needs to forward these two paths as well.
+- **The manifest stays the source of truth** [D2]. Clients of the standard never read a price from these files,
+  and `verifier check` fails a provider whose OpenAPI price is not its manifest's [D3].
+- **Listed is not the same as payable.** A catalog can list a provider only if it supports x402 on Stellar. Check
+  that before you register with one.
+- **A probe with an empty body gets `400`, not `402`.** The standard checks the input before it asks for payment
+  [P8]. The OpenAPI document carries each service's example inputs, so a catalog's probe can send a valid one.
+
 ## Payment safety
 
 - **Local payment checks.** Before the facilitator sees a payment, the kit decodes it: exactly one USDC
@@ -515,7 +536,7 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/define-service.ts` | `defineService()`: price, charge policy, schemas, capacity; checks at definition time |
 | `src/provider.ts` | `createProvider()`: wires everything into one `fetch` handler; startup checks |
 | `src/manifest.ts` | Builds the manifest from the same config as the 402 challenge, and checks it |
-| `src/http/router.ts` | Manifest, create-job, check-status and get-result routes, in §5.4 order |
+| `src/http/router.ts` | Manifest, discovery documents, create-job, check-status and get-result routes, in §5.4 order |
 | `src/http/node-server.ts` | `listen()`: serves a provider on Node's HTTP server, with `/healthz` and graceful close. A request body is read only as far as the router reads it, so an early answer (`413`) leaves the connection usable. |
 | `src/payments/payload-checks.ts` | Local payment checks and the payment fingerprint |
 | `src/payments/facilitator.ts` | The facilitator client and the startup check |

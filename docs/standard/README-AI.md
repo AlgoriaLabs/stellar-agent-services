@@ -65,7 +65,9 @@ const provider = createProvider({
 // Mount provider.fetch(request) on any Fetch API server. Hono: app.all("*", (c) => provider.fetch(c.req.raw)).
 ```
 
-The kit implements §3–§12: the manifest, the challenge, the processing order, jobs, capacity and errors. A handler
+The kit implements §3–§12: the manifest, the challenge, the processing order, jobs, capacity and errors. It also
+serves `/openapi.json` and `/llms.txt`, made from the manifest, for agents that don't know the standard `[D1]`;
+`discoveryDocuments: false` turns them off. A handler
 receives only the parsed input and an `AbortSignal`, never payment data. Throw to fail the job. Error messages are
 not passed on to the client `[E2]`.
 
@@ -176,6 +178,11 @@ Serving and validating it:
   schema can't express (`checkManifestRules()`): M1, M3, M5, M7, S6, S9, P11.
 - Descriptions say what the service does, when to use it, and its limits. They contain no prices, URLs or
   instructions to the agent (§3.4).
+- Optional: serve `/openapi.json` (OpenAPI 3.1) and `/llms.txt` on the manifest's origin, both generated from the
+  manifest, for agents and catalogs that don't know the standard `[D1]`. If the OpenAPI document prices a
+  create-job operation, `x-payment-info.price` is `{ "mode": "fixed", "currency": "USD", "amount": <decimal USDC> }`
+  and equals the manifest `[D3]`: `"0.01"` for `"100000"`. Appendix C of the spec maps every field.
+  Clients still read the manifest only `[D2]`.
 - Schemas use the portable subset: `type properties required additionalProperties items enum const minimum maximum
   minLength maxLength minItems maxItems pattern format title description default examples anyOf $defs` with local
   `$ref`. Avoid `if/then/else`, `patternProperties`, and `oneOf`/`allOf` at the root `[S7]`. Pass large media as
@@ -426,6 +433,7 @@ itself in its `description`.
 | --- | --- |
 | `manifests.json` | Manifest validation: JSON Schema cases and code-rule cases, as RFC 6902 patches to a base |
 | `challenges.json` | `checkChallenge`: a `402` versus the approved manifest `[P3–P5]` |
+| `discovery-documents.json` | Decimal USD prices, the OpenAPI document and llms.txt for a manifest, and `checkOpenApiDocument` cases `[D3]` |
 | `canonical-json.json` | RFC 8785 output, including number formatting |
 | `binding-hash.json` | Binding hashes `[§5.3]` |
 | `headers.json` | `Idempotency-Key` and `Job-Token` patterns, and `Retry-After` parsing |
@@ -434,9 +442,10 @@ itself in its `description`.
 | `validation-requests.json` | Validation request documents: canonical bytes, `request_hash` and the `data:` URI |
 
 **TypeScript helpers** in `@stellar-agent-services/protocol`, which has no runtime dependencies:
-`checkManifestRules`, `checkChallenge`, `canonicalJson`, `canonicalSha256`, `bindingHash`, `canTransition`,
-`chargedFor`, `jobViewHttpStatus`, `parseRetryAfter`, `problem`, `jobError`, `createJobUrl`, `jobStatusUrl`,
-`jobResultUrl`, `stellarAddressKind`, `validationRequestHash`, `validationRequestDataUri`, `USDC_ASSET`.
+`checkManifestRules`, `checkChallenge`, `openApiDocument`, `llmsTxt`, `checkOpenApiDocument`, `canonicalJson`,
+`canonicalSha256`, `bindingHash`, `canTransition`, `chargedFor`, `jobViewHttpStatus`, `parseRetryAfter`, `problem`,
+`jobError`, `createJobUrl`, `jobStatusUrl`, `jobResultUrl`, `stellarAddressKind`, `validationRequestHash`,
+`validationRequestDataUri`, `USDC_ASSET`.
 
 **A real paid call on testnet** against a local provider, in any language. `provider-kit try` pays once from a
 throwaway testnet account it funds itself, then confirms the transfer on chain. It shows the payment and asks
@@ -468,6 +477,7 @@ npx stellar-pay pay http://localhost:8787/.well-known/stellar-agent-services.jso
   timeout.
 - [ ] check-status and get-result work while the service is at capacity.
 - [ ] CORS headers are present, including on `OPTIONS`.
+- [ ] If `/openapi.json` prices a service, the price equals the manifest's `[D3]`.
 
 **Conformance levels** `[§8]`:
 - **1 Described:** C1 manifest + C6 hygiene.
@@ -546,6 +556,14 @@ Manifest:
 - **M7** Service names are unique.
 - **M8** Clients ignore unknown fields and reject another major `standard`.
 - **M9** The manifest is valid against the JSON Schema.
+
+Discovery documents (optional):
+- **D1** MAY serve `/openapi.json` and `/llms.txt` on the manifest's origin, generated from the manifest.
+- **D2** The manifest stays the only source of truth; `[P7]` is unchanged.
+- **D3** A price the OpenAPI document gives for create-job equals the manifest: fixed, `USD`, decimal USDC; listed
+  protocols include `x402`.
+- **D4** SHOULD serve both like the manifest: `200`, no redirect, `Cache-Control: max-age` ≤ 300, CORS.
+- **D5** llms.txt SHOULD give the manifest URL.
 
 Services:
 - **S1** `on-success` settles only for output that is valid against `outputSchema`.

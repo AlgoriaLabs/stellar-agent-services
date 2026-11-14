@@ -89,7 +89,8 @@ describe("C6 hygiene", () => {
       return new Response(response.body, { status: response.status, headers });
     };
     const result = hygiene(await setup({ tamper }).verify());
-    expect(result).toMatchObject({ status: "passed", warnings: ["J17"] });
-    expect(result.findings?.length).toBeGreaterThanOrEqual(3);
+    // The discovery documents lose their CORS header too [D4].
+    expect(result).toMatchObject({ status: "passed", warnings: ["D4", "J17"] });
+    expect(result.findings?.filter((finding) => finding.rule === "J17").length).toBeGreaterThanOrEqual(3);
   });
 });

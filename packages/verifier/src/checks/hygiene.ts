@@ -1,4 +1,4 @@
-// C6 Hygiene: how the provider answers, across every exchange of the run, plus two probes of its own.
+// C6 Hygiene: how the provider answers, across every exchange of the run, plus three probes of its own.
 //
 //   redirects   the job endpoints answer; they never redirect (§5.5). The manifest's are C1's [M3].
 //   problems    every error but 402 is an RFC 9457 problem: application/problem+json, a known `code`
@@ -9,22 +9,24 @@
 //   body limit  a body over the service's maxInputBytes is refused with 413 payload_too_large, before
 //               anything else is looked at (§5.4)
 //   CORS        the manifest and the job endpoints SHOULD allow browser clients, preflight included [J17]
+//   documents   /openapi.json and /llms.txt, when served, agree with the manifest (discovery-documents.ts)
 //
 // The probes run before the load test, and the rest at the very end, over every exchange.
 
-import { createJobUrl, PROBLEM_CONTENT_TYPE, PROBLEMS, type CheckResult, type ProblemCode } from "@stellar-agent-services/protocol";
+import { createJobUrl, discoveryDocumentUrls, PROBLEM_CONTENT_TYPE, PROBLEMS, type CheckResult, type ProblemCode } from "@stellar-agent-services/protocol";
 import { StrKey } from "@stellar/stellar-sdk";
 import { Recorder, type RunContext } from "../context.js";
 import { answered, jsonBody, problemCode, type Exchange } from "../http.js";
 import { createJob, isBusy, shown } from "../jobs.js";
 import { isObject } from "../json.js";
+import { probeDiscoveryDocuments } from "./discovery-documents.js";
 
 const DEFAULT_MAX_INPUT_BYTES = 1024 * 1024;
 const PREFLIGHT_ORIGIN = "https://verifier.invalid";
 const EXPOSED_HEADERS = ["PAYMENT-REQUIRED", "PAYMENT-RESPONSE", "Location", "Retry-After"];
 const PREFLIGHT_HEADERS = ["Content-Type", "Idempotency-Key", "Job-Token", "PAYMENT-SIGNATURE"];
 
-/** The probes: the body limit and the CORS preflight. Run them before the load test. */
+/** The probes: the body limit, the CORS preflight and the discovery documents. Run them before the load test. */
 export async function probeHygiene(ctx: RunContext): Promise<Recorder> {
   const recorder = new Recorder("C6");
   const manifest = ctx.manifest;
@@ -63,6 +65,9 @@ export async function probeHygiene(ctx: RunContext): Promise<Recorder> {
     (headers.includes("*") || PREFLIGHT_HEADERS.every((header) => headers.includes(header.toLowerCase())));
   recorder.evidence["preflight"] = preflight.status ?? null;
   if (!allowed) recorder.warn("J17", `the CORS preflight for create-job ${answered(preflight)} without allowing GET, POST and the headers ${PREFLIGHT_HEADERS.join(", ")}`);
+
+  // The discovery documents, when the provider serves them (§2.5).
+  await probeDiscoveryDocuments(ctx, recorder);
   return recorder;
 }
 
@@ -80,7 +85,8 @@ export function checkHygiene(ctx: RunContext, recorder: Recorder): CheckResult {
     if (findSecretKey(contents)) recorder.fail("§10", `a ${endpoint} answer contains a Stellar secret key`);
 
     const status = exchange.status;
-    if (status === undefined || endpoint === "manifest" || endpoint === "preflight") continue;
+    // The discovery documents are optional [D1]: where there is none, any answer will do.
+    if (status === undefined || endpoint === "manifest" || endpoint === "preflight" || endpoint === "discovery document") continue;
     if (status >= 300 && status < 400) recorder.fail("§5.5", `a ${endpoint} request was answered with a ${status} redirect; job endpoints answer, they don't redirect`);
     if (status < 400 || status === 402) continue;
     problemAnswers++;
@@ -127,6 +133,7 @@ function checkProblem(exchange: Exchange, endpoint: string, recorder: Recorder):
 /** Which endpoint an exchange went to, for messages and grouping. */
 function endpointOf(exchange: Exchange, ctx: RunContext): string {
   if (exchange.url === ctx.manifestUrl) return "manifest";
+  if (Object.values(discoveryDocumentUrls(ctx.manifestUrl)).includes(exchange.url)) return "discovery document";
   if (exchange.method === "OPTIONS") return "preflight";
   const base = ctx.manifest?.baseUrl;
   const path = base !== undefined && exchange.url.startsWith(`${base}/`) ? exchange.url.slice(base.length) : new URL(exchange.url).pathname;

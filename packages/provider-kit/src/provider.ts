@@ -4,6 +4,9 @@
 // Returns { fetch(request) } for Hono, Node, Workers, Deno or Bun. The provider holds no Stellar
 // secret key: it knows its payTo address, and the facilitator verifies and settles.
 //
+// Besides the manifest it serves the two discovery documents made from it, /openapi.json and /llms.txt
+// (docs/provider-standard.md §2.5), for agents and catalogs that don't know the standard.
+//
 // Startup, in order:
 // 1. createProvider() checks the config and the manifest it builds, and throws on any problem a client
 //    or verifier would reject (§2.4), so a broken provider never takes a payment.
@@ -20,7 +23,16 @@
 
 import { hostname } from "node:os";
 import { randomUUID } from "node:crypto";
-import { DEFAULT_MANIFEST_PATH, DEFAULT_RETENTION_SECONDS, stellarAddressKind, type ProviderInfo, type ProviderManifest, type StellarNetwork } from "@stellar-agent-services/protocol";
+import {
+  DEFAULT_MANIFEST_PATH,
+  DEFAULT_RETENTION_SECONDS,
+  llmsTxt,
+  openApiDocument,
+  stellarAddressKind,
+  type ProviderInfo,
+  type ProviderManifest,
+  type StellarNetwork,
+} from "@stellar-agent-services/protocol";
 import type { Service } from "./define-service.js";
 import { rateLimiter, type RateLimitConfig } from "./http/rate-limit.js";
 import { MAX_HOLD_SECONDS, route } from "./http/router.js";
@@ -64,6 +76,12 @@ export interface ProviderConfig {
   retentionSeconds?: number;
   /** Default /.well-known/stellar-agent-services.json on the baseUrl origin. */
   manifestPath?: string;
+  /**
+   * Whether to serve /openapi.json and /llms.txt on the baseUrl origin, made from the manifest [D1]:
+   * x402 catalogs and agents that read OpenAPI find the services there. Default true. Set false when
+   * the same origin already serves its own documents at those paths.
+   */
+  discoveryDocuments?: boolean;
   /** How long create-job waits before answering 202. Default and maximum 30 [J9]. */
   holdSeconds?: number;
   /** Per-caller limit on create-job requests (429). Default: none. Capacity is set per service. */
@@ -202,9 +220,16 @@ export function createProvider(config: ProviderConfig): Provider {
     return starting;
   };
 
+  // Made once, from the manifest that was just checked, so they can't disagree with it [D3].
+  const documents =
+    config.discoveryDocuments === false
+      ? undefined
+      : { openapi: JSON.stringify(openApiDocument(manifest, { manifestUrl })), llmsTxt: llmsTxt(manifest, { manifestUrl }) };
+
   const context = {
     manifest,
     manifestPath,
+    documents,
     services,
     store,
     facilitator,

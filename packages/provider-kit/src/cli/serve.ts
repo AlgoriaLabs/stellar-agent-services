@@ -6,6 +6,7 @@
 //
 // serveGateway() is the same start, for `provider-kit dev` and for `try` when it starts the provider itself.
 
+import { discoveryDocumentUrls } from "@stellar-agent-services/protocol";
 import { loadGatewayConfig } from "../gateway/config.js";
 import { listen, type Listening } from "../http/node-server.js";
 import { createProvider, type Provider, type ProviderConfig } from "../provider.js";
@@ -53,6 +54,10 @@ export async function serveGateway(path: string, options: GatewayOptions = {}): 
   log(`provider-kit: serving ${config.provider.name}`);
   log(`  listening  ${server.url}`);
   log(`  manifest   ${provider.manifestUrl}`);
+  if (config.discoveryDocuments !== false) {
+    const documents = discoveryDocumentUrls(provider.manifestUrl);
+    log(`  discovery  ${documents.openapi} and ${documents.llmsTxt}`);
+  }
   log(`  network    ${config.network}, payTo ${config.payTo}`);
   for (const service of provider.manifest.services) {
     const usdc = Number(service.price.amount) / 1e7;

@@ -199,7 +199,7 @@ It recovers C4's job, as a client that lost the create-job response would.
 
 ### C6 Hygiene
 
-Two probes, then every exchange of the run.
+Three probes, then every exchange of the run.
 
 | What | Rule |
 | --- | --- |
@@ -210,6 +210,12 @@ Two probes, then every exchange of the run.
 | No response contains a job token or a signed payment the verifier sent | E2 |
 | No response contains a Stellar secret key | §10 |
 | CORS on the manifest and the job endpoints, and a preflight that allows them | J17 (warning) |
+| `/openapi.json`, where it prices a service's create-job operation: the manifest's price, fixed and in decimal USD, with x402 among its protocols | D3 |
+| `/openapi.json` and `/llms.txt` are served like the manifest: media type, `Cache-Control`, CORS | D4 (warning) |
+| `/llms.txt` gives the manifest URL | D5 (warning) |
+
+The discovery documents are optional (§2.5). A missing one fails nothing, and neither does an OpenAPI document
+about another API. A price that differs from the manifest's fails C6, so the provider stays below level 1.
 
 ### C7 Load (§5.8)
 

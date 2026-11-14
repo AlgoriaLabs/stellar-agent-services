@@ -120,6 +120,14 @@ describe("loadGatewayConfig", () => {
     expect(createProvider(config).manifestUrl).toBe("https://api.example.com/.well-known/stellar-agent-services.json");
   });
 
+  it("serves the discovery documents unless the config turns them off [D1]", async () => {
+    const openapi = (config: Parameters<typeof createProvider>[0]) => createProvider(config).fetch(new Request("https://api.example.com/openapi.json"));
+    expect((await openapi((await loadGatewayConfig(write("documents.json", minimal), { env })).config)).status).toBe(200);
+    const off = await loadGatewayConfig(write("no-documents.json", { ...minimal, discoveryDocuments: false }), { env });
+    expect(off.config.discoveryDocuments).toBe(false);
+    expect((await openapi(off.config)).status).toBe(404);
+  });
+
   it("reads the Soroban RPC URL, and refuses a plain http:// one outside dev", async () => {
     const withRpc = { ...minimal, rpcUrl: "env:RPC_URL" };
     const { config } = await loadGatewayConfig(write("rpc.json", withRpc), { env: { ...env, RPC_URL: "https://rpc.example.com" } });

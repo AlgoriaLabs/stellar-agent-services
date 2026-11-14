@@ -181,6 +181,10 @@ search there wouldn't find, and `--fix` writes them into a gateway config's `pro
 have no example ([details](../packages/provider-kit/README.md#how-agents-see-you)). These hints never fail the check.
 `--json` prints the result for scripts and coding agents.
 
+Agents and catalogs that don't know the standard find the provider too. Next to the manifest, the kit serves
+`/openapi.json` and `/llms.txt`, both made from it: the services, their prices and how to pay
+([details](../packages/provider-kit/README.md#discovery-documents)). There is nothing to set up.
+
 Then check it from outside, the way a verifier will, with the [verifier](../packages/verifier). It calls your
 running service: invalid input, the `402` challenge, an oversized body, CORS, and a burst of 20 requests. Kit
 providers pass it; it matters most for native implementations.

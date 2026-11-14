@@ -94,7 +94,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     {
       title: "Get a spec rule",
       description:
-        "The full text of a Provider Standard v1 rule by id, such as M5, P7, J13 or Q1, with its section. Prefixes: M manifest, S services, P payment, J jobs, Q capacity, E errors, I identity, X extensions.",
+        "The full text of a Provider Standard v1 rule by id, such as M5, P7, J13 or Q1, with its section. Prefixes: M manifest, D discovery documents, S services, P payment, J jobs, Q capacity, E errors, I identity, X extensions.",
       inputSchema: { id: z.string().describe("Rule id, such as J13 or [J13]") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },

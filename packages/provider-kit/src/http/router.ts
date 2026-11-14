@@ -1,6 +1,7 @@
 // HTTP routes (Fetch API). Job paths are fixed relative to baseUrl (docs/provider-standard.md §5).
 //
 //   GET  <manifest path>                 -> manifest
+//   GET  /openapi.json, /llms.txt        -> the discovery documents made from it (§2.5), unless turned off
 //   POST {baseUrl}/services/{name}/jobs  -> create-job   (x402; Idempotency-Key + Job-Token, or neither)
 //   GET  {baseUrl}/jobs/{jobId}          -> check-status (Job-Token)
 //   GET  {baseUrl}/jobs/{jobId}/result   -> get-result   (Job-Token)
@@ -28,6 +29,9 @@ import {
   JOB_TOKEN,
   JOB_TOKEN_PATTERN,
   jobStatusUrl,
+  LLMS_TXT_CONTENT_TYPE,
+  LLMS_TXT_PATH,
+  OPENAPI_PATH,
   jobViewHttpStatus,
   problem,
   PROBLEM_CONTENT_TYPE,
@@ -56,6 +60,8 @@ import type { RateLimiter } from "./rate-limit.js";
 export interface RouterContext {
   manifest: ProviderManifest;
   manifestPath: string;
+  /** /openapi.json and /llms.txt as served, or undefined when the provider doesn't serve them [D1]. */
+  documents: { openapi: string; llmsTxt: string } | undefined;
   services: ReadonlyMap<string, Service>;
   store: JobStore;
   facilitator: Facilitator;
@@ -99,6 +105,12 @@ export async function route(request: Request, context: RouterContext): Promise<R
   }
   if (url.pathname === context.manifestPath && request.method === "GET") {
     return json(context.manifest, 200, { "Cache-Control": "max-age=300" });
+  }
+  // The discovery documents, served like the manifest [D4].
+  if (context.documents !== undefined && request.method === "GET") {
+    const cached = { ...CORS, "Cache-Control": "max-age=300" };
+    if (url.pathname === OPENAPI_PATH) return new Response(context.documents.openapi, { headers: { ...cached, "Content-Type": "application/json" } });
+    if (url.pathname === LLMS_TXT_PATH) return new Response(context.documents.llmsTxt, { headers: { ...cached, "Content-Type": LLMS_TXT_CONTENT_TYPE } });
   }
 
   const basePath = new URL(context.manifest.baseUrl).pathname.replace(/\/$/, "");

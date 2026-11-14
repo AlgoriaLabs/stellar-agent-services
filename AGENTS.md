@@ -8,7 +8,8 @@ People should start with [README.md](README.md).
 **Provider Standard v1** (`stellar-agent-services/provider@1`) is an open standard for paid AI services on
 Stellar. A provider publishes a manifest at `/.well-known/stellar-agent-services.json` that describes its services,
 prices and schemas. A client pays per job in USDC through x402 v2 (`exact` scheme). If the client loses the
-response, it collects the result again without paying twice.
+response, it collects the result again without paying twice. For agents that don't know the standard, a provider
+can also serve `/openapi.json` and `/llms.txt`, made from the manifest (`[D1]`–`[D5]`); the Kit does by default.
 
 This repository holds the standard and everything needed to use it:
 

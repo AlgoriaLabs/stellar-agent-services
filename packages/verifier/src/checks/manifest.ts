@@ -183,12 +183,12 @@ function parseUrl(value: string): URL | undefined {
   }
 }
 
-function mediaType(contentType: string | null): string | undefined {
+export function mediaType(contentType: string | null): string | undefined {
   return contentType?.split(";")[0]?.trim().toLowerCase();
 }
 
 /** How long a cache may keep the manifest: 0 for no-cache or no-store, undefined without max-age. */
-function cacheLifetime(header: string | null): number | undefined {
+export function cacheLifetime(header: string | null): number | undefined {
   if (header === null) return undefined;
   const directives = header.split(",").map((directive) => directive.trim().toLowerCase());
   if (directives.includes("no-store") || directives.includes("no-cache")) return 0;

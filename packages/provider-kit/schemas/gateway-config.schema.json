@@ -62,6 +62,7 @@
     "settleTimeoutSeconds": { "description": "How long a settlement may take before the job is payment_uncertain. Default maxTimeoutSeconds + 30.", "type": "integer", "minimum": 1 },
     "retentionSeconds": { "description": "How long finished jobs stay retrievable. Default 86400.", "type": "integer", "minimum": 3600 },
     "manifestPath": { "description": "Default /.well-known/stellar-agent-services.json.", "type": "string", "pattern": "^/" },
+    "discoveryDocuments": { "description": "Whether to serve /openapi.json and /llms.txt, made from the manifest, for x402 catalogs and agents that read OpenAPI. Default true.", "type": "boolean" },
     "holdSeconds": { "description": "How long create-job waits before answering 202. Default 30.", "type": "integer", "minimum": 0, "maximum": 30 },
     "runQueuedJobs": { "description": "Whether this process runs queued upfront jobs. Default true.", "type": "boolean" },
     "leaseSeconds": { "type": "integer", "minimum": 3 },

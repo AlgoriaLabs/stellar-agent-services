@@ -4,6 +4,8 @@
 > Identifier: `stellar-agent-services/provider@1`.
 >
 > **Added since the freeze:** capacity and queuing (§5.8), 2026-10-23. Optional fields and SHOULD rules only.
+> Discovery documents (§2.5, Appendix C), 2026-11-13. Optional: a provider that serves neither document is not
+> affected, and its one MUST ([D3]) binds only a provider that publishes prices in an OpenAPI document.
 
 This standard describes how a paid AI service on Stellar publishes its purpose, input, output, price, network,
 job status and result. Any client can then find it, pay for it once and collect the result, even if the
@@ -30,6 +32,7 @@ The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119
 11. [Not in v1](#11-not-in-v1)
 12. [Appendix A: example exchange](#appendix-a-example-exchange)
 13. [Appendix B: mapping a service to an MCP tool](#appendix-b-mapping-a-service-to-an-mcp-tool)
+14. [Appendix C: the OpenAPI document](#appendix-c-the-openapi-document)
 
 ## 1. Overview
 
@@ -58,6 +61,7 @@ Stellar 8004 registration ──▶ manifest ──▶ create-job ──402─�
 | Errors | RFC 9457 problem details |
 | Hashing | SHA-256 over RFC 8785 canonical JSON (JCS) |
 | Identity | Stellar 8004 (ERC-8004) registration file |
+| Catalogs (optional) | OpenAPI 3.1 with `x-payment-info`, and [llms.txt](https://llmstxt.org/) (§2.5) |
 
 Only three things are specific to this standard:
 - the manifest
@@ -196,6 +200,33 @@ A client, verifier or kit validates a manifest in three steps:
 
 The [test vectors](../packages/protocol/test-vectors) cover every step. They also cover canonical JSON, binding
 hashes, header formats and challenge checks.
+
+### 2.5 Discovery documents
+
+A client of this standard reads the manifest. Other agents and catalogs don't know it: x402 directories, and
+tools that read OpenAPI. For them, a provider can publish two more documents, both made from its manifest:
+
+| Document | Location | What it is |
+| --- | --- | --- |
+| OpenAPI | `/openapi.json` on the manifest's origin | OpenAPI 3.1. Each service's create-job is a paid operation with `x-payment-info` (Appendix C). |
+| llms.txt | `/llms.txt` on the manifest's origin | A plain-text guide for models: the services, their prices, how to pay and how to recover a job. |
+
+- **[D1]** A provider MAY serve either document, or both. Each is generated from the manifest, so it changes
+  when the manifest does.
+- **[D2]** The manifest stays the only source of truth, and these documents are advisory. Nothing in them
+  replaces a field of the manifest the user approved: [P7] is unchanged. A client that knows only OpenAPI
+  relies on the `402` challenge.
+- **[D3]** If the OpenAPI document gives payment information (`x-payment-info`) for a service's create-job
+  operation, it MUST agree with the manifest. A `price` is `{ "mode": "fixed", "currency": "USD", "amount": … }`,
+  where `amount` is the service's `price.amount` as a decimal number of USDC: `"0.01"` for `"100000"`. Listed
+  `protocols` include `x402`.
+- **[D4]** Both documents SHOULD be served like the manifest: status `200`, no redirect, `Cache-Control: max-age`
+  of 300 seconds or less ([M4]) and `Access-Control-Allow-Origin: *` ([J17]). The OpenAPI document is
+  `application/json`; llms.txt is `text/plain` in UTF-8.
+- **[D5]** llms.txt SHOULD give the manifest URL, so a reader can reach the source of truth.
+
+`openApiDocument()`, `llmsTxt()` and `checkOpenApiDocument()` in `packages/protocol` implement this section. The
+Provider Kit serves both documents by default.
 
 ## 3. Services
 
@@ -630,6 +661,9 @@ The checks are listed in [verification.md](verification.md).
 - **Schemas:** no remote `$ref` ([S5]), and size limits on every field.
 - **Prompt injection:** `description`, `title` and examples are untrusted text. Clients that show them to an LLM
   SHOULD label them as provider-supplied.
+- **Discovery documents:** `/openapi.json` and `/llms.txt` (§2.5) are served by the provider and authenticated by
+  nothing but HTTPS. They carry the same untrusted text, and llms.txt is written to be read by a model. Treat
+  both as provider-supplied, and never take a price, payee, asset or network from them ([D2]).
 
 ## 11. Not in v1
 
@@ -720,6 +754,49 @@ A client can offer each service to an LLM as a tool without converting anything:
 
 Both schemas have an object root ([S4]), as MCP requires. The price, network and `charge` stay outside the tool
 definition. The client shows them to the user for approval.
+
+## Appendix C: the OpenAPI document
+
+How a manifest becomes `/openapi.json` (§2.5). The document is OpenAPI 3.1, whose schemas are JSON Schema 2020-12,
+so a service's schemas go in as they are.
+
+| OpenAPI | From the manifest |
+| --- | --- |
+| `info.title`, `info.description` | `provider.name`, `provider.description` |
+| `info.version` | `"1"`, this standard's major version |
+| `info.termsOfService` | `provider.termsUrl` |
+| `info.x-guidance` | Fixed text: how to pay, wait and recover a job. It holds no provider text. |
+| `externalDocs.url` | The manifest URL |
+| `x-service-info.docs` | `homepage` from `provider.homepage`; `llms`, the `/llms.txt` URL |
+| `servers[0].url` | The origin of `baseUrl` |
+
+Each service is one `post` operation, at the path of its create-job URL:
+
+| Operation | From the service |
+| --- | --- |
+| `operationId` | `name` |
+| `summary`, `description`, `tags` | `title` (or `name`), `description`, `tags` |
+| `x-payment-info.price` | `{ "mode": "fixed", "currency": "USD", "amount": … }`, from `price.amount` ([D3]) |
+| `x-payment-info.protocols` | `[{ "x402": {} }]` |
+| `parameters` | The optional `Idempotency-Key` and `Job-Token` headers (§5.2) |
+| `requestBody` | `inputSchema`, with each example's `input` |
+| `responses.200` | The job view (§5.5), whose `output` follows `outputSchema` |
+| `responses.202` | The job view of a job that has not finished, with `Location` and `Retry-After` |
+| `responses.402` | The x402 challenge in `PAYMENT-REQUIRED` (§4.2) |
+| other responses | A problem (§6) |
+
+- check-status and get-result are `get` operations at `{baseUrl}/jobs/{jobId}` and `{baseUrl}/jobs/{jobId}/result`.
+  Their `security` is an `apiKey` scheme in the `Job-Token` header. They never take a payment ([J11]).
+- A schema goes in without its `$schema`. One that uses `$ref` gets an `$id`, so its references resolve inside
+  it and not against the OpenAPI document.
+- USDC is written as `USD`, as OpenAPI-first catalogs expect. The asset, the network and the payee are not in
+  the document: they come from the `402` challenge, which a client of this standard checks against the manifest
+  ([P7]).
+
+`x-payment-info` and `x-service-info` are the extensions of the IETF draft
+[Service Discovery for HTTP Payment Authentication](https://paymentauth.org/). `price` and `protocols` are the
+members that OpenAPI-first x402 catalogs add to `x-payment-info`. The draft's own `offers` describe the `Payment`
+authentication scheme, which this standard doesn't use, so a provider doesn't list them.
 
 ---
 

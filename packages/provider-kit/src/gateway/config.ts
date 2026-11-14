@@ -37,6 +37,7 @@ export interface GatewayConfig {
   settleTimeoutSeconds?: number;
   retentionSeconds?: number;
   manifestPath?: string;
+  discoveryDocuments?: boolean;
   holdSeconds?: number;
   runQueuedJobs?: boolean;
   leaseSeconds?: number;
@@ -186,6 +187,7 @@ export async function loadGatewayConfig(
       settleTimeoutSeconds: file.settleTimeoutSeconds,
       retentionSeconds: file.retentionSeconds,
       manifestPath: file.manifestPath,
+      discoveryDocuments: file.discoveryDocuments,
       holdSeconds: file.holdSeconds,
       runQueuedJobs: file.runQueuedJobs,
       leaseSeconds: file.leaseSeconds,

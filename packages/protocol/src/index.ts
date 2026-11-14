@@ -8,6 +8,7 @@
 
 export * from "./standard.js";
 export * from "./manifest.js";
+export * from "./discovery-documents.js";
 export * from "./jobs.js";
 export * from "./headers.js";
 export * from "./receipts.js";

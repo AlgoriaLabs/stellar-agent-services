@@ -108,7 +108,7 @@ the test payer are always different accounts.
 | Path | What it does |
 | --- | --- |
 | `src/verify.ts` | `verifyProvider()`: runs the checks, in order, and returns the report |
-| `src/checks/` | One module per check, C1–C7 |
+| `src/checks/` | One module per check, C1–C7, and C6's probe of the discovery documents |
 | `src/jobs.ts` | The job endpoints, called as a careful client calls them, and the job view checks (§5.5–§5.7) |
 | `src/http.ts` | The HTTP client for an untrusted provider: no redirects, deadlines, size limits, one origin |
 | `src/payments.ts` | The test payer and its limits |

@@ -16,7 +16,8 @@ People should start with [README.md](README.md).
 **Provider Standard v1** (`stellar-agent-services/provider@1`) is an open standard for paid AI services on
 Stellar. A provider publishes a manifest at `/.well-known/stellar-agent-services.json` that describes its services,
 prices and schemas. A client pays per job in USDC through x402 v2 (`exact` scheme). If the client loses the
-response, it collects the result again without paying twice.
+response, it collects the result again without paying twice. For agents that don't know the standard, a provider
+can also serve `/openapi.json` and `/llms.txt`, made from the manifest (`[D1]`–`[D5]`); the Kit does by default.
 
 This repository holds the standard and everything needed to use it:
 
@@ -310,6 +311,8 @@ To report a vulnerability, contact the maintainers privately rather than opening
 > Identifier: `stellar-agent-services/provider@1`.
 >
 > **Added since the freeze:** capacity and queuing (§5.8), 2026-10-23. Optional fields and SHOULD rules only.
+> Discovery documents (§2.5, Appendix C), 2026-11-13. Optional: a provider that serves neither document is not
+> affected, and its one MUST ([D3]) binds only a provider that publishes prices in an OpenAPI document.
 
 This standard describes how a paid AI service on Stellar publishes its purpose, input, output, price, network,
 job status and result. Any client can then find it, pay for it once and collect the result, even if the
@@ -336,6 +339,7 @@ The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119
 11. [Not in v1](#11-not-in-v1)
 12. [Appendix A: example exchange](#appendix-a-example-exchange)
 13. [Appendix B: mapping a service to an MCP tool](#appendix-b-mapping-a-service-to-an-mcp-tool)
+14. [Appendix C: the OpenAPI document](#appendix-c-the-openapi-document)
 
 ## 1. Overview
 
@@ -364,6 +368,7 @@ Stellar 8004 registration ──▶ manifest ──▶ create-job ──402─�
 | Errors | RFC 9457 problem details |
 | Hashing | SHA-256 over RFC 8785 canonical JSON (JCS) |
 | Identity | Stellar 8004 (ERC-8004) registration file |
+| Catalogs (optional) | OpenAPI 3.1 with `x-payment-info`, and [llms.txt](https://llmstxt.org/) (§2.5) |
 
 Only three things are specific to this standard:
 - the manifest
@@ -502,6 +507,33 @@ A client, verifier or kit validates a manifest in three steps:
 
 The [test vectors](../packages/protocol/test-vectors) cover every step. They also cover canonical JSON, binding
 hashes, header formats and challenge checks.
+
+### 2.5 Discovery documents
+
+A client of this standard reads the manifest. Other agents and catalogs don't know it: x402 directories, and
+tools that read OpenAPI. For them, a provider can publish two more documents, both made from its manifest:
+
+| Document | Location | What it is |
+| --- | --- | --- |
+| OpenAPI | `/openapi.json` on the manifest's origin | OpenAPI 3.1. Each service's create-job is a paid operation with `x-payment-info` (Appendix C). |
+| llms.txt | `/llms.txt` on the manifest's origin | A plain-text guide for models: the services, their prices, how to pay and how to recover a job. |
+
+- **[D1]** A provider MAY serve either document, or both. Each is generated from the manifest, so it changes
+  when the manifest does.
+- **[D2]** The manifest stays the only source of truth, and these documents are advisory. Nothing in them
+  replaces a field of the manifest the user approved: [P7] is unchanged. A client that knows only OpenAPI
+  relies on the `402` challenge.
+- **[D3]** If the OpenAPI document gives payment information (`x-payment-info`) for a service's create-job
+  operation, it MUST agree with the manifest. A `price` is `{ "mode": "fixed", "currency": "USD", "amount": … }`,
+  where `amount` is the service's `price.amount` as a decimal number of USDC: `"0.01"` for `"100000"`. Listed
+  `protocols` include `x402`.
+- **[D4]** Both documents SHOULD be served like the manifest: status `200`, no redirect, `Cache-Control: max-age`
+  of 300 seconds or less ([M4]) and `Access-Control-Allow-Origin: *` ([J17]). The OpenAPI document is
+  `application/json`; llms.txt is `text/plain` in UTF-8.
+- **[D5]** llms.txt SHOULD give the manifest URL, so a reader can reach the source of truth.
+
+`openApiDocument()`, `llmsTxt()` and `checkOpenApiDocument()` in `packages/protocol` implement this section. The
+Provider Kit serves both documents by default.
 
 ## 3. Services
 
@@ -936,6 +968,9 @@ The checks are listed in [verification.md](verification.md).
 - **Schemas:** no remote `$ref` ([S5]), and size limits on every field.
 - **Prompt injection:** `description`, `title` and examples are untrusted text. Clients that show them to an LLM
   SHOULD label them as provider-supplied.
+- **Discovery documents:** `/openapi.json` and `/llms.txt` (§2.5) are served by the provider and authenticated by
+  nothing but HTTPS. They carry the same untrusted text, and llms.txt is written to be read by a model. Treat
+  both as provider-supplied, and never take a price, payee, asset or network from them ([D2]).
 
 ## 11. Not in v1
 
@@ -1027,6 +1062,49 @@ A client can offer each service to an LLM as a tool without converting anything:
 Both schemas have an object root ([S4]), as MCP requires. The price, network and `charge` stay outside the tool
 definition. The client shows them to the user for approval.
 
+## Appendix C: the OpenAPI document
+
+How a manifest becomes `/openapi.json` (§2.5). The document is OpenAPI 3.1, whose schemas are JSON Schema 2020-12,
+so a service's schemas go in as they are.
+
+| OpenAPI | From the manifest |
+| --- | --- |
+| `info.title`, `info.description` | `provider.name`, `provider.description` |
+| `info.version` | `"1"`, this standard's major version |
+| `info.termsOfService` | `provider.termsUrl` |
+| `info.x-guidance` | Fixed text: how to pay, wait and recover a job. It holds no provider text. |
+| `externalDocs.url` | The manifest URL |
+| `x-service-info.docs` | `homepage` from `provider.homepage`; `llms`, the `/llms.txt` URL |
+| `servers[0].url` | The origin of `baseUrl` |
+
+Each service is one `post` operation, at the path of its create-job URL:
+
+| Operation | From the service |
+| --- | --- |
+| `operationId` | `name` |
+| `summary`, `description`, `tags` | `title` (or `name`), `description`, `tags` |
+| `x-payment-info.price` | `{ "mode": "fixed", "currency": "USD", "amount": … }`, from `price.amount` ([D3]) |
+| `x-payment-info.protocols` | `[{ "x402": {} }]` |
+| `parameters` | The optional `Idempotency-Key` and `Job-Token` headers (§5.2) |
+| `requestBody` | `inputSchema`, with each example's `input` |
+| `responses.200` | The job view (§5.5), whose `output` follows `outputSchema` |
+| `responses.202` | The job view of a job that has not finished, with `Location` and `Retry-After` |
+| `responses.402` | The x402 challenge in `PAYMENT-REQUIRED` (§4.2) |
+| other responses | A problem (§6) |
+
+- check-status and get-result are `get` operations at `{baseUrl}/jobs/{jobId}` and `{baseUrl}/jobs/{jobId}/result`.
+  Their `security` is an `apiKey` scheme in the `Job-Token` header. They never take a payment ([J11]).
+- A schema goes in without its `$schema`. One that uses `$ref` gets an `$id`, so its references resolve inside
+  it and not against the OpenAPI document.
+- USDC is written as `USD`, as OpenAPI-first catalogs expect. The asset, the network and the payee are not in
+  the document: they come from the `402` challenge, which a client of this standard checks against the manifest
+  ([P7]).
+
+`x-payment-info` and `x-service-info` are the extensions of the IETF draft
+[Service Discovery for HTTP Payment Authentication](https://paymentauth.org/). `price` and `protocols` are the
+members that OpenAPI-first x402 catalogs add to `x-payment-info`. The draft's own `offers` describe the `Payment`
+authentication scheme, which this standard doesn't use, so a provider doesn't list them.
+
 ---
 
 The manifest JSON Schema is [`packages/protocol/schemas/manifest.schema.json`](../packages/protocol/schemas/manifest.schema.json).
@@ -1103,7 +1181,9 @@ const provider = createProvider({
 // Mount provider.fetch(request) on any Fetch API server. Hono: app.all("*", (c) => provider.fetch(c.req.raw)).
 ```
 
-The kit implements §3–§12: the manifest, the challenge, the processing order, jobs, capacity and errors. A handler
+The kit implements §3–§12: the manifest, the challenge, the processing order, jobs, capacity and errors. It also
+serves `/openapi.json` and `/llms.txt`, made from the manifest, for agents that don't know the standard `[D1]`;
+`discoveryDocuments: false` turns them off. A handler
 receives only the parsed input and an `AbortSignal`, never payment data. Throw to fail the job. Error messages are
 not passed on to the client `[E2]`.
 
@@ -1214,6 +1294,11 @@ Serving and validating it:
   schema can't express (`checkManifestRules()`): M1, M3, M5, M7, S6, S9, P11.
 - Descriptions say what the service does, when to use it, and its limits. They contain no prices, URLs or
   instructions to the agent (§3.4).
+- Optional: serve `/openapi.json` (OpenAPI 3.1) and `/llms.txt` on the manifest's origin, both generated from the
+  manifest, for agents and catalogs that don't know the standard `[D1]`. If the OpenAPI document prices a
+  create-job operation, `x-payment-info.price` is `{ "mode": "fixed", "currency": "USD", "amount": <decimal USDC> }`
+  and equals the manifest `[D3]`: `"0.01"` for `"100000"`. Appendix C of the spec maps every field.
+  Clients still read the manifest only `[D2]`.
 - Schemas use the portable subset: `type properties required additionalProperties items enum const minimum maximum
   minLength maxLength minItems maxItems pattern format title description default examples anyOf $defs` with local
   `$ref`. Avoid `if/then/else`, `patternProperties`, and `oneOf`/`allOf` at the root `[S7]`. Pass large media as
@@ -1464,6 +1549,7 @@ itself in its `description`.
 | --- | --- |
 | `manifests.json` | Manifest validation: JSON Schema cases and code-rule cases, as RFC 6902 patches to a base |
 | `challenges.json` | `checkChallenge`: a `402` versus the approved manifest `[P3–P5]` |
+| `discovery-documents.json` | Decimal USD prices, the OpenAPI document and llms.txt for a manifest, and `checkOpenApiDocument` cases `[D3]` |
 | `canonical-json.json` | RFC 8785 output, including number formatting |
 | `binding-hash.json` | Binding hashes `[§5.3]` |
 | `headers.json` | `Idempotency-Key` and `Job-Token` patterns, and `Retry-After` parsing |
@@ -1472,9 +1558,10 @@ itself in its `description`.
 | `validation-requests.json` | Validation request documents: canonical bytes, `request_hash` and the `data:` URI |
 
 **TypeScript helpers** in `@stellar-agent-services/protocol`, which has no runtime dependencies:
-`checkManifestRules`, `checkChallenge`, `canonicalJson`, `canonicalSha256`, `bindingHash`, `canTransition`,
-`chargedFor`, `jobViewHttpStatus`, `parseRetryAfter`, `problem`, `jobError`, `createJobUrl`, `jobStatusUrl`,
-`jobResultUrl`, `stellarAddressKind`, `validationRequestHash`, `validationRequestDataUri`, `USDC_ASSET`.
+`checkManifestRules`, `checkChallenge`, `openApiDocument`, `llmsTxt`, `checkOpenApiDocument`, `canonicalJson`,
+`canonicalSha256`, `bindingHash`, `canTransition`, `chargedFor`, `jobViewHttpStatus`, `parseRetryAfter`, `problem`,
+`jobError`, `createJobUrl`, `jobStatusUrl`, `jobResultUrl`, `stellarAddressKind`, `validationRequestHash`,
+`validationRequestDataUri`, `USDC_ASSET`.
 
 **A real paid call on testnet** against a local provider, in any language. `provider-kit try` pays once from a
 throwaway testnet account it funds itself, then confirms the transfer on chain. It shows the payment and asks
@@ -1506,6 +1593,7 @@ npx stellar-pay pay http://localhost:8787/.well-known/stellar-agent-services.jso
   timeout.
 - [ ] check-status and get-result work while the service is at capacity.
 - [ ] CORS headers are present, including on `OPTIONS`.
+- [ ] If `/openapi.json` prices a service, the price equals the manifest's `[D3]`.
 
 **Conformance levels** `[§8]`:
 - **1 Described:** C1 manifest + C6 hygiene.
@@ -1584,6 +1672,14 @@ Manifest:
 - **M7** Service names are unique.
 - **M8** Clients ignore unknown fields and reject another major `standard`.
 - **M9** The manifest is valid against the JSON Schema.
+
+Discovery documents (optional):
+- **D1** MAY serve `/openapi.json` and `/llms.txt` on the manifest's origin, generated from the manifest.
+- **D2** The manifest stays the only source of truth; `[P7]` is unchanged.
+- **D3** A price the OpenAPI document gives for create-job equals the manifest: fixed, `USD`, decimal USDC; listed
+  protocols include `x402`.
+- **D4** SHOULD serve both like the manifest: `200`, no redirect, `Cache-Control: max-age` ≤ 300, CORS.
+- **D5** llms.txt SHOULD give the manifest URL.
 
 Services:
 - **S1** `on-success` settles only for output that is valid against `outputSchema`.
@@ -1781,15 +1877,16 @@ language can check itself against these files. `packages/protocol` runs all of t
 | `headers.json` | `Idempotency-Key` and `Job-Token` formats | §5.2 |
 | `manifests.json` | Manifest validation: the JSON Schema and the rules it can't express | §2.4 |
 | `challenges.json` | Checking an x402 challenge against the approved manifest | §4.2 |
+| `discovery-documents.json` | Prices in decimal USD, the OpenAPI document and llms.txt made from a manifest, and checking an OpenAPI document's prices against it | §2.5, Appendix C |
 | `job-states.json` | Allowed job state transitions and the `charged` value of each state | §5.6 |
 | `problems.json` | Error codes, their HTTP status and Retry-After, and job failure codes | §6 |
 | `validation-requests.json` | Validation request documents: their canonical bytes, `request_hash` and `data:` URI, and the JSON Schema | [verification.md](../../../docs/verification.md#stellar-8004-validation-registry) |
 
 ## Conventions
 
-- **Patches.** `manifests.json` and `challenges.json` describe each case as a small change to a base document,
-  using the `add`, `replace` and `remove` operations of JSON Patch (RFC 6902). A last path segment of `-`
-  appends to an array.
+- **Patches.** `manifests.json`, `challenges.json` and `discovery-documents.json` describe each case as a small
+  change to a base document, using the `add`, `replace` and `remove` operations of JSON Patch (RFC 6902). A last
+  path segment of `-` appends to an array.
 - **Violations.** Each `{ "rule", "pointer" }` is a rule id from the spec and a JSON Pointer (RFC 6901) to the
   offending value, or to where a missing field belongs. Compare them as a set. Messages are not part of the
   vectors.
@@ -1809,6 +1906,7 @@ The expected values were generated once and checked before they were written:
 - the RFC 8785 examples (§3.2.2, §3.2.3, Appendix B) against the text of the RFC;
 - hashes against a second SHA-256 implementation;
 - every manifest and challenge case against Ajv with the JSON Schema, and against `packages/protocol`;
+- the discovery documents by `packages/protocol`, each case checked against it, and the prices by hand;
 - validation requests with Python's `json`, `hashlib` and `base64` modules, apart from `packages/protocol`, and the
   hashes again with `shasum`;
 - job states and error codes by hand from the tables in §5.6 and §6.
@@ -1828,9 +1926,11 @@ package shares. Specification: [docs/provider-standard.md](../../docs/provider-s
 | [`schemas/manifest.schema.json`](schemas/manifest.schema.json) | The manifest JSON Schema (2020-12) |
 | [`schemas/verification-receipt.schema.json`](schemas/verification-receipt.schema.json), [`schemas/validation-request.schema.json`](schemas/validation-request.schema.json) | The two Validation Registry documents: the verifier's receipt and the owner's request |
 | [`test-vectors/`](test-vectors) | Known-answer tests that implementations in any language can use |
-| `src/` | Types (manifest, `JobView`, `Problem`, `PaymentReceipt`, `VerificationReceipt`, `ValidationRequest`), constants and the reference checks: `canonicalJson`, `bindingHash`, `checkManifestRules`, `checkChallenge`, `stellarAddressKind`, `canTransition`, `chargedFor`, `conformanceLevel`, `validationRequestHash`, `validationRequestDataUri` |
+| `src/` | Types (manifest, `JobView`, `Problem`, `PaymentReceipt`, `VerificationReceipt`, `ValidationRequest`), constants and the reference checks: `canonicalJson`, `bindingHash`, `checkManifestRules`, `checkChallenge`, `openApiDocument`, `llmsTxt`, `checkOpenApiDocument`, `stellarAddressKind`, `canTransition`, `chargedFor`, `conformanceLevel`, `validationRequestHash`, `validationRequestDataUri` |
 
 - No runtime dependencies and no signing code, so the read-only discovery server can import it safely.
+- `openApiDocument()` and `llmsTxt()` make the two discovery documents from a manifest: `/openapi.json` and
+  `/llms.txt`, for agents and catalogs that don't know the standard (spec §2.5).
 - It ships the schema rather than a validator. To validate a manifest, run any JSON Schema 2020-12 validator,
   then `checkManifestRules()` (spec §2.4).
 
@@ -2019,6 +2119,10 @@ reads only the name and description, so `check` lists the words from your servic
 search there wouldn't find, and `--fix` writes them into a gateway config's `provider.description`. It also flags services whose description is too thin to choose by [§3.4], or that
 have no example ([details](../packages/provider-kit/README.md#how-agents-see-you)). These hints never fail the check.
 `--json` prints the result for scripts and coding agents.
+
+Agents and catalogs that don't know the standard find the provider too. Next to the manifest, the kit serves
+`/openapi.json` and `/llms.txt`, both made from it: the services, their prices and how to pay
+([details](../packages/provider-kit/README.md#discovery-documents)). There is nothing to set up.
 
 Then check it from outside, the way a verifier will, with the [verifier](../packages/verifier). It calls your
 running service: invalid input, the `402` challenge, an oversized body, CORS, and a burst of 20 requests. Kit
@@ -2647,6 +2751,27 @@ provider-kit wallet export                  # the secret key, to import into a w
 The key exists on this computer only, and other programs that run as your user can reach it, as with any key kept
 on a computer. Export it, or withdraw regularly, before real income depends on it.
 
+## Discovery documents
+
+Agents and catalogs that don't know the standard look for two files on an API's origin. The kit serves both. It
+makes them from the manifest, so they can't disagree with it (spec §2.5):
+
+| Path | What it is |
+| --- | --- |
+| `/openapi.json` | OpenAPI 3.1. Each service is a paid operation with `x-payment-info` (a fixed price in USD, protocol `x402`), its schemas and its example inputs. check-status and get-result are there too. |
+| `/llms.txt` | A plain-text guide for models: the services, their prices, how to pay and how to recover a job. |
+
+- **Nothing to configure.** `discoveryDocuments: false`, in `createProvider()` or the gateway config, turns both
+  off, for an origin that already serves its own files there.
+- **They live on the origin of `baseUrl`,** like the default manifest path. A proxy that forwards only a path
+  prefix needs to forward these two paths as well.
+- **The manifest stays the source of truth** [D2]. Clients of the standard never read a price from these files,
+  and `verifier check` fails a provider whose OpenAPI price is not its manifest's [D3].
+- **Listed is not the same as payable.** A catalog can list a provider only if it supports x402 on Stellar. Check
+  that before you register with one.
+- **A probe with an empty body gets `400`, not `402`.** The standard checks the input before it asks for payment
+  [P8]. The OpenAPI document carries each service's example inputs, so a catalog's probe can send a valid one.
+
 ## Payment safety
 
 - **Local payment checks.** Before the facilitator sees a payment, the kit decodes it: exactly one USDC
@@ -2743,7 +2868,7 @@ const payment = await signTestPayment(requirements, Keypair.random()); // pair i
 | `src/define-service.ts` | `defineService()`: price, charge policy, schemas, capacity; checks at definition time |
 | `src/provider.ts` | `createProvider()`: wires everything into one `fetch` handler; startup checks |
 | `src/manifest.ts` | Builds the manifest from the same config as the 402 challenge, and checks it |
-| `src/http/router.ts` | Manifest, create-job, check-status and get-result routes, in §5.4 order |
+| `src/http/router.ts` | Manifest, discovery documents, create-job, check-status and get-result routes, in §5.4 order |
 | `src/http/node-server.ts` | `listen()`: serves a provider on Node's HTTP server, with `/healthz` and graceful close. A request body is read only as far as the router reads it, so an early answer (`413`) leaves the connection usable. |
 | `src/payments/payload-checks.ts` | Local payment checks and the payment fingerprint |
 | `src/payments/facilitator.ts` | The facilitator client and the startup check |
@@ -4336,7 +4461,7 @@ It recovers C4's job, as a client that lost the create-job response would.
 
 ### C6 Hygiene
 
-Two probes, then every exchange of the run.
+Three probes, then every exchange of the run.
 
 | What | Rule |
 | --- | --- |
@@ -4347,6 +4472,12 @@ Two probes, then every exchange of the run.
 | No response contains a job token or a signed payment the verifier sent | E2 |
 | No response contains a Stellar secret key | §10 |
 | CORS on the manifest and the job endpoints, and a preflight that allows them | J17 (warning) |
+| `/openapi.json`, where it prices a service's create-job operation: the manifest's price, fixed and in decimal USD, with x402 among its protocols | D3 |
+| `/openapi.json` and `/llms.txt` are served like the manifest: media type, `Cache-Control`, CORS | D4 (warning) |
+| `/llms.txt` gives the manifest URL | D5 (warning) |
+
+The discovery documents are optional (§2.5). A missing one fails nothing, and neither does an OpenAPI document
+about another API. A price that differs from the manifest's fails C6, so the provider stays below level 1.
 
 ### C7 Load (§5.8)
 
@@ -4753,7 +4884,7 @@ the test payer are always different accounts.
 | Path | What it does |
 | --- | --- |
 | `src/verify.ts` | `verifyProvider()`: runs the checks, in order, and returns the report |
-| `src/checks/` | One module per check, C1–C7 |
+| `src/checks/` | One module per check, C1–C7, and C6's probe of the discovery documents |
 | `src/jobs.ts` | The job endpoints, called as a careful client calls them, and the job view checks (§5.5–§5.7) |
 | `src/http.ts` | The HTTP client for an untrusted provider: no redirects, deadlines, size limits, one origin |
 | `src/payments.ts` | The test payer and its limits |

@@ -1,0 +1,1019 @@
+{
+  "description": "Discovery documents (provider-standard.md §2.5, Appendix C). `prices`: a service's `price.amount`, in USDC base units, as the decimal `usd` amount of `x-payment-info.price`. `openapi` and `llmsTxt` are the documents the reference implementation makes from `manifest`, served at `manifestUrl`; another implementation's documents may differ in wording and still conform. `cases`: apply each case's `patch` (RFC 6902 add, replace and remove) to `openapi`, check it against `manifest` as a document fetched from `documentUrl`, and expect exactly `violations` (in any order) [D3].",
+  "prices": [
+    {
+      "amount": "1",
+      "usd": "0.0000001"
+    },
+    {
+      "amount": "10",
+      "usd": "0.000001"
+    },
+    {
+      "amount": "100000",
+      "usd": "0.01"
+    },
+    {
+      "amount": "150000",
+      "usd": "0.015"
+    },
+    {
+      "amount": "1000000",
+      "usd": "0.10"
+    },
+    {
+      "amount": "10000000",
+      "usd": "1.00"
+    },
+    {
+      "amount": "15000000",
+      "usd": "1.50"
+    },
+    {
+      "amount": "12345678",
+      "usd": "1.2345678"
+    },
+    {
+      "amount": "250000000",
+      "usd": "25.00"
+    },
+    {
+      "amount": "99999999999999999999999999999999999999",
+      "usd": "9999999999999999999999999999999.9999999"
+    }
+  ],
+  "manifest": {
+    "standard": "stellar-agent-services/provider@1",
+    "provider": {
+      "name": "Example Text Tools",
+      "description": "Small, deterministic text utilities for agents.",
+      "homepage": "https://example.com",
+      "agentId": 42,
+      "termsUrl": "https://example.com/terms",
+      "dataUse": {
+        "storesInputs": false,
+        "trainsOnInputs": false
+      }
+    },
+    "baseUrl": "https://api.example.com/agent",
+    "payment": {
+      "protocol": "x402",
+      "x402Version": 2,
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "stellar:testnet",
+          "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+          "payTo": "GBZSBASBFMV5RGKPRIPCB5QQVAJ35IXKMTF2A2766MOA4ZHQ7MLSIPXU",
+          "maxTimeoutSeconds": 60,
+          "extra": {
+            "areFeesSponsored": true
+          }
+        }
+      ]
+    },
+    "jobs": {
+      "retentionSeconds": 604800
+    },
+    "services": [
+      {
+        "name": "text-stats",
+        "title": "Text statistics",
+        "description": "Counts words, sentences and characters in English text. Use it to check length limits before publishing. Accepts up to 20,000 characters.",
+        "price": {
+          "amount": "100000"
+        },
+        "charge": "on-success",
+        "expectedDurationSeconds": 2,
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 20000
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "words": {
+              "type": "integer"
+            },
+            "sentences": {
+              "type": "integer"
+            },
+            "characters": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "words",
+            "sentences",
+            "characters"
+          ]
+        },
+        "examples": [
+          {
+            "input": {
+              "text": "Hello world."
+            },
+            "output": {
+              "words": 2,
+              "sentences": 1,
+              "characters": 12
+            }
+          }
+        ],
+        "tags": [
+          "text",
+          "analysis"
+        ]
+      }
+    ]
+  },
+  "manifestUrl": "https://api.example.com/.well-known/stellar-agent-services.json",
+  "documentUrl": "https://api.example.com/openapi.json",
+  "openapi": {
+    "openapi": "3.1.0",
+    "info": {
+      "title": "Example Text Tools",
+      "version": "1",
+      "description": "Small, deterministic text utilities for agents.",
+      "termsOfService": "https://example.com/terms",
+      "x-guidance": "Every paid operation here creates one job, following Provider Standard v1 (stellar-agent-services/provider@1). Each job is paid once, in USDC on Stellar testnet (`stellar:testnet`), through x402 v2 with the `exact` scheme. Network fees are sponsored, so the payer needs only USDC. To run a job, POST the input as JSON to the service's path. The answer is 402, with an x402 challenge in the PAYMENT-REQUIRED header; an input that fails the schema is refused with 400 first, so nobody pays for it. Sign the payment, and send the same request again with PAYMENT-SIGNATURE. 200 means the job finished: status is \"succeeded\", with the result in output, or \"failed\", with error. 202 means it is still running: GET /agent/jobs/{jobId}/result with the Job-Token header, no sooner than Retry-After says, until it answers 200. Never pay twice for one job. Send your own Idempotency-Key (a lowercase UUID: it becomes the job id) and Job-Token (32 random bytes as base64url) on both requests, and a lost response can be collected from get-result, free of charge. Without them, the provider sends jobId and jobToken once, in the paid response. The prices in this document are for information: the manifest at https://api.example.com/.well-known/stellar-agent-services.json and the 402 challenge decide."
+    },
+    "externalDocs": {
+      "description": "The Provider Standard v1 manifest: the source of truth for the services, their prices and the payee.",
+      "url": "https://api.example.com/.well-known/stellar-agent-services.json"
+    },
+    "x-service-info": {
+      "docs": {
+        "homepage": "https://example.com",
+        "llms": "https://api.example.com/llms.txt"
+      }
+    },
+    "servers": [
+      {
+        "url": "https://api.example.com"
+      }
+    ],
+    "paths": {
+      "/agent/services/text-stats/jobs": {
+        "post": {
+          "operationId": "text-stats",
+          "summary": "Text statistics",
+          "description": "Counts words, sentences and characters in English text. Use it to check length limits before publishing. Accepts up to 20,000 characters.",
+          "tags": [
+            "text",
+            "analysis"
+          ],
+          "x-payment-info": {
+            "price": {
+              "mode": "fixed",
+              "currency": "USD",
+              "amount": "0.01"
+            },
+            "protocols": [
+              {
+                "x402": {}
+              }
+            ]
+          },
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/IdempotencyKey"
+            },
+            {
+              "$ref": "#/components/parameters/JobToken"
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "maxLength": 20000
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                "examples": {
+                  "example-1": {
+                    "value": {
+                      "text": "Hello world."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "The job finished. `status` is \"succeeded\", with the result in `output`, or \"failed\", with `error`. The user is charged only if the work succeeds.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/Job"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "output": {
+                            "type": "object",
+                            "properties": {
+                              "words": {
+                                "type": "integer"
+                              },
+                              "sentences": {
+                                "type": "integer"
+                              },
+                              "characters": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "words",
+                              "sentences",
+                              "characters"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "202": {
+              "description": "Paid, and still running or queued. Ask get-result with the job token until it answers 200.",
+              "headers": {
+                "Location": {
+                  "description": "The job's check-status URL.",
+                  "schema": {
+                    "type": "string"
+                  }
+                },
+                "Retry-After": {
+                  "$ref": "#/components/headers/RetryAfter"
+                }
+              },
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Job"
+                  }
+                }
+              }
+            },
+            "400": {
+              "$ref": "#/components/responses/Problem"
+            },
+            "402": {
+              "description": "Payment Required: an x402 v2 challenge. Pay it, and send the same request again with PAYMENT-SIGNATURE.",
+              "headers": {
+                "PAYMENT-REQUIRED": {
+                  "description": "The x402 v2 PaymentRequired object, as base64 JSON.",
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "default": {
+              "$ref": "#/components/responses/Problem"
+            }
+          }
+        }
+      },
+      "/agent/jobs/{jobId}": {
+        "get": {
+          "operationId": "checkStatus",
+          "summary": "Check a job's status",
+          "description": "The job as it stands, without its output. Free: it never takes a payment.",
+          "security": [
+            {
+              "jobToken": []
+            }
+          ],
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/JobId"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "The job finished.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Job"
+                  }
+                }
+              }
+            },
+            "202": {
+              "description": "The job has not finished. Ask again, no sooner than Retry-After says.",
+              "headers": {
+                "Retry-After": {
+                  "$ref": "#/components/headers/RetryAfter"
+                }
+              },
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Job"
+                  }
+                }
+              }
+            },
+            "default": {
+              "$ref": "#/components/responses/Problem"
+            }
+          }
+        }
+      },
+      "/agent/jobs/{jobId}/result": {
+        "get": {
+          "operationId": "getResult",
+          "summary": "Get a job's result",
+          "description": "The job with its output, once it has succeeded. It answers 202 until the job has finished. Free: it never takes a payment.",
+          "security": [
+            {
+              "jobToken": []
+            }
+          ],
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/JobId"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "The job finished.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Job"
+                  }
+                }
+              }
+            },
+            "202": {
+              "description": "The job has not finished. Ask again, no sooner than Retry-After says.",
+              "headers": {
+                "Retry-After": {
+                  "$ref": "#/components/headers/RetryAfter"
+                }
+              },
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Job"
+                  }
+                }
+              }
+            },
+            "default": {
+              "$ref": "#/components/responses/Problem"
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "securitySchemes": {
+        "jobToken": {
+          "type": "apiKey",
+          "in": "header",
+          "name": "Job-Token",
+          "description": "The job's bearer secret: the Job-Token the client sent with create-job, or the jobToken the provider returned once."
+        }
+      },
+      "parameters": {
+        "IdempotencyKey": {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false,
+          "description": "A lowercase UUID the client makes up. It becomes the job id, so the same request can be sent again safely. Send it together with Job-Token, or send neither.",
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          }
+        },
+        "JobToken": {
+          "name": "Job-Token",
+          "in": "header",
+          "required": false,
+          "description": "32 random bytes as base64url, without padding, which the client makes up and keeps. It opens the job's status and result. Send it together with Idempotency-Key, or send neither.",
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "JobId": {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "description": "The job id: the Idempotency-Key of create-job, or the jobId it returned.",
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          }
+        }
+      },
+      "headers": {
+        "RetryAfter": {
+          "description": "Whole seconds to wait before asking again.",
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "responses": {
+        "Problem": {
+          "description": "An error, as an RFC 9457 problem: act on its `code`. 400 is an input that fails the schema, refused before any payment. 429 and 503 carry Retry-After: the provider is busy, and nothing was charged.",
+          "content": {
+            "application/problem+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Problem"
+              }
+            }
+          }
+        }
+      },
+      "schemas": {
+        "Job": {
+          "type": "object",
+          "description": "A job: the one response body of create-job, check-status and get-result.",
+          "properties": {
+            "jobId": {
+              "type": "string"
+            },
+            "service": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "queued",
+                "running",
+                "succeeded",
+                "failed",
+                "payment_uncertain"
+              ]
+            },
+            "charge": {
+              "enum": [
+                "on-success",
+                "upfront"
+              ],
+              "description": "When the user is charged: only if the work succeeds, or before it runs."
+            },
+            "charged": {
+              "enum": [
+                true,
+                false,
+                "unknown"
+              ],
+              "description": "Whether the user paid. \"unknown\" while the job is payment_uncertain."
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Until when the job can be read."
+            },
+            "output": {
+              "type": "object",
+              "description": "The result, in create-job and get-result answers, once the job has succeeded."
+            },
+            "error": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "payment": {
+              "$ref": "#/components/schemas/PaymentReceipt"
+            },
+            "queue": {
+              "type": "object",
+              "description": "Where a queued job stands.",
+              "properties": {
+                "position": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "estimatedStartAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "jobToken": {
+              "type": "string",
+              "description": "Only in the create-job answer, and only when the client sent no Job-Token. Keep it: it is shown once."
+            }
+          },
+          "required": [
+            "jobId",
+            "service",
+            "status",
+            "charge",
+            "charged",
+            "createdAt",
+            "updatedAt",
+            "expiresAt"
+          ]
+        },
+        "PaymentReceipt": {
+          "type": "object",
+          "description": "What was paid. A claim: confirm the transaction on chain before treating the job as paid.",
+          "properties": {
+            "network": {
+              "type": "string"
+            },
+            "asset": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "string",
+              "description": "In the asset's base units."
+            },
+            "payTo": {
+              "type": "string"
+            },
+            "payer": {
+              "type": "string"
+            },
+            "transaction": {
+              "type": "string",
+              "description": "The Stellar transaction hash."
+            },
+            "settledAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "network",
+            "asset",
+            "amount",
+            "payTo",
+            "payer",
+            "transaction",
+            "settledAt"
+          ]
+        },
+        "Problem": {
+          "type": "object",
+          "description": "An RFC 9457 problem. `status` is absent on a failed job's `error`.",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "status": {
+              "type": "integer"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "code": {
+              "enum": [
+                "invalid_request",
+                "invalid_input",
+                "service_not_found",
+                "job_not_found",
+                "request_in_progress",
+                "payload_too_large",
+                "idempotency_key_reused",
+                "rate_limited",
+                "unavailable",
+                "service_failed",
+                "output_invalid",
+                "timeout",
+                "payment_failed"
+              ]
+            },
+            "errors": {
+              "type": "array",
+              "description": "For invalid_input: where the input fails the schema.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pointer": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "pointer",
+                  "message"
+                ]
+              }
+            }
+          },
+          "required": [
+            "type",
+            "title",
+            "code"
+          ]
+        }
+      }
+    }
+  },
+  "llmsTxt": "# Example Text Tools\n\n> Small, deterministic text utilities for agents.\n\nPaid services for AI agents, following Provider Standard v1 (`stellar-agent-services/provider@1`). Each job is paid once, in USDC on Stellar testnet (`stellar:testnet`), through x402 v2 with the `exact` scheme. Network fees are sponsored, so the payer needs only USDC.\n\n**Services**\n\n- `text-stats`: Text statistics\n  - Price: 0.01 USDC for each job, charged only if the work succeeds\n  - Call: `POST https://api.example.com/agent/services/text-stats/jobs`, with the input as JSON\n  - Typical time: 2 s\n  - Example input: `{\"text\":\"Hello world.\"}`\n  - Counts words, sentences and characters in English text. Use it to check length limits before publishing. Accepts up to 20,000 characters.\n\n**How to call a service**\n\n1. POST the input as JSON. The answer is `402 Payment Required`, with an x402 challenge in the `PAYMENT-REQUIRED` header. An input that fails the service's schema is refused with `400` first, so nobody pays for it.\n2. Sign the payment, and send the same request again with the `PAYMENT-SIGNATURE` header.\n3. `200`: the job finished. `status` is `\"succeeded\"`, with the result in `output`, or `\"failed\"`, with `error`.\n4. `202`: the job is still running. Ask `GET https://api.example.com/agent/jobs/{jobId}/result` with the `Job-Token` header, no sooner than `Retry-After` says, until it answers `200`. Asking is free.\n5. Never pay twice for one job. Send your own `Idempotency-Key` (a lowercase UUID: it becomes the job id) and `Job-Token` (32 random bytes as base64url) on both requests, and keep them. If a response is lost, step 4 still returns the job. Without them, the provider sends `jobId` and `jobToken` once, in the paid response.\n\nResults stay available for 7 days after a job finishes. The prices on this page are for information: the manifest and the 402 challenge decide.\n\n## Documents\n\n- [Manifest](https://api.example.com/.well-known/stellar-agent-services.json): the Provider Standard v1 manifest, the source of truth for the services, their prices and the payee\n- [OpenAPI](https://api.example.com/openapi.json): the same services as an OpenAPI 3.1 document, with their input and output schemas\n- [Homepage](https://example.com)\n- [Terms](https://example.com/terms)\n",
+  "cases": [
+    {
+      "name": "the document made from the manifest",
+      "patch": [],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "trailing zeros don't change a price",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount",
+          "value": "0.010000"
+        }
+      ],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "another price",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount",
+          "value": "0.02"
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount"
+        }
+      ]
+    },
+    {
+      "name": "the price in base units is not a decimal USD price",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount",
+          "value": "100000"
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount"
+        }
+      ]
+    },
+    {
+      "name": "more decimals than USDC has",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount",
+          "value": "0.01000000001"
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount"
+        }
+      ]
+    },
+    {
+      "name": "the price as a number",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount",
+          "value": 0.01
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount"
+        }
+      ]
+    },
+    {
+      "name": "a price without an amount",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount"
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount"
+        }
+      ]
+    },
+    {
+      "name": "a dynamic price",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/mode",
+          "value": "dynamic"
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/mode"
+        }
+      ]
+    },
+    {
+      "name": "another currency",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/currency",
+          "value": "EUR"
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/currency"
+        }
+      ]
+    },
+    {
+      "name": "protocols without x402",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/protocols",
+          "value": [
+            {
+              "mpp": {
+                "method": "tempo",
+                "intent": "charge",
+                "currency": ""
+              }
+            }
+          ]
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/protocols"
+        }
+      ]
+    },
+    {
+      "name": "x402 among other protocols",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/protocols/-",
+          "value": {
+            "mpp": {
+              "method": "tempo",
+              "intent": "charge",
+              "currency": ""
+            }
+          }
+        }
+      ],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "no protocols listed",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/protocols"
+        }
+      ],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "no price given",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price"
+        }
+      ],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "no payment information",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info"
+        }
+      ],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "payment information that is not an object",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info",
+          "value": "0.01 USD"
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info"
+        }
+      ]
+    },
+    {
+      "name": "unknown members are ignored",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/description",
+          "value": "One job."
+        },
+        {
+          "op": "add",
+          "path": "/x-discovery",
+          "value": {
+            "ownershipProofs": []
+          }
+        }
+      ],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "paths relative to a server at baseUrl",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/servers/0/url",
+          "value": "https://api.example.com/agent"
+        },
+        {
+          "op": "remove",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs"
+        },
+        {
+          "op": "add",
+          "path": "/paths/~1services~1text-stats~1jobs",
+          "value": {
+            "post": {
+              "x-payment-info": {
+                "price": {
+                  "mode": "fixed",
+                  "currency": "USD",
+                  "amount": "0.05"
+                }
+              },
+              "responses": {
+                "402": {
+                  "description": "Payment Required"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1services~1text-stats~1jobs/post/x-payment-info/price/amount"
+        }
+      ]
+    },
+    {
+      "name": "a server URL relative to the document",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/servers/0/url",
+          "value": "/agent/"
+        },
+        {
+          "op": "remove",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs"
+        },
+        {
+          "op": "add",
+          "path": "/paths/~1services~1text-stats~1jobs",
+          "value": {
+            "post": {
+              "x-payment-info": {
+                "price": {
+                  "mode": "fixed",
+                  "currency": "USD",
+                  "amount": "0.05"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "valid": false,
+      "violations": [
+        {
+          "rule": "D3",
+          "pointer": "/paths/~1services~1text-stats~1jobs/post/x-payment-info/price/amount"
+        }
+      ]
+    },
+    {
+      "name": "a document about another API",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/paths",
+          "value": {
+            "/v1/search": {
+              "post": {
+                "x-payment-info": {
+                  "price": {
+                    "mode": "dynamic",
+                    "currency": "EUR",
+                    "amount": "5"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "valid": true,
+      "violations": []
+    },
+    {
+      "name": "a path that is not this provider's create-job",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/servers/0/url",
+          "value": "https://other.example.com"
+        },
+        {
+          "op": "replace",
+          "path": "/paths/~1agent~1services~1text-stats~1jobs/post/x-payment-info/price/amount",
+          "value": "9.99"
+        }
+      ],
+      "valid": true,
+      "violations": []
+    }
+  ]
+}
