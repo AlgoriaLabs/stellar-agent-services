@@ -74,7 +74,10 @@ The workarounds above were used in the pilot. Product changes and retests agains
 
 ## Incentives and acceptance
 
-The SOW includes provider and user incentives. Their distribution status is unrecorded here.
+The project owner offered both independent providers free hosting on his Oracle Cloud VM infrastructure
+and funded their Stellar wallets as a pilot incentive. Both developers used the shared host for their
+separately built services. Written confirmation from each provider is pending on who administers the
+server, deploys the service and controls its payout wallet.
 
 SOW §6.1 evidence is linked on the public evidence page for
 [X Strategy Agent](https://algorialabs.github.io/stellar-agent-services/#x-strategy) and
