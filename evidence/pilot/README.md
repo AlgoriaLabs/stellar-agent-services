@@ -1,11 +1,12 @@
 # Independent pilot checklist
 
-One independent provider is recorded. The working target is two independent providers plus the sample,
-and five distinct users.
+Two independent providers are recorded, each with a confirmed mainnet payment. The pilot has one
+operator-run user flow and one independent user flow. The working target is two independent providers
+plus the sample, and five distinct users.
 Confirm the conflicting SOW counts with the Chapter Lead before calling this target accepted.
 
-The [pilot report](report.md) records Murat’s X Strategy Agent as the first independent provider and links
-its operator-run pilot user flow, including payer setup, funding and the confirmed USDC payment.
+The [pilot report](report.md) links X Strategy Agent and Meeting Action Extractor, with their registrations,
+payer setup and confirmed USDC payments.
 
 For each independent provider:
 

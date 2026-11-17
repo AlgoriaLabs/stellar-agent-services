@@ -36,12 +36,12 @@
 <body>
 <main>
   <header>
-    <div class="eyebrow">Stellar Agent Services · Evidence captured 6–16 November 2026</div>
+    <div class="eyebrow">Stellar Agent Services · Evidence captured 6–17 November 2026</div>
     <h1>Approve once.<br>Recover without paying again.</h1>
     <span class="tag">Stellar testnet · test USDC</span> <span class="tag">Stellar mainnet · USDC</span>
     <p class="intro">Two recorded calls show spending controls, approval of exact payment terms, a confirmed
-      payment and recovery of a delayed result. Mainnet evidence includes three paid verifier runs and a paid
-      pilot flow for X Strategy Agent, the first independent provider.</p>
+      payment and recovery of a delayed result. Mainnet evidence includes three paid verifier runs and two
+      independent pilot providers with confirmed payments.</p>
     <nav aria-label="Project links">
       <a href="https://github.com/AlgoriaLabs/stellar-agent-services">Open-source repository</a>
       <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/docs/provider-standard.md">Provider Standard v1</a>
@@ -130,11 +130,27 @@
     <p class="rule">The payment confirms a transfer from the payer wallet to the provider. The run record
       identifies the payer as the service operator. <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/evidence/pilot/report.md">Pilot report</a>.</p>
   </section>
+  <section aria-labelledby="meeting-actions">
+    <h2 id="meeting-actions">D3 · Meeting Action Extractor and independent buyer</h2>
+    <p>Meeting Action Extractor, built by <code>atknalkan</code>, registered as Stellar 8004 agent 77 on
+      mainnet on 17 November 2026. An independent pilot user paid <strong>0.01 USDC</strong> and reported
+      receiving three action items, three decisions and a summary.</p>
+    <ul class="links">
+      <li><a href="https://github.com/atknalkan/meeting-action-extractor">Provider project on GitHub</a> ·
+        <a href="https://meeting-actions.92-5-73-99.sslip.io/.well-known/stellar-agent-services.json">Live provider manifest</a> ·
+        <a href="https://stellar.expert/explorer/public/tx/38e44819d7d7fbb7837acd4c75b22a1790d6e74a14b2a8e80fda85f5fbcf9e58">Registration at ledger 65525603</a></li>
+      <li><a href="https://stellar.expert/explorer/public/tx/a3bddc48cf8ef9b18dae8a77b1f84559488ed12d47454dd2c52290609f3e58f9">Mainnet payment at ledger 65525757</a> ·
+        <a href="https://stellar.expert/explorer/public/tx/c08f9621532f9e10fe59ad5a8b74608280cf99ae3a87dacfa51a4cb5dcf429b4">Buyer trustline and USDC purchase</a> ·
+        <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/evidence/mainnet/meeting-actions.md">Approval, job and delivery record</a></li>
+      <li><a href="https://stellar.expert/explorer/testnet/tx/2eac0b8f8a99cf098f67323196e94e7ee7aac067f0dae12154996744fa8514bb">Testnet rehearsal payment</a> ·
+        <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/evidence/pilot/report.md#users">Pilot user records</a></li>
+    </ul>
+  </section>
   <section class="pending" aria-labelledby="remaining">
     <h2 id="remaining">Remaining evidence</h2>
     <p><strong>D2 live verification:</strong> the stable Oracle testnet sample is registered as agent 163 and
       passes all C1–C7 checks. The registry section above reports whether its receipt is anchored.</p>
-    <p><strong>D3 independent pilot:</strong> additional provider integrations, separate user flows, findings
+    <p><strong>D3 independent pilot:</strong> further user coverage, participant feedback, findings
       and Chapter Lead acceptance are pending.</p>
   </section>
   <footer>

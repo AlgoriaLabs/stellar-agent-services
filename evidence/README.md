@@ -7,8 +7,8 @@ with its network, hash, ledger and explorer link, and testnet evidence is labele
 
 **Status (2026-11-06): D1 and D2 technical evidence is published.** The Oracle sample is registered as
 testnet agent 163, passes all C1–C7 checks and has a confirmed Validation Registry response anchoring its
-receipt. Five badges are earned. Recordings and payment proofs remain available. Independent pilot work and
-Chapter Lead acceptance remain outstanding.
+receipt. Five badges are earned. Recordings and payment proofs remain available. Chapter Lead acceptance
+remains outstanding.
 
 **Mainnet (2026-11-14):** the verifier paid three live AlgoriaLabs providers with real USDC. Agents 73, 72 and 70
 reached level 3 with score 100, each paid job was recovered without a second charge, and every transfer is
@@ -20,6 +20,10 @@ These are project-operated services. See [mainnet/](mainnet/README.md). [Readine
 (agent 76). Its operator-run pilot user flow includes a confirmed 0.10 USDC payment and reported delivery
 of a 22-page PDF.
 
+**Mainnet (2026-11-17):** [Meeting Action Extractor](mainnet/meeting-actions.md), agent 77, is the second
+independent D3 provider. An independent pilot user paid 0.01 USDC and reported receiving action items,
+decisions and a summary.
+
 | Deliverable | Evidence | Location |
 | --- | --- | --- |
 | D1 | Provider Standard v1 | [docs/provider-standard.md](../docs/provider-standard.md) |
@@ -29,8 +33,8 @@ of a 22-page PDF.
 | D2 | Validation Registry records | [Confirmed registration, request and response](validation/README.md) |
 | D2 | Job Recovery demo | [Captured recovery and single-transfer proof](d2/README.md) — published |
 | D1, D2 | Mainnet payments, recovery, receipts and a Validation Registry record | [Mainnet run](mainnet/README.md): three paid providers at level 3, real USDC; agent 73 anchored on chain |
-| D3 | First independent provider and operator-run pilot user flow | [Agent 76 registration, payment and delivery record](mainnet/x-strategy.md) |
-| D3 | Additional integrations and user flows, findings and Chapter Lead acceptance | [Pilot checklist](pilot/README.md) and [pilot report](pilot/report.md) |
+| D3 | Two independent providers, an operator-run user flow and an independent user flow | [Agent 76 registration, payment and delivery](mainnet/x-strategy.md) · [Agent 77 registration, payment and delivery](mainnet/meeting-actions.md) |
+| D3 | Remaining user evidence, findings and Chapter Lead acceptance | [Pilot checklist](pilot/README.md) and [pilot report](pilot/report.md) |
 
 For each transaction include: network, transaction hash, ledger, explorer link, provider id, service and purpose.
 Publish participant aliases, not private contact details. Exclude keys, signed payment payloads, job tokens and

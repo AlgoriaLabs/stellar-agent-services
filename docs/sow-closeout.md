@@ -10,7 +10,7 @@ remaining acceptance work. Prepared templates are not evidence of completed pilo
 | --- | --- | --- |
 | D1 | Standard, client, spending controls, publicly hosted approval/limit-block video, screenshots and payment proof | Chapter Lead review |
 | D2 | Kit, guide, stable Oracle sample, all C1–C7 passed, anchored receipt/five badges, recovery and payment proofs | Chapter Lead review |
-| D3 | Scaffolder, onboarding guide and the first [independent provider with a mainnet payment](../evidence/mainnet/x-strategy.md) | Remaining integrations, separate user flows, findings/fixes and completed pilot report |
+| D3 | Scaffolder, onboarding guide and [two independent providers with confirmed mainnet payments](../evidence/pilot/report.md#providers). One operator-run flow and one independent user flow. | Remaining user evidence, findings/fixes and Chapter Lead acceptance |
 | Distribution | Six npm packages at 0.1.1 (released 2026-11-06, with the reconciliation fix) | A later release for `--local-wallet` |
 | Mainnet | Three paid providers at level 3 with real USDC, receipts, on-chain transfers, and agent 73's Validation Registry record | Nothing for the SOW |
 | Discovery | Newer implementation notes report testnet registry scanning and manifest service matching | Confirm the released discovery path in the pilot and show the complete find-to-result flow |
@@ -69,6 +69,10 @@ Murat’s X Strategy Agent is the first independent provider. It registered as m
 2026-11-16. The operator-run pilot user flow includes a confirmed 0.10 USDC payment from a separate payer
 wallet and reported delivery of a 22-page PDF. [Mainnet evidence](../evidence/mainnet/x-strategy.md) ·
 [Pilot report](../evidence/pilot/report.md).
+
+Meeting Action Extractor is the second independent provider. It registered as mainnet agent 77 on 2026-11-17
+and received an independent pilot user's 0.01 USDC payment. The user reported receiving three action items,
+three decisions and a summary. [Mainnet evidence](../evidence/mainnet/meeting-actions.md).
 
 ## Run the independent pilot
 

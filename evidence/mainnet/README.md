@@ -10,6 +10,9 @@ this page is not D3 pilot evidence. It shows that the standard, the kit and the 
 The [X Strategy Agent run](x-strategy.md) on 2026-11-16 documents the first independent D3 provider,
 mainnet agent 76, and its operator-run user flow with a confirmed 0.10 USDC payment.
 
+The [Meeting Action Extractor run](meeting-actions.md) on 2026-11-17 documents the second independent D3
+provider, mainnet agent 77, and an independent user's confirmed 0.01 USDC payment.
+
 ## Result
 
 | Agent | Service | Price | Level, score | Paid call | Recovery | Load | Payment |
