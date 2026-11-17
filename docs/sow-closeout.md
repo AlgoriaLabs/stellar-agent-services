@@ -20,15 +20,12 @@ Since 0.1.1 the daily live workflow's paid testnet call has passed on every day 
 ordinary CI as a live payment proof. A trusted registry/risk-source adapter remains application integration work; configured verification limits
 now block new payments unless a trusted source can satisfy them [V1].
 
-## Acceptance decisions for the owner
+## D3 pilot scope
 
-The source SOW conflicts: D3 says three independent providers and five users, while the objective and evidence
-section say two providers and two users; its exclusions cap providers at two. The working target is the sample
-plus two independent providers, and five distinct pilot users. This interpretation still needs Chapter Lead
-agreement. Five flows by one person do not establish five users.
+The current SOW calls for **two independent providers and two pilot users**. The
+[pilot report](../evidence/pilot/report.md) documents both providers and three completed buyer runs.
 
-Also confirm that testnet evidence is accepted. Record the agreement and sprint start date in the pilot report;
-the SOW's submission date does not establish the sprint deadline.
+Record testnet evidence acceptance and the sprint start date in the pilot report.
 
 ## Completed reference deployment and evidence
 

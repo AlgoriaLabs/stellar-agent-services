@@ -1,7 +1,7 @@
 # Pilot invitation drafts
 
-Prepared text for the owner to send. No invitations have been sent and no participants have been recruited.
-Agree the conflicting SOW participant counts and testnet acceptance with the Chapter Lead first.
+Invitation templates for the owner. The [pilot report](report.md) records participants and results.
+The current SOW calls for two independent providers and two pilot users.
 
 ## Independent provider
 
@@ -22,10 +22,3 @@ the same paid job after an interrupted response.
 
 With your agreement, evidence will use an alias and show only the necessary public testnet references.
 Wallet secrets, private contact details, job tokens and signed payment payloads are excluded.
-
-## Chapter Lead scope clarification
-
-The SOW lists three independent providers/five users in D3, two providers/two users in its objective and evidence,
-and excludes more than two pilot providers. Please confirm the accepted provider count, whether the reference
-sample is additional, the user count, and whether testnet evidence is sufficient. Also confirm the sprint dates.
-We will record your answer in the pilot report before counting completion against that scope.

@@ -9,7 +9,7 @@ providers and the first two buyer runs. [Participant feedback](feedback.md) ·
 ## Accepted scope
 
 - Sprint start/end: not confirmed.
-- Chapter Lead agreement on provider/user counts: not recorded.
+- D3 target in the current SOW: two independent providers and two pilot users.
 - Testnet evidence acceptance: not recorded.
 - Pilot dates: 2026-11-16 and 2026-11-17. Both providers reported using Kit tarballs from a checkout to
   access features absent from npm 0.1.1. Exact checkout commits were not recorded. [Provider feedback](feedback.md).

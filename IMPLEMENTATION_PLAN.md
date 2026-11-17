@@ -36,18 +36,11 @@ Job Recovery, delivered and piloted within one 30-day Instaward sprint.
 - custody
 - guaranteed adoption or availability
 
-### 1.1 Inconsistencies in the SOW, and the reading we plan against
+### 1.1 Pilot scope
 
-The SOW gives conflicting numbers. The working interpretation below still needs Chapter Lead agreement; it
-does not literally satisfy D3's phrase "three independent providers".
-
-| Topic | What the SOW says | We plan for |
-| --- | --- | --- |
-| Providers | "two independent providers" (objective, W4, evidence). "three independent providers" (D3). "not more than two" (out of scope). "three working provider integrations" (W4 output). | **3 integrations = our sample provider + 2 independent providers** |
-| Users | "five users" (D3, W4 output). "two users" (objective, W4 work, evidence). "not more than five" (out of scope). | **5 distinct users**, each completing the flow |
-| Where it lives | "add … to Stellar Agent Search" | Phase 2 of Stellar Agent Search, built in this repo. Discovery stays in `stellar-agent-search`. |
-
-> Action: confirm this reading with the Ambassador Chapter Lead before the sprint starts.
+The current SOW calls for two independent providers and two pilot users. The reference sample is a separate
+integration. See the [SOW closeout](docs/sow-closeout.md#d3-pilot-scope) for the documented results.
+This repository contains the Phase 2 implementation. Discovery stays in `stellar-agent-search`.
 
 ---
 
@@ -466,7 +459,7 @@ existing Python API becomes a paid service through gateway mode.
 ### Week 4: Pilot and evidence (D3)
 
 - [ ] Two independent providers live: each verified, each with at least one paid call.
-- [ ] Five distinct users complete find → approve → pay → receive, and at least one runs a recovery.
+- [ ] Two pilot users complete find → approve → pay → receive. Demonstrate job recovery.
 - [ ] Fix pilot-blocking issues and record them in the pilot report.
 - [x] Sample approval/payment and recovery videos, screenshots and payment references captured.
 - [x] Publish the evidence page, videos, payment references, anchored receipt and registry records.
@@ -552,7 +545,7 @@ everywhere.
 | # | Decision | Owner | Needed by |
 | --- | --- | --- | --- |
 | 1 | ~~Payment client design (§5.6)~~ **Decided 2026-10-21:** docs/payment-client.md | Berkin | W1 day 2 |
-| 2 | SOW provider/user counts reading (§1.1) | Berkin + Ambassador Chapter Lead | Before sprint start |
+| 2 | **Current SOW pilot scope** (§1.1) | Berkin | Done |
 | 3 | **Implemented per DX phase 4:** direct Identity Registry scan on testnet; confirm the released flow in the pilot | Berkin | Pilot |
 | 4 | Testnet-only evidence accepted, or a final mainnet run | Berkin + Ambassador Chapter Lead | W2 |
 | 5 | **Released 2026-11-02:** `@stellar-agent-services/*` and `create-stellar-service`, version 0.1.0 | Berkin | Done |

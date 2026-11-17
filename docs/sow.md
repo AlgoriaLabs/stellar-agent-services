@@ -1,6 +1,7 @@
 # Instawards SOW: Stellar Agent MCP
 
 > Copied from the [Google Doc](https://docs.google.com/document/d/1kIJ5nkwIVaXqHqcNHwuI5JN0Ap6g86wzncMQya6Kv88/edit?tab=t.0) on 2026-10-27. The doc is the source of truth.
+> The current D3 target is two independent providers and two pilot users. See the [SOW closeout](sow-closeout.md#d3-pilot-scope).
 
 **1\. Project & Team Information**
 

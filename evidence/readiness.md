@@ -102,7 +102,5 @@ live workflow's paid testnet job has passed on most days since (one failure, on 
 
 ## Remaining acceptance work
 
-Recruit independent providers and distinct users, execute the pilot and fill its report. Agree conflicting
-SOW counts, sprint dates and testnet evidence acceptance with the Chapter Lead. Review and release the source
-fixes; rerun the scheduled paid CI job after they are available there. Mainnet payments and a mainnet
-Validation Registry record are now captured (above).
+See the [SOW closeout](../docs/sow-closeout.md) for current acceptance work and the
+[pilot report](pilot/report.md) for the two independent providers and recorded buyer runs.

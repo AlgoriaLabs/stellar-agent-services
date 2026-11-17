@@ -2,8 +2,7 @@
 
 Two independent providers are recorded, each with a confirmed mainnet payment. The pilot has an operator-run
 buyer flow, an independent buyer flow, and [a third pilot user's run](claude-buyer-run/README.md) with paid
-calls to both providers. The working target is two independent providers plus the sample, and five distinct users.
-Confirm the conflicting SOW counts with the Chapter Lead before calling this target accepted.
+calls to both providers. The current SOW calls for two independent providers and two pilot users.
 
 The [pilot report](report.md) links X Strategy Agent and Meeting Action Extractor, with their registrations,
 payer setup and confirmed USDC payments. The [public evidence page](https://algorialabs.github.io/stellar-agent-services/#pilot-screenshots)
