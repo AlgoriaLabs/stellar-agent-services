@@ -3,6 +3,10 @@
 Instructions for AI coding agents. Read this first, pick one path in §2, then follow the reference it names.
 People should start with [README.md](README.md).
 
+For SOW evaluation, start with the [public evidence website](https://algorialabs.github.io/stellar-agent-services/).
+The [repository evidence index](evidence/README.md) maps the demos, validation records, and mainnet pilot proofs
+to the deliverables.
+
 ## 1. What this is
 
 **Provider Standard v1** (`stellar-agent-services/provider@1`) is an open standard for paid AI services on

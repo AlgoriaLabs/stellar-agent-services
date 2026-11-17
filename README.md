@@ -3,6 +3,17 @@
 Phase 2 of [Stellar Agent Search](https://github.com/berkingurcan/stellar-agent-search). It makes it easy for
 developers to offer paid AI services on Stellar, and easy for users to find, hire and pay them safely.
 
+## Public SOW evidence
+
+The evidence site collects the approval and Job Recovery demos, Stellar 8004 validation records, and two
+paid mainnet pilot flows with provider and buyer feedback.
+
+**[Open the public evidence website](https://algorialabs.github.io/stellar-agent-services/)** ·
+[Repository evidence index](evidence/README.md) · [Pilot report](evidence/pilot/report.md) ·
+[SOW closeout](docs/sow-closeout.md)
+
+## Packages
+
 Stellar Agent Search finds and evaluates agents (read-only, keyless). This repository adds the provider and
 payment side:
 
@@ -18,14 +29,9 @@ payment side:
 | [`examples/paid-service`](examples/paid-service) | Sample provider and template for pilot providers |
 | [`examples/python-upstream`](examples/python-upstream) | An existing Python API made a paid service with gateway mode |
 
-**Status (2026-11-06):** the core packages are released at 0.1.0. The kit, payment client, recovery and verifier
-are implemented. [Sample payment/recovery evidence is public](https://algorialabs.github.io/stellar-agent-services/),
-and live verification receipts and badges are captured in [evidence/](evidence/README.md). Permanent sample
-registration, an anchored validation response and the independent pilot remain. This checkout
-also enforces configured verification policies through an application-trusted source [V1]. The
-[SOW closeout guide](docs/sow-closeout.md) lists the remaining acceptance work, and
-[readiness evidence](evidence/readiness.md) records checks and release references. The full build history is in
-[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Development and pilot evidence use Stellar **testnet**.
+The core packages are published on npm. This checkout enforces configured verification policies through an
+application-trusted source [V1]. See the [readiness evidence](evidence/readiness.md) for checks and release
+references and the [implementation plan](IMPLEMENTATION_PLAN.md) for the build history.
 
 To offer a service, start with [`npm create stellar-service`](packages/create-stellar-service), then:
 

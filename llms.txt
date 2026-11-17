@@ -2,6 +2,8 @@
 
 > Provider Standard v1 (`stellar-agent-services/provider@1`) and its tools: an open standard for paid AI services on Stellar. A provider publishes a manifest at `/.well-known/stellar-agent-services.json`, is paid per job in USDC through x402 v2 (`exact` scheme), and lets a client collect a paid job's result without paying again. This repository holds the spec, a TypeScript Provider Kit (a library, and a gateway that puts any existing HTTP API behind payments), a payment client, a verifier and an MCP server for coding agents. Development runs on Stellar testnet.
 
+For SOW evaluation, see the [public evidence website](https://algorialabs.github.io/stellar-agent-services/).
+
 - The spec is the source of truth. Cite its rules by id, such as `[J13]`.
 - A provider never holds a Stellar secret key: only its public `payTo` address and a facilitator URL.
 - Everything starts on testnet, with test money. Mainnet (`stellar:pubnet`) is real USDC: `create-stellar-service --network mainnet`, and its facilitator wants an API key (`FACILITATOR_AUTH`). Never pay on mainnet unless the user asked.
