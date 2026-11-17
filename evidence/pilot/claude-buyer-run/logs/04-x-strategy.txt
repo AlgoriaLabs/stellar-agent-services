@@ -1,0 +1,68 @@
+┌─ Approval required ─────────────────────────────────────────────
+│ Provider   X Strategy Agent (agent 76)
+│ Manifest   https://x-strategy.92-5-73-99.sslip.io/.well-known/stellar-agent-services.json
+│ Service    x-strategy: Writes an X (Twitter) marketing strategy for a software project from its public GitHub or GitLab repository, and returns it as a PDF report of about 15 pages. Reads the README, releases, languages and repository statistics, then writes positioning, target audiences, profile and bio, voice and tone, content pillars, eight X post styles with example posts, two threads, twelve ready-to-post tweets, posting cadence, a 30-day content calendar, growth tactics, a launch plan, KPIs and risks. Use it to plan a product launch, developer marketing or social media content for an open-source project or startup. Returns a download link valid for 24 hours and the key lines as JSON. Public repositories on github.com and gitlab.com only; the report is in English.
+│ Price      0.1 USDC (1000000 base units), charged on-success
+│ Network    stellar:pubnet
+│ Pay to     GAIBNH5ZZVY53NJQAU77RWT5YXQQMRPST66YZHXDBG3ZEST5UJZ6RAKE
+│ Asset      CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75
+│ Job id     c719bbab-ba60-4536-8b86-962bbe9c938b
+│ Limits     0.1 USDC per payment · 0.15 USDC per 24 h · no prompt up to 0 USDC
+│ ✓ The challenge matches the manifest and the spending policy.
+└─────────────────────────────────────────────────────────────────
+
+📸 Screenshot of this approval screen: press Enter, then click this Terminal window (type s to skip):    04a-x-strategy-approval.png saved
+
+Pay 0.1 USDC to GAIBNH5ZZVY53NJQAU77RWT5YXQQMRPST66YZHXDBG3ZEST5UJZ6RAKE? Type yes to approve, no to decline:
+Pay 0.1 USDC to GAIBNH5ZZVY53NJQAU77RWT5YXQQMRPST66YZHXDBG3ZEST5UJZ6RAKE? Type yes to approve, no to decline: Approved at 2026-11-17T13:41:28.527Z. Signing once and following the job...
+{
+  "job": {
+    "jobId": "c719bbab-ba60-4536-8b86-962bbe9c938b",
+    "service": "x-strategy",
+    "status": "succeeded",
+    "charge": "on-success",
+    "charged": true,
+    "createdAt": "2026-11-17T13:41:33.430Z",
+    "updatedAt": "2026-11-17T13:43:03.373Z",
+    "expiresAt": "2026-11-18T13:43:03.373Z",
+    "output": {
+      "pdfUrl": "[private PDF download URL omitted]",
+      "expiresAt": "2026-11-18T14:42:51.422Z",
+      "title": "stellar-agent-search: X marketing strategy",
+      "pageCount": 22,
+      "repo": "https://github.com/berkingurcan/stellar-agent-search",
+      "commitSha": "0f200a10914838ab3c6ebfddb2fc6474a43b0a4a",
+      "highlights": {
+        "oneLiner": "A read-only MCP server and CLI for discovering, ranking, and vetting on-chain agents on the Stellar mainnet.",
+        "bio": "Read-only MCP server and CLI for discovering, ranking, and vetting on-chain agents on the Stellar network. Built for agent-to-agent reliability.",
+        "pillars": [
+          "Technical Deep Dives",
+          "Registry Updates",
+          "Builder Logs",
+          "Community & Ecosystem"
+        ],
+        "postsPerWeek": 14,
+        "samplePosts": [
+          "Tired of untrusted agent directories?\n\nI built a read-only MCP server that lets you discover, rank, and vet on-chain agents on Stellar. It uses evidence-based probes to verify reputation before you pay with x402.\n\nGet started at stellar8004.com",
+          "The reputation-contract reachability probe in stellar-agent-search uses a six-slot observation window. We don't manufacture false matches. If the client set is exhausted, it returns unavailable. Honesty over hype.",
+          "Current registry stats: 66 agents on Stellar mainnet. The registry-health tool monitors indexer staleness so you know exactly how fresh your data is. stellar8004.com",
+          "Refining the TypeScript SDK for stellar-agent-search. Moving to v16.4.1 of the Stellar SDK ensures we correctly parse the new Protocol 30 ledger headers. Stability for the win.",
+          "Stellar-8004 is the only non-EVM ERC-8004 implementation I know of running on mainnet. It is time the agent economy looks beyond Ethereum. The tools are ready."
+        ]
+      }
+    },
+    "payment": {
+      "network": "stellar:pubnet",
+      "asset": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      "amount": "1000000",
+      "payTo": "GAIBNH5ZZVY53NJQAU77RWT5YXQQMRPST66YZHXDBG3ZEST5UJZ6RAKE",
+      "payer": "GAM6BSNAX3UHNH4UMLAG5WU47OBJQEZZWU2PVE3J65TW3DDX2V7MUWSP",
+      "transaction": "2de5f3474913f9e5c6383100a8101a991b9fe38c860ee307114d23e69d9c402e",
+      "settledAt": "2026-11-17T13:43:03.373Z"
+    }
+  },
+  "confirmed": false,
+  "unconfirmedReason": "the RPC lookup failed: fetch failed"
+}
+
+! Not confirmed: the RPC lookup failed: fetch failed

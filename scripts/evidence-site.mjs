@@ -15,7 +15,8 @@ if ((await readdir(target)).length) throw new Error("The output directory must b
 const manifest = await readFile(join(root, "evidence/checksums.sha256"), "utf8");
 const paths = [];
 for (const line of manifest.trim().split("\n")) {
-  const match = /^([a-f0-9]{64})  (evidence\/(?:d[12]\/[^/]+\.(?:jpg|mp4|json)|validation\/[a-z0-9-]+\.json|(?:mainnet\/)?receipts\/[a-f0-9]{64}(?:\.[a-z0-9-]+)?\.(?:json|svg)|mainnet\/(?:[a-z]+\.json|runs\/[a-z0-9-]+\.txt|unpaid-checks\/[a-z0-9_-]+\.json)))$/.exec(line);
+  const match = /^([a-f0-9]{64})  (evidence\/(?:d[12]\/[^/]+\.(?:jpg|mp4|json)|validation\/[a-z0-9-]+\.json|(?:mainnet\/)?receipts\/[a-f0-9]{64}(?:\.[a-z0-9-]+)?\.(?:json|svg)|mainnet\/(?:[a-z]+\.json|runs\/[a-z0-9-]+\.txt|unpaid-checks\/[a-z0-9_-]+\.json)))$/.exec(line)
+    ?? /^([a-f0-9]{64})  (evidence\/pilot\/claude-buyer-run\/(?:screens\/[a-z0-9-]+\.jpg|data\/(?:04-ledger|pay-x-strategy)\.json))$/.exec(line);
   if (!match) throw new Error(`Unexpected evidence checksum entry: ${line}`);
   const [, hash, path] = match;
   const bytes = await readFile(join(root, path));

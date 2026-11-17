@@ -10,10 +10,10 @@ remaining acceptance work. Prepared templates are not evidence of completed pilo
 | --- | --- | --- |
 | D1 | Standard, client, spending controls, publicly hosted approval/limit-block video, screenshots and payment proof | Chapter Lead review |
 | D2 · Complete | Kit, guide, stable Oracle sample, all C1–C7 passed, anchored receipt, five badges, recovery and payment proofs | — |
-| D3 | Scaffolder, onboarding guide, [two independent providers with confirmed mainnet payments](../evidence/pilot/report.md#providers), two recorded buyer flows, and [feedback and workarounds](../evidence/pilot/report.md#findings-and-fixes) | Pilot screenshots under SOW §6.1 and Chapter Lead acceptance |
-| Distribution | Six npm packages at 0.1.1 (released 2026-11-06, with the reconciliation fix) | A later release for `--local-wallet` |
+| D3 | Scaffolder, onboarding guide, two independent providers with confirmed mainnet payments, three buyer runs, [screenshots](https://algorialabs.github.io/stellar-agent-services/#pilot-screenshots), and [pilot findings](../evidence/pilot/report.md#findings-and-fixes) | Chapter Lead acceptance |
+| Distribution | [Six npm packages at 0.1.2](https://github.com/AlgoriaLabs/stellar-agent-services/releases/tag/v0.1.2), including Provider Kit with `--local-wallet`, `/openapi.json` and `/llms.txt` | — |
 | Mainnet | Three paid providers at level 3 with real USDC, receipts, on-chain transfers, and agent 73's Validation Registry record | Nothing for the SOW |
-| Discovery | Newer implementation notes report testnet registry scanning and manifest service matching | Confirm the released discovery path in the pilot and show the complete find-to-result flow |
+| Discovery | [Third pilot user's mainnet run](../evidence/pilot/claude-buyer-run/README.md) captured search, manifest inspection, approval, payment and result for both providers. Search used the Stellar Agent Search checkout. | — |
 
 Public release and CI references, and local check results, belong in [readiness evidence](../evidence/readiness.md).
 Since 0.1.1 the daily live workflow's paid testnet call has passed on every day but one (2026-11-09); do not treat

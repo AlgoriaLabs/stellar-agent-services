@@ -1,0 +1,17 @@
+10 agent(s) for "extract action items and decisions from a meeting transcript" on mainnet:
+
+ #  ID  SCORE  STATUS   X402  MPP  SVC  MATCHED    NAME (self-declared, unverified)
+--  --  -----  -------  ----  ---  ---  ---------  --------------------------------
+ 1  67     20  skipped  yes   yes  yes  desc       ROZO MPP Router
+ 2   6     19  skipped  -     -    yes  desc       Crawler Scraper Agent
+ 3  11     15  skipped  -     -    yes  desc       YouTube Summarizer Agent
+ 4  24      6  skipped  -     -    -    name+desc  VoiceDesk Transcription
+ 5  23      5  skipped  -     -    -    desc       CampaignBrief Agent
+ 6  17      4  skipped  -     -    -    name+desc  MeetingScribe Agent
+ 7  37      4  skipped  -     -    -    desc       BuildHarbor CI Agent
+ 8  47      4  skipped  -     -    -    desc       SettleWise Reconciliation
+ 9  56      4  skipped  -     -    -    desc       ThreatMap Response Agent
+10  14      2  skipped  -     -    -    desc       Vantage Research Agent
+
+ℹ names, descriptions and services are self-declared & unverified. Run: profile <id> for detail.
+ℹ bounded discovery scanned 78 record(s) across 2 page(s); results are not registry-global.

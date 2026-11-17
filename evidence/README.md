@@ -32,9 +32,10 @@ decisions and a summary.
 | D2 | Validation Registry records | [Confirmed registration, request and response](validation/README.md) |
 | D2 | Job Recovery demo | [Captured recovery and single-transfer proof](d2/README.md) — published |
 | D1, D2 | Mainnet payments, recovery, receipts and a Validation Registry record | [Mainnet run](mainnet/README.md): three paid providers at level 3, real USDC; agent 73 anchored on chain |
-| D3 | Two independent providers, an operator-run user flow and an independent user flow | [Agent 76 registration, payment and delivery](mainnet/x-strategy.md) · [Agent 77 registration, payment and delivery](mainnet/meeting-actions.md) |
-| D3 | Feedback from both providers and both buyer flows | [Participant feedback](pilot/feedback.md) · [Findings and workarounds](pilot/report.md#findings-and-fixes) |
-| D3 | Pilot screenshots listed in SOW §6.1 | [Pilot checklist](pilot/README.md) and [pilot report](pilot/report.md) |
+| D3 | Two independent providers and three buyer runs | [Agent 76](mainnet/x-strategy.md) · [Agent 77](mainnet/meeting-actions.md) · [Third pilot user's run](pilot/claude-buyer-run/README.md) |
+| D3 | Feedback from both providers and the first two buyer runs | [Participant feedback](pilot/feedback.md) · [Findings and fixes](pilot/report.md#findings-and-fixes) |
+| D3 | Pilot screenshots listed in SOW §6.1 | [Public screenshots and payments](https://algorialabs.github.io/stellar-agent-services/#pilot-screenshots) · [Pilot report](pilot/report.md) |
+| Distribution | All six npm packages published at 0.1.2 | [Release 0.1.2](https://github.com/AlgoriaLabs/stellar-agent-services/releases/tag/v0.1.2) · [Provider Kit on npm](https://www.npmjs.com/package/@stellar-agent-services/provider-kit/v/0.1.2) |
 
 For each transaction include: network, transaction hash, ledger, explorer link, provider id, service and purpose.
 Publish participant aliases, not private contact details. Exclude keys, signed payment payloads, job tokens and

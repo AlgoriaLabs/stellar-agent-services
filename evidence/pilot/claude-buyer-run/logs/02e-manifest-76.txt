@@ -1,0 +1,17 @@
+Agent 76  (mainnet)  Provider Standard v1 manifest: ok
+  manifest   : https://x-strategy.92-5-73-99.sslip.io/.well-known/stellar-agent-services.json  (URL from the registration)
+  payment    : x402 exact, USDC on stellar:pubnet, fees sponsored, 300 s to sign
+  payTo      : GAIBNH5ZZVY53NJQAU77RWT5YXQQMRPST66YZHXDBG3ZEST5UJZ6RAKE
+  recovery   : results kept 86400 s
+  identity   : ✔ bound  I1 pass, I2 pass, I3 pass  (registration read on chain)
+  conformance: not read; set TRUSTED_VALIDATORS or --trusted-validators
+
+SERVICE     USDC  CHARGE      ~SECONDS  TITLE (self-declared)
+----------  ----  ----------  --------  ----------------------------------------
+x-strategy   0.1  on-success        75  X marketing strategy PDF from a reposit…
+
+  self-declared (UNVERIFIED):
+    name        : X Strategy Agent
+    description : AI agent that turns a GitHub or GitLab repository into an X (Twitter) marketing strategy PDF report…
+
+ℹ Nothing was paid. A payment client pays from the manifest URL after you approve the price and payee.

@@ -1,0 +1,14 @@
+7 agent(s) for "X marketing strategy for a GitHub repository" on mainnet:
+
+#  ID  SCORE  STATUS   X402  MPP  SVC  MATCHED    NAME (self-declared, unverified)
+-  --  -----  -------  ----  ---  ---  ---------  --------------------------------
+1  27      4  skipped  -     -    -    name+desc  MarketMosaic Agent
+2  14      2  skipped  -     -    -    desc       Vantage Research Agent
+3  25      2  skipped  -     -    -    desc       SignalHarbor Intelligence
+4  69      0  skipped  yes   -    yes  desc       App Store Screenshot Studio
+5  72      0  skipped  yes   -    yes  desc       Pitch Deck Agent
+6  73      0  skipped  yes   -    yes  desc       Stellar Logo Agent
+7  76      0  skipped  yes   -    yes  name+desc  X Strategy Agent
+
+ℹ names, descriptions and services are self-declared & unverified. Run: profile <id> for detail.
+ℹ bounded discovery scanned 78 record(s) across 2 page(s); results are not registry-global.

@@ -1,0 +1,16 @@
+9 agent(s) for "meeting action items" on mainnet:
+
+#  ID  SCORE  STATUS   X402  MPP  SVC  MATCHED    NAME (self-declared, unverified)
+-  --  -----  -------  ----  ---  ---  ---------  --------------------------------
+1  67     20  skipped  yes   yes  yes  desc       ROZO MPP Router
+2   6     19  skipped  -     -    yes  desc       Crawler Scraper Agent
+3  23      5  skipped  -     -    -    desc       CampaignBrief Agent
+4  17      4  skipped  -     -    -    name+desc  MeetingScribe Agent
+5  37      4  skipped  -     -    -    desc       BuildHarbor CI Agent
+6  47      4  skipped  -     -    -    desc       SettleWise Reconciliation
+7  56      4  skipped  -     -    -    desc       ThreatMap Response Agent
+8  50      0  skipped  -     -    -    desc       FraudSignal Monitor
+9  77      0  skipped  yes   -    yes  name+desc  Meeting Action Extractor
+
+ℹ names, descriptions and services are self-declared & unverified. Run: profile <id> for detail.
+ℹ bounded discovery scanned 78 record(s) across 2 page(s); results are not registry-global.

@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-17T13:40:45.595Z",
+  "provider": "Meeting Action Extractor",
+  "agentId": 77,
+  "manifestUrl": "https://meeting-actions.92-5-73-99.sslip.io/.well-known/stellar-agent-services.json",
+  "service": "meeting-actions",
+  "description": "Reads a meeting transcript and returns its action items as JSON: each task with its owner, due date, priority and the exact quote where it was agreed, plus the decisions made and a short summary. Use it after a meeting, call, standup or interview to get the to-do list and follow-ups without reading the whole transcript. Works with plain text from Zoom, Google Meet, Teams, Otter or any notes, in any language. Give the meeting date to turn \"next Friday\" into a date. Up to 100,000 characters.",
+  "network": "stellar:pubnet",
+  "asset": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+  "amount": "100000",
+  "amountUsdc": "0.01 USDC",
+  "payTo": "GDZ2Z5TMBSI3EBBMMYXAXXNVHN4THI6VTIEVBHMBAJ7TPJGTRACQZFW6",
+  "charge": "on-success",
+  "jobId": "22c43275-1e93-4b7d-b5b7-9c1dd84ed32c",
+  "bindingHash": "9e747cb23f9428501ecd8b032edb90c02f6770a71f3616ca06d1ce7723f308a5",
+  "policy": {
+    "maxPerPayment": "0.01 USDC",
+    "maxPer24h": "0.15 USDC",
+    "autoApproveUpTo": "0 USDC"
+  },
+  "challengeViolations": [],
+  "policyViolations": [],
+  "payable": true,
+  "needsApproval": true
+}

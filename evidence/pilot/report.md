@@ -1,9 +1,10 @@
 # Independent provider pilot report
 
-Status: **two independent providers** with confirmed mainnet payments and **two completed paid buyer flows**.
-X Strategy Agent’s developer ran U1. The project owner identified U2 as an independent pilot user.
-Feedback is recorded from both providers and both buyer flows. D3 pilot screenshots are pending.
-SOW §6.1 lists screenshots and leaves the choice of screens open. [Participant feedback](feedback.md).
+The pilot records **two independent providers** with confirmed mainnet payments and **three completed buyer
+runs**. X Strategy Agent’s developer ran U1, U2 was an independent buyer, and a third pilot user (U3) used
+Claude’s assistance and personally approved payments to both providers. Feedback is recorded from both
+providers and the first two buyer runs. [Participant feedback](feedback.md) ·
+[D3 screenshots and payment evidence](https://algorialabs.github.io/stellar-agent-services/#pilot-screenshots).
 
 ## Accepted scope
 
@@ -43,13 +44,14 @@ Add provider rows if the agreed scope requires them. Record clean-setup duration
 | --- | --- | --- | --- | --- | --- |
 | U1 · Service operator | 2026-11-16 UTC | P1 / `x-strategy` | Client fetched the manifest. | [Written approval and job result](../mainnet/x-strategy.md#buyer-flow), [payer setup and funding](../mainnet/x-strategy.md#setup-and-payment-transactions), [confirmed 0.10 USDC payment](https://stellar.expert/explorer/public/tx/430fa75be0debb374cbbf787553bfc3e320c6d9a59b8d1ad4b0eb02b117b3042) | 22-page PDF delivery reported. [Buyer feedback](feedback.md#buyer-experience-u1). |
 | U2 · Independent buyer | 2026-11-17 UTC | P2 / `meeting-actions` | Live provider manifest linked. | [Written quote, approval and job result](../mainnet/meeting-actions.md#independent-pilot-user-u2), [payer trustline and USDC purchase](https://stellar.expert/explorer/public/tx/c08f9621532f9e10fe59ad5a8b74608280cf99ae3a87dacfa51a4cb5dcf429b4), [confirmed 0.01 USDC payment](https://stellar.expert/explorer/public/tx/a3bddc48cf8ef9b18dae8a77b1f84559488ed12d47454dd2c52290609f3e58f9) | Reported successful delivery of three action items, three decisions and a summary. [Buyer feedback](feedback.md#buyer-experience-u2). |
-| U3 | Not run | — | — | — | — |
+| U3 · Third pilot user | 2026-11-17 UTC | P2 / `meeting-actions`, P1 / `x-strategy` | [Search and manifest captures for both services](claude-buyer-run/README.md#steps-and-screenshots) | [Approval, results and both mainnet payments](claude-buyer-run/README.md#summary) | Claude assisted. The participant approved both payments. Both jobs succeeded. Horizon confirmed both transfers. |
 | U4 | Not run | — | — | — | — |
 | U5 | Not run | — | — | — | — |
 
 For U1 the payout and payer wallets had a common funder, and the run identifies the buyer as the service operator.
-For U2 the project owner identified the buyer as an independent participant. The ledger verifies each payer's
-wallet and USDC transfer.
+For U2 the project owner identified the buyer as an independent participant. The project owner confirmed that
+a different pilot user ran U3 and approved both payments. The [U3 ledger record](claude-buyer-run/data/04-ledger.json)
+shows one 0.01 USDC debit and one 0.10 USDC debit through the end of the run.
 
 ## Recovery
 
@@ -57,20 +59,22 @@ User, provider, job id, interruption, recovery steps, video, result, and proof o
 
 ## Findings and fixes
 
-Both providers praised offline payment tests and local-wallet launch. Both buyers reported that the payment
+Both providers praised offline payment tests and local-wallet launch. U1 and U2 reported that the payment
 client worked on the first attempt and the job charged once. Participant notes also identify where they
 needed workarounds. [Full role-by-role feedback](feedback.md).
 
 | Finding | Workaround or outcome during the pilot | Participant suggestion |
 | --- | --- | --- |
-| npm 0.1.1 lacked local-wallet launch and the documented OpenAPI and llms.txt endpoints (P1, P2). | Both providers packed Kit tarballs from a checkout and launched successfully. | Publish a release that matches the docs. |
+| npm 0.1.1 lacked local-wallet launch and the documented OpenAPI and llms.txt endpoints (P1, P2). | Both providers packed Kit tarballs from a checkout. The [0.1.2 release](https://github.com/AlgoriaLabs/stellar-agent-services/releases/tag/v0.1.2) shipped all six npm packages. A fresh install confirmed the flag and HTTP 200 responses from both routes. | Publish a release that matches the docs. |
 | Mainnet buyer wallet setup took more effort than the payment itself (U1, U2). | Both used custom payer scripts to set up wallets and buy USDC. Both paid jobs succeeded. | Add a mainnet buyer flow with wallet setup, funding, reserve guidance and closure. |
 | Deploying to Oracle required separate VM scripts (P1, P2). | Both deployed with custom scripts. P2 reported an initial permissions and archive issue. | Add a VM deployment template with systemd, Caddy and rollback. |
 | Mainnet verifier discovery and registry rent impeded validation (P1, P2). | P2 launched with `--no-validation`. Both agents registered in the Identity Registry. | Publish a default validator. P2 also proposed a way to use a confirmed payment as C4 evidence. |
 | Look-alike accounts sent dust after funding (U1, U2). | Both buyers reported the activity during wallet setup. | Surface suspicious transfers and require explicit entry of the return address. |
 | Provider development and buyer tooling had case-specific friction. | P2 used a scratch copy for `dev`; P1 used a wrapper for PDF routes and received a 429 after C7. U2 reported one transient Horizon failure before submission. | Improve dev configuration isolation, route documentation, discovery, and file-based buyer input. See the [full feedback](feedback.md) for the remaining proposals. |
 
-The workarounds above were used in the pilot. Product changes and retests against the proposals remain unrecorded.
+U3 reached both providers with Stellar Agent Search, though both ranked last for the successful queries. The
+payment client could not confirm the X Strategy transfer because its RPC lookup failed. An independent
+Horizon check confirmed a single settlement. [U3 observations](claude-buyer-run/README.md#findings).
 
 ## Incentives and acceptance
 
@@ -79,9 +83,8 @@ and funded their Stellar wallets as a pilot incentive. Both developers used the 
 separately built services. Written confirmation from each provider is pending on who administers the
 server, deploys the service and controls its payout wallet.
 
-SOW §6.1 evidence is linked on the public evidence page for
-[X Strategy Agent](https://algorialabs.github.io/stellar-agent-services/#x-strategy) and
-[Meeting Action Extractor](https://algorialabs.github.io/stellar-agent-services/#meeting-actions).
+The [public D3 evidence page](https://algorialabs.github.io/stellar-agent-services/#pilot) links both provider
+projects, their payment references, the U3 screenshots, and this report for SOW §6.1.
 Chapter Lead review and acceptance are pending.
 
 ## Engineering preparation outside the independent pilot

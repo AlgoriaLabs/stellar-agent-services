@@ -1,0 +1,131 @@
+{
+  "at": "2026-11-17T13:43:11.294Z",
+  "network": "stellar:pubnet",
+  "account": "GAM6BSNAX3UHNH4UMLAG5WU47OBJQEZZWU2PVE3J65TW3DDX2V7MUWSP",
+  "explorer": "https://stellar.expert/explorer/public/account/GAM6BSNAX3UHNH4UMLAG5WU47OBJQEZZWU2PVE3J65TW3DDX2V7MUWSP",
+  "balances": [
+    {
+      "balance": "0.0100000",
+      "limit": "922337203685.4775807",
+      "buying_liabilities": "0.0000000",
+      "selling_liabilities": "0.0000000",
+      "last_modified_ledger": 65527387,
+      "is_authorized": true,
+      "is_authorized_to_maintain_liabilities": true,
+      "asset_type": "credit_alphanum4",
+      "asset_code": "USDC",
+      "asset_issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+    },
+    {
+      "balance": "4.3454223",
+      "buying_liabilities": "0.0000000",
+      "selling_liabilities": "0.0000000",
+      "asset_type": "native"
+    }
+  ],
+  "transactions": [
+    {
+      "hash": "d5a1f877a7a915aad0886f3b906d12d1525145ebc9360b5f6d1d5303bac22c8e",
+      "ledger": 65527171,
+      "at": "2026-11-17T13:24:57Z",
+      "successful": true,
+      "source": "GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC",
+      "explorer": "https://stellar.expert/explorer/public/tx/d5a1f877a7a915aad0886f3b906d12d1525145ebc9360b5f6d1d5303bac22c8e"
+    },
+    {
+      "hash": "5e7cf83f5aeab6a7666371b56b75384089efb611af88ce1164c2afd872efe264",
+      "ledger": 65527173,
+      "at": "2026-11-17T13:25:07Z",
+      "successful": true,
+      "source": "GDZTI44PR45KOZX7VLDE5Z7S5WWXBI4DWKDJKBMA7T32XGZV3JU244SC",
+      "explorer": "https://stellar.expert/explorer/public/tx/5e7cf83f5aeab6a7666371b56b75384089efb611af88ce1164c2afd872efe264"
+    },
+    {
+      "hash": "306cc3728f10f2dd07dc3c01e5652d28fb2ff4b3df76da3741e1e290e5949b1e",
+      "ledger": 65527191,
+      "at": "2026-11-17T13:26:37Z",
+      "successful": true,
+      "source": "GBPXY5FXTQR76SVMOH4SQMUXVZU25OBO4Q2R5M6WQVV7N77V2CY7F2AQ",
+      "explorer": "https://stellar.expert/explorer/public/tx/306cc3728f10f2dd07dc3c01e5652d28fb2ff4b3df76da3741e1e290e5949b1e"
+    },
+    {
+      "hash": "8681fbb95a7a6b1017545558a298885b486330043628e44f1f9d152ef816017b",
+      "ledger": 65527294,
+      "at": "2026-11-17T13:35:12Z",
+      "successful": true,
+      "source": "GAM6BSNAX3UHNH4UMLAG5WU47OBJQEZZWU2PVE3J65TW3DDX2V7MUWSP",
+      "explorer": "https://stellar.expert/explorer/public/tx/8681fbb95a7a6b1017545558a298885b486330043628e44f1f9d152ef816017b"
+    },
+    {
+      "hash": "521aa0de15a3e9de22538774a782257e3540924599bdb417488f93587e9bcbf9",
+      "ledger": 65527366,
+      "at": "2026-11-17T13:41:12Z",
+      "successful": true,
+      "source": "GDI44UIQN4J2IUUHS62BUXAVLVKD6YER57FJPDJZVWIK7JTTFGVXLTAL",
+      "explorer": "https://stellar.expert/explorer/public/tx/521aa0de15a3e9de22538774a782257e3540924599bdb417488f93587e9bcbf9"
+    },
+    {
+      "hash": "2de5f3474913f9e5c6383100a8101a991b9fe38c860ee307114d23e69d9c402e",
+      "ledger": 65527387,
+      "at": "2026-11-17T13:42:57Z",
+      "successful": true,
+      "source": "GATYF5CAW6IEAQA5MXUOQJD7FRLF7SN3FXNWGWT54ST7FMKHLIQNY43B",
+      "explorer": "https://stellar.expert/explorer/public/tx/2de5f3474913f9e5c6383100a8101a991b9fe38c860ee307114d23e69d9c402e"
+    }
+  ],
+  "effects": [
+    {
+      "type": "account_created",
+      "at": "2026-11-17T13:24:57Z",
+      "operation": "281437056444952577"
+    },
+    {
+      "type": "account_credited",
+      "amount": "0.0001000",
+      "asset": "XLM",
+      "at": "2026-11-17T13:25:07Z",
+      "operation": "281437065035358209"
+    },
+    {
+      "type": "account_credited",
+      "amount": "2.0000000",
+      "asset": "XLM",
+      "at": "2026-11-17T13:26:37Z",
+      "operation": "281437142344359937"
+    },
+    {
+      "type": "trustline_created",
+      "asset": "USDC",
+      "at": "2026-11-17T13:35:12Z",
+      "operation": "281437584725893121"
+    },
+    {
+      "type": "account_credited",
+      "amount": "0.1200000",
+      "asset": "USDC",
+      "at": "2026-11-17T13:35:12Z",
+      "operation": "281437584725893122"
+    },
+    {
+      "type": "account_debited",
+      "amount": "0.8546577",
+      "asset": "XLM",
+      "at": "2026-11-17T13:35:12Z",
+      "operation": "281437584725893122"
+    },
+    {
+      "type": "account_debited",
+      "amount": "0.0100000",
+      "asset": "USDC",
+      "at": "2026-11-17T13:41:12Z",
+      "operation": "281437893964443649"
+    },
+    {
+      "type": "account_debited",
+      "amount": "0.1000000",
+      "asset": "USDC",
+      "at": "2026-11-17T13:42:57Z",
+      "operation": "281437984158892033"
+    }
+  ]
+}

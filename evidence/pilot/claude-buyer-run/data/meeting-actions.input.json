@@ -1,0 +1,5 @@
+{
+  "meetingDate": "2026-11-17",
+  "participants": ["Deniz", "Ece", "Kaan"],
+  "transcript": "Deniz: Thanks for joining. We need to ship the onboarding page before the demo. Ece, can you finish the copy by Thursday? Ece: Yes, I will send the final copy to Kaan by Thursday. Kaan: Then I will put it on the staging site on Friday. Deniz: Good. We also agreed to drop the dark mode toggle from this release, it can wait. Ece: Agreed. Kaan: One more thing, the payment test account is running low. Deniz: I will top it up today. Let's meet again next Monday to review the staging site."
+}

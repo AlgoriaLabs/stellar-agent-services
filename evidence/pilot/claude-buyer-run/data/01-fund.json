@@ -1,0 +1,23 @@
+{
+  "step": "fund",
+  "network": "stellar:pubnet",
+  "at": "2026-11-17T13:35:15.392Z",
+  "account": "GAM6BSNAX3UHNH4UMLAG5WU47OBJQEZZWU2PVE3J65TW3DDX2V7MUWSP",
+  "transaction": "8681fbb95a7a6b1017545558a298885b486330043628e44f1f9d152ef816017b",
+  "ledger": 65527294,
+  "explorer": "https://stellar.expert/explorer/public/tx/8681fbb95a7a6b1017545558a298885b486330043628e44f1f9d152ef816017b",
+  "operations": [
+    "changeTrust USDC",
+    "pathPaymentStrictReceive 0.12 USDC, sendMax 1.5 XLM"
+  ],
+  "balances": [
+    {
+      "asset": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      "balance": "0.1200000"
+    },
+    {
+      "asset": "XLM",
+      "balance": "4.3454223"
+    }
+  ]
+}

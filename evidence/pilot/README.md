@@ -1,12 +1,13 @@
 # Independent pilot checklist
 
-Two independent providers are recorded, each with a confirmed mainnet payment. The pilot has one
-operator-run user flow and one independent user flow. The working target is two independent providers
-plus the sample, and five distinct users.
+Two independent providers are recorded, each with a confirmed mainnet payment. The pilot has an operator-run
+buyer flow, an independent buyer flow, and [a third pilot user's run](claude-buyer-run/README.md) with paid
+calls to both providers. The working target is two independent providers plus the sample, and five distinct users.
 Confirm the conflicting SOW counts with the Chapter Lead before calling this target accepted.
 
 The [pilot report](report.md) links X Strategy Agent and Meeting Action Extractor, with their registrations,
-payer setup and confirmed USDC payments.
+payer setup and confirmed USDC payments. The [public evidence page](https://algorialabs.github.io/stellar-agent-services/#pilot-screenshots)
+shows the third user's discovery, approval and payment evidence.
 
 For each independent provider:
 

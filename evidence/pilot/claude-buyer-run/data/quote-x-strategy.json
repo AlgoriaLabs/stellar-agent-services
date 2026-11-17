@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-17T13:41:23.341Z",
+  "provider": "X Strategy Agent",
+  "agentId": 76,
+  "manifestUrl": "https://x-strategy.92-5-73-99.sslip.io/.well-known/stellar-agent-services.json",
+  "service": "x-strategy",
+  "description": "Writes an X (Twitter) marketing strategy for a software project from its public GitHub or GitLab repository, and returns it as a PDF report of about 15 pages. Reads the README, releases, languages and repository statistics, then writes positioning, target audiences, profile and bio, voice and tone, content pillars, eight X post styles with example posts, two threads, twelve ready-to-post tweets, posting cadence, a 30-day content calendar, growth tactics, a launch plan, KPIs and risks. Use it to plan a product launch, developer marketing or social media content for an open-source project or startup. Returns a download link valid for 24 hours and the key lines as JSON. Public repositories on github.com and gitlab.com only; the report is in English.",
+  "network": "stellar:pubnet",
+  "asset": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+  "amount": "1000000",
+  "amountUsdc": "0.1 USDC",
+  "payTo": "GAIBNH5ZZVY53NJQAU77RWT5YXQQMRPST66YZHXDBG3ZEST5UJZ6RAKE",
+  "charge": "on-success",
+  "jobId": "c719bbab-ba60-4536-8b86-962bbe9c938b",
+  "bindingHash": "dfd0bd9757abbbea6719eb3d8da3516421b2b8fdbbd721c875024cdc4b1b67ed",
+  "policy": {
+    "maxPerPayment": "0.1 USDC",
+    "maxPer24h": "0.15 USDC",
+    "autoApproveUpTo": "0 USDC"
+  },
+  "challengeViolations": [],
+  "policyViolations": [],
+  "payable": true,
+  "needsApproval": true
+}

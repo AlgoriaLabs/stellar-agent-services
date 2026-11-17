@@ -1,0 +1,17 @@
+Agent 77  (mainnet)  Provider Standard v1 manifest: ok
+  manifest   : https://meeting-actions.92-5-73-99.sslip.io/.well-known/stellar-agent-services.json  (URL from the registration)
+  payment    : x402 exact, USDC on stellar:pubnet, fees sponsored, 180 s to sign
+  payTo      : GDZ2Z5TMBSI3EBBMMYXAXXNVHN4THI6VTIEVBHMBAJ7TPJGTRACQZFW6
+  recovery   : results kept 86400 s (the standard's default)
+  identity   : ✔ bound  I1 pass, I2 pass, I3 pass  (registration read on chain)
+  conformance: not read; set TRUSTED_VALIDATORS or --trusted-validators
+
+SERVICE          USDC  CHARGE      ~SECONDS  TITLE (self-declared)
+---------------  ----  ----------  --------  --------------------------------------
+meeting-actions  0.01  on-success        20  Action items from a meeting transcript
+
+  self-declared (UNVERIFIED):
+    name        : Meeting Action Extractor
+    description : AI agent that turns a meeting transcript into action items: tasks, owners, due dates, priorities, d…
+
+ℹ Nothing was paid. A payment client pays from the manifest URL after you approve the price and payee.

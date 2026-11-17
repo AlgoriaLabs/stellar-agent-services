@@ -1,0 +1,74 @@
+┌─ Approval required ─────────────────────────────────────────────
+│ Provider   Meeting Action Extractor (agent 77)
+│ Manifest   https://meeting-actions.92-5-73-99.sslip.io/.well-known/stellar-agent-services.json
+│ Service    meeting-actions: Reads a meeting transcript and returns its action items as JSON: each task with its owner, due date, priority and the exact quote where it was agreed, plus the decisions made and a short summary. Use it after a meeting, call, standup or interview to get the to-do list and follow-ups without reading the whole transcript. Works with plain text from Zoom, Google Meet, Teams, Otter or any notes, in any language. Give the meeting date to turn "next Friday" into a date. Up to 100,000 characters.
+│ Price      0.01 USDC (100000 base units), charged on-success
+│ Network    stellar:pubnet
+│ Pay to     GDZ2Z5TMBSI3EBBMMYXAXXNVHN4THI6VTIEVBHMBAJ7TPJGTRACQZFW6
+│ Asset      CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75
+│ Job id     22c43275-1e93-4b7d-b5b7-9c1dd84ed32c
+│ Limits     0.01 USDC per payment · 0.15 USDC per 24 h · no prompt up to 0 USDC
+│ ✓ The challenge matches the manifest and the spending policy.
+└─────────────────────────────────────────────────────────────────
+
+📸 Screenshot of this approval screen: press Enter, then click this Terminal window (type s to skip):    03a-meeting-actions-approval.png saved
+
+Pay 0.01 USDC to GDZ2Z5TMBSI3EBBMMYXAXXNVHN4THI6VTIEVBHMBAJ7TPJGTRACQZFW6? Type yes to approve, no to decline:
+Pay 0.01 USDC to GDZ2Z5TMBSI3EBBMMYXAXXNVHN4THI6VTIEVBHMBAJ7TPJGTRACQZFW6? Type yes to approve, no to decline: Approved at 2026-11-17T13:40:54.023Z. Signing once and following the job...
+{
+  "job": {
+    "jobId": "22c43275-1e93-4b7d-b5b7-9c1dd84ed32c",
+    "service": "meeting-actions",
+    "status": "succeeded",
+    "charge": "on-success",
+    "charged": true,
+    "createdAt": "2026-11-17T13:41:01.493Z",
+    "updatedAt": "2026-11-17T13:41:19.477Z",
+    "expiresAt": "2026-11-18T13:41:19.477Z",
+    "output": {
+      "summary": "The team discussed finalizing the onboarding page for the upcoming demo, deciding to drop the dark mode toggle and assigning tasks for copy, staging, and test accounts.",
+      "actionItems": [
+        {
+          "task": "Finish the copy and send it to Kaan",
+          "owner": "Ece",
+          "dueDate": "2026-11-19",
+          "dueText": "by Thursday",
+          "priority": "high",
+          "evidence": "Yes, I will send the final copy to Kaan by Thursday."
+        },
+        {
+          "task": "Put the copy on the staging site",
+          "owner": "Kaan",
+          "dueDate": "2026-11-20",
+          "dueText": "on Friday",
+          "priority": "high",
+          "evidence": "Then I will put it on the staging site on Friday."
+        },
+        {
+          "task": "Top up the payment test account",
+          "owner": "Deniz",
+          "dueDate": "2026-11-17",
+          "dueText": "today",
+          "priority": "medium",
+          "evidence": "I will top it up today."
+        }
+      ],
+      "decisions": [
+        "Drop the dark mode toggle from this release.",
+        "Meet again next Monday to review the staging site."
+      ]
+    },
+    "payment": {
+      "network": "stellar:pubnet",
+      "asset": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      "amount": "100000",
+      "payTo": "GDZ2Z5TMBSI3EBBMMYXAXXNVHN4THI6VTIEVBHMBAJ7TPJGTRACQZFW6",
+      "payer": "GAM6BSNAX3UHNH4UMLAG5WU47OBJQEZZWU2PVE3J65TW3DDX2V7MUWSP",
+      "transaction": "521aa0de15a3e9de22538774a782257e3540924599bdb417488f93587e9bcbf9",
+      "settledAt": "2026-11-17T13:41:19.477Z"
+    }
+  },
+  "confirmed": true
+}
+
+✓ Paid once; the transfer is confirmed on chain.
