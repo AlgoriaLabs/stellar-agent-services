@@ -1,8 +1,7 @@
 # SOW closeout and pilot handoff
 
-Reviewed on 2026-11-06 against the [source SOW](https://docs.google.com/document/d/1kIJ5nkwIVaXqHqcNHwuI5JN0Ap6g86wzncMQya6Kv88/edit)
-and this checkout. The [implementation plan](../IMPLEMENTATION_PLAN.md) records the build; this page records the
-remaining acceptance work. Prepared templates are not evidence of completed pilot work.
+Updated on 2026-11-17 against the [current SOW](https://docs.google.com/document/d/1kIJ5nkwIVaXqHqcNHwuI5JN0Ap6g86wzncMQya6Kv88/edit).
+This page links the delivery evidence and the [implementation plan](../IMPLEMENTATION_PLAN.md).
 
 ## Readiness
 
@@ -22,10 +21,12 @@ now block new payments unless a trusted source can satisfy them [V1].
 
 ## D3 pilot scope
 
-The current SOW calls for **two independent providers and two pilot users**. The
-[pilot report](../evidence/pilot/report.md) documents both providers and three completed buyer runs.
-
-Record testnet evidence acceptance and the sprint start date in the pilot report.
+The current SOW calls for **two independent providers and two pilot users**, with at least one paid call per
+provider. Both providers received confirmed USDC payments on Stellar mainnet on 16–17 November 2026.
+The pilot report records completed buyer flows for U2 and U3 and an additional run by the X Strategy Agent
+operator. The D2 Job Recovery demo shows the wallet recovering the same testnet sample job after a lost
+response with one confirmed transfer. [Pilot scope](../evidence/pilot/report.md#accepted-scope) ·
+[D2 Job Recovery demo](https://algorialabs.github.io/stellar-agent-services/#recovery).
 
 ## Completed reference deployment and evidence
 
@@ -68,16 +69,11 @@ wallet and reported delivery of a 22-page PDF. [Mainnet evidence](../evidence/ma
 [Pilot report](../evidence/pilot/report.md).
 
 Meeting Action Extractor is the second independent provider. It registered as mainnet agent 77 on 2026-11-17
-and received an independent pilot user's 0.01 USDC payment. The user reported receiving three action items,
-three decisions and a summary. [Mainnet evidence](../evidence/mainnet/meeting-actions.md).
+and received an independent pilot user's 0.01 USDC payment. The project owner funded that buyer’s wallet.
+The user reported receiving three action items, three decisions and a summary.
+[Mainnet evidence](../evidence/mainnet/meeting-actions.md).
 
-## Run the independent pilot
+## Pilot evidence for review
 
-Use [the pilot checklist](../evidence/pilot/README.md) and [pilot report](../evidence/pilot/report.md). Recruit
-providers who control their own code, payout wallet and deployment. Have them follow the guide from a clean
-environment and record assistance and blockers. Each provider needs a paid service call with linked evidence and
-its network identified. Link screenshots that illustrate the pilot. At least one flow demonstrates recovery.
-
-Resolve blocking issues, retain before/after observations and rerun only affected flows. Submit the evidence index
-with completed videos, receipts, transaction references, registry records and report, then request Chapter Lead
-acceptance against SOW §6.2.
+The [public D3 evidence page](https://algorialabs.github.io/stellar-agent-services/#pilot) links both provider
+projects, confirmed payments, screenshots and the pilot report for review under SOW §6.2.

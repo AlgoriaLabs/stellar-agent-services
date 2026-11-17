@@ -28,6 +28,8 @@ and SQLite for persisted jobs. The service uses a public payout address.
 
 ## Independent pilot user U2
 
+The project owner confirmed that he funded U2’s buyer wallet for the pilot.
+
 The written run reports that the user reviewed a **0.01 USDC** mainnet quote in
 `@stellar-agent-services/payment-client`, applied the same spending limit, signed once and received an
 on-chain confirmation. The request went to `POST /services/meeting-actions/jobs`.

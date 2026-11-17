@@ -8,13 +8,16 @@ providers and the first two buyer runs. [Participant feedback](feedback.md) ·
 
 ## Accepted scope
 
-- Sprint start/end: not confirmed.
-- D3 target in the current SOW: two independent providers and two pilot users.
-- Testnet evidence acceptance: not recorded.
-- Pilot dates: 2026-11-16 and 2026-11-17. Both providers reported using Kit tarballs from a checkout to
-  access features absent from npm 0.1.1. Exact checkout commits were not recorded. [Provider feedback](feedback.md).
-- Public sample demo and evidence page: [published](https://algorialabs.github.io/stellar-agent-services/).
-  The reference sample is separate from the two independent provider integrations below.
+- **D3 scope:** Two independent providers, at least one paid call per provider, two completed user flows,
+  and public evidence of the pilot findings and fixes. [Current SOW](https://docs.google.com/document/d/1kIJ5nkwIVaXqHqcNHwuI5JN0Ap6g86wzncMQya6Kv88/edit).
+- **Pilot dates and network:** The recorded buyer runs took place on 16–17 November 2026 on Stellar mainnet.
+  The SOW leaves the sprint start date blank.
+- **Participants:** X Strategy Agent (76) and Meeting Action Extractor (77) each received a confirmed USDC payment.
+  U2 and U3 completed buyer flows. U1 is the service operator's additional buyer run.
+- **Recovery:** The D2 testnet reference sample provides the Job Recovery demonstration and single-payment proof.
+  [D2 recovery video and transaction](https://algorialabs.github.io/stellar-agent-services/#recovery).
+- **Public evidence:** Provider links, payment references, screenshots and pilot findings are published.
+  [D3 evidence page](https://algorialabs.github.io/stellar-agent-services/#pilot).
 
 ## Recorded mainnet provider and buyer flow
 
@@ -45,17 +48,18 @@ Add provider rows if the agreed scope requires them. Record clean-setup duration
 | U1 · Service operator | 2026-11-16 UTC | P1 / `x-strategy` | Client fetched the manifest. | [Written approval and job result](../mainnet/x-strategy.md#buyer-flow), [payer setup and funding](../mainnet/x-strategy.md#setup-and-payment-transactions), [confirmed 0.10 USDC payment](https://stellar.expert/explorer/public/tx/430fa75be0debb374cbbf787553bfc3e320c6d9a59b8d1ad4b0eb02b117b3042) | 22-page PDF delivery reported. [Buyer feedback](feedback.md#buyer-experience-u1). |
 | U2 · Independent buyer | 2026-11-17 UTC | P2 / `meeting-actions` | Live provider manifest linked. | [Written quote, approval and job result](../mainnet/meeting-actions.md#independent-pilot-user-u2), [payer trustline and USDC purchase](https://stellar.expert/explorer/public/tx/c08f9621532f9e10fe59ad5a8b74608280cf99ae3a87dacfa51a4cb5dcf429b4), [confirmed 0.01 USDC payment](https://stellar.expert/explorer/public/tx/a3bddc48cf8ef9b18dae8a77b1f84559488ed12d47454dd2c52290609f3e58f9) | Reported successful delivery of three action items, three decisions and a summary. [Buyer feedback](feedback.md#buyer-experience-u2). |
 | U3 · Third pilot user | 2026-11-17 UTC | P2 / `meeting-actions`, P1 / `x-strategy` | [Search and manifest captures for both services](claude-buyer-run/README.md#steps-and-screenshots) | [Approval, results and both mainnet payments](claude-buyer-run/README.md#summary) | Claude assisted. The participant approved both payments. Both jobs succeeded. Horizon confirmed both transfers. |
-| U4 | Not run | — | — | — | — |
-| U5 | Not run | — | — | — | — |
 
 For U1 the payout and payer wallets had a common funder, and the run identifies the buyer as the service operator.
-For U2 the project owner identified the buyer as an independent participant. The project owner confirmed that
-a different pilot user ran U3 and approved both payments. The [U3 ledger record](claude-buyer-run/data/04-ledger.json)
+The project owner identified U2 as an independent participant and funded U2’s buyer wallet for the pilot.
+The project owner confirmed that a different pilot user ran U3 and approved both payments. The
+[U3 ledger record](claude-buyer-run/data/04-ledger.json)
 shows one 0.01 USDC debit and one 0.10 USDC debit through the end of the run.
 
 ## Recovery
 
-User, provider, job id, interruption, recovery steps, video, result, and proof of exactly one transfer: not collected.
+The Job Recovery demo comes from D2. The Stellar testnet recording shows the wallet recovering the same job’s
+stored result after a lost response. The ledger proof shows one matching 0.02 test USDC transfer in the recorded
+scan window. [D2 recording, job ID and payment proof](../d2/README.md#captured-recovery-evidence).
 
 ## Findings and fixes
 

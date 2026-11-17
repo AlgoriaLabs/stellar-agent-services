@@ -21,7 +21,9 @@ For each distinct user:
 - [ ] Record an alias and date; do not publish private contact information.
 - [ ] Link the provider, service, confirmed payment and observed result.
 - [ ] Record assistance, confusing steps, errors and whether the user completed the flow.
-- [ ] Have at least one user recover an interrupted job with one transfer.
+
+The [D2 Job Recovery demo](../d2/README.md#captured-recovery-evidence) shows recovery of an interrupted
+sample job and the single confirmed transfer on Stellar testnet.
 
 Fill [report.md](report.md) from observations and link the payment evidence. SOW §6.1 lists pilot screenshots
 and leaves the choice of screens open. Discovery, approval, payment and result screens are examples.
