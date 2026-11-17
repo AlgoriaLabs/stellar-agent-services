@@ -77,3 +77,5 @@ The user reported receiving three action items, three decisions and a summary.
 
 The [public D3 evidence page](https://algorialabs.github.io/stellar-agent-services/#pilot) links both provider
 projects, confirmed payments, screenshots and the pilot report for review under SOW §6.2.
+The project owner provided both independent providers with access to his Oracle Cloud VM for free deployment
+and funded their Stellar wallets. [Pilot incentives](../evidence/pilot/report.md#incentives-and-acceptance).

@@ -82,10 +82,11 @@ Horizon check confirmed a single settlement. [U3 observations](claude-buyer-run/
 
 ## Incentives and acceptance
 
-The project owner offered both independent providers free hosting on his Oracle Cloud VM infrastructure
-and funded their Stellar wallets as a pilot incentive. Both developers used the shared host for their
-separately built services. Written confirmation from each provider is pending on who administers the
-server, deploys the service and controls its payout wallet.
+The project owner provided login credentials for his Oracle Cloud VM to both independent providers so
+they could deploy their own services directly and at no hosting cost. He also funded both providers’
+Stellar wallets as a pilot incentive. Both developers used the shared VM for their separately built
+services. Written confirmation from each provider is pending on who administers the server, deploys
+the service and controls its payout wallet.
 
 The [public D3 evidence page](https://algorialabs.github.io/stellar-agent-services/#pilot) links both provider
 projects, their payment references, the U3 screenshots, and this report for SOW §6.1.
