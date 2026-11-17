@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Public SOW evidence: actual captured artifacts, with unfinished live verification and pilot work labeled. -->
+<!-- Public SOW evidence for approval, verification, job recovery and the independent provider pilot. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -26,8 +26,6 @@
     .details { color: #40586a; font-size: .93rem; }
     .links { padding-left: 20px; }
     .links li { margin: 8px 0; }
-    .pending { border-left: 5px solid #a56700; }
-    .pending strong { color: #805000; }
     .rule { font-size: .9rem; color: #40586a; }
     footer { font-size: .9rem; color: #40586a; }
     @media (max-width: 700px) { main { padding: 28px 16px; } .grid { grid-template-columns: 1fr; gap: 0; } section { padding: 20px; } }
@@ -41,12 +39,13 @@
     <span class="tag">Stellar testnet · test USDC</span> <span class="tag">Stellar mainnet · USDC</span>
     <p class="intro">Two recorded calls show spending controls, approval of exact payment terms, a confirmed
       payment and recovery of a delayed result. Mainnet evidence includes three paid verifier runs and two
-      independent pilot providers with confirmed payments.</p>
+      independent pilot providers with confirmed payments. The pilot includes three buyer runs and screenshots
+      from a participant who paid both providers.</p>
     <nav aria-label="Project links">
       <a href="https://github.com/AlgoriaLabs/stellar-agent-services">Open-source repository</a>
       <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/docs/provider-standard.md">Provider Standard v1</a>
       <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/docs/provider-setup-guide.md">Provider setup guide</a>
-      <a href="#pilot-support">D3 pilot hosting and funding</a>
+      <a href="#pilot">D3 pilot evidence</a>
       <a href="checksums.sha256">Artifact checksums</a>
     </nav>
   </header>
@@ -136,6 +135,39 @@
       this project; this is not an independent audit or pilot. Full findings and failed runs:
       <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/evidence/mainnet/README.md">mainnet evidence</a>.</p>
   </section>
+  <section aria-labelledby="pilot">
+    <h2 id="pilot">D3 · Independent provider pilot</h2>
+    <p>The pilot covers two independent providers and three buyer runs. On 17 November 2026, the third pilot
+      user used Stellar Agent Search with Claude’s assistance and personally approved both payments. The
+      project owner funded the buyer wallet. Both jobs succeeded on Stellar mainnet.</p>
+    <ul class="links">
+      <li><a href="#x-strategy">X Strategy Agent provider record</a> ·
+        <a href="#meeting-actions">Meeting Action Extractor provider record</a> ·
+        <a href="#pilot-support">Pilot hosting and wallet funding</a></li>
+      <li><a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/evidence/pilot/report.md">Pilot report</a> ·
+        <a href="#pilot-feedback">Participant feedback and fixes</a> ·
+        <a href="https://github.com/AlgoriaLabs/stellar-agent-services/tree/main/evidence/pilot/claude-buyer-run">Buyer run notes and logs</a></li>
+    </ul>
+    <h3 id="pilot-screenshots">Discovery, approval and payment evidence</h3>
+    <ul class="links">
+      <li>Meeting Action Extractor (agent 77) returned three action items, two decisions and a summary.
+        <a href="pilot/claude-buyer-run/screens/02a-search-find-meeting.jpg">Search</a> ·
+        <a href="pilot/claude-buyer-run/screens/02b-search-manifest-77.jpg">Manifest</a> ·
+        <a href="pilot/claude-buyer-run/screens/03a-meeting-actions-approval.jpg">Approval terms</a> ·
+        <a href="pilot/claude-buyer-run/screens/03b-meeting-actions-result.jpg">Result screenshot</a> ·
+        <a href="https://stellar.expert/explorer/public/tx/521aa0de15a3e9de22538774a782257e3540924599bdb417488f93587e9bcbf9">0.01 USDC transfer</a></li>
+      <li>X Strategy Agent (agent 76) returned a 22-page report.
+        <a href="pilot/claude-buyer-run/screens/02c-search-find-x-strategy.jpg">Search</a> ·
+        <a href="pilot/claude-buyer-run/screens/02d-search-manifest-76.jpg">Manifest</a> ·
+        <a href="pilot/claude-buyer-run/screens/04a-x-strategy-approval.jpg">Approval terms</a> ·
+        <a href="pilot/claude-buyer-run/data/pay-x-strategy.json">Result record</a> ·
+        <a href="https://stellar.expert/explorer/public/tx/2de5f3474913f9e5c6383100a8101a991b9fe38c860ee307114d23e69d9c402e">0.10 USDC transfer</a></li>
+      <li><a href="pilot/claude-buyer-run/screens/01-wallet-funded.jpg">Buyer wallet setup</a> ·
+        <a href="pilot/claude-buyer-run/data/04-ledger.json">Buyer ledger record</a></li>
+    </ul>
+    <p class="rule">The payment client’s RPC lookup failed on the X Strategy Agent job. Stellar Horizon
+      independently confirmed a single transfer to each provider during the run.</p>
+  </section>
   <section aria-labelledby="x-strategy">
     <h2 id="x-strategy">D3 · First independent provider and pilot user flow</h2>
     <p>Murat’s X Strategy Agent registered as Stellar 8004 agent 76 on mainnet on 16 November 2026.
@@ -180,18 +212,18 @@
   </section>
   <section aria-labelledby="pilot-feedback">
     <h2 id="pilot-feedback">D3 · Provider and buyer feedback</h2>
-    <p>Both providers reported that offline payment tests and local-wallet launch worked well. Both buyers
+    <p>Both providers reported that offline payment tests and local-wallet launch worked well. The first two buyers
       reported a successful first payment and a single charge. The providers packed the Kit from source to
       get the documented features, and buyers used custom scripts to prepare their mainnet wallets.</p>
+    <p>All six npm packages were released at 0.1.2. A fresh install of Provider Kit 0.1.2 showed
+      <code>launch --local-wallet</code> and served <code>/openapi.json</code> and <code>/llms.txt</code>.
+      <a href="https://github.com/AlgoriaLabs/stellar-agent-services/releases/tag/v0.1.2">Release 0.1.2</a> ·
+      <a href="https://www.npmjs.com/package/@stellar-agent-services/provider-kit/v/0.1.2">Provider Kit on npm</a>.</p>
     <ul class="links">
       <li><a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/evidence/pilot/feedback.md#x-strategy-agent">X Strategy Agent feedback</a> ·
         <a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/evidence/pilot/feedback.md#meeting-action-extractor">Meeting Action Extractor feedback</a></li>
       <li><a href="https://github.com/AlgoriaLabs/stellar-agent-services/blob/main/evidence/pilot/report.md#findings-and-fixes">Pilot findings and workarounds</a></li>
     </ul>
-  </section>
-  <section class="pending" aria-labelledby="remaining">
-    <h2 id="remaining">Remaining evidence</h2>
-    <p>D3 pilot screenshots are pending. SOW §6.1 lists screenshots and leaves the choice of screens open.</p>
   </section>
   <footer>
     <p>Recordings use actual browser screenshots sampled at approximately two frames per second. Pauses between
