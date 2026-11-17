@@ -5,10 +5,9 @@ with its network, hash, ledger and explorer link, and testnet evidence is labele
 
 **Public evidence:** [videos, screenshots, receipts and payment proofs](https://algorialabs.github.io/stellar-agent-services/).
 
-**Status (2026-11-06): D1 and D2 technical evidence is published.** The Oracle sample is registered as
-testnet agent 163, passes all C1–C7 checks and has a confirmed Validation Registry response anchoring its
-receipt. Five badges are earned. Recordings and payment proofs remain available. Chapter Lead acceptance
-remains outstanding.
+**D1 evidence is published. D2 is complete.** Oracle testnet agent 163 passed all seven verifier checks and
+earned five badges. The confirmed Validation Registry response anchors its receipt. The Job Recovery recording
+and single-payment proof are published. [D2 verification and recovery evidence](https://algorialabs.github.io/stellar-agent-services/#recovery).
 
 **Mainnet (2026-11-14):** the verifier paid three live AlgoriaLabs providers with real USDC. Agents 73, 72 and 70
 reached level 3 with score 100, each paid job was recovered without a second charge, and every transfer is
