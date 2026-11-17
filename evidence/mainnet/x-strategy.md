@@ -46,6 +46,8 @@ after approval**. The recorded size is 107,120 bytes and the reported SHA-256 is
 `152d678fd1a15102b68541e6b8ab12f12c88db0579a0745eb0dd6f5e0d2b4166`. The evidence supplied for this run was a
 written record with ledger links and a digest. The PDF and approval recording were unavailable for review.
 
+[Provider and buyer feedback](../pilot/feedback.md#x-strategy-agent).
+
 ## Setup and payment transactions
 
 | Time (UTC) | Operation | Ledger and explorer |

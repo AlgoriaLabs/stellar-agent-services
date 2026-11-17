@@ -10,7 +10,7 @@ remaining acceptance work. Prepared templates are not evidence of completed pilo
 | --- | --- | --- |
 | D1 | Standard, client, spending controls, publicly hosted approval/limit-block video, screenshots and payment proof | Chapter Lead review |
 | D2 · Complete | Kit, guide, stable Oracle sample, all C1–C7 passed, anchored receipt, five badges, recovery and payment proofs | — |
-| D3 | Scaffolder, onboarding guide and [two independent providers with confirmed mainnet payments](../evidence/pilot/report.md#providers). One operator-run flow and one independent user flow. | Remaining user evidence, findings/fixes and Chapter Lead acceptance |
+| D3 | Scaffolder, onboarding guide, [two independent providers with confirmed mainnet payments](../evidence/pilot/report.md#providers), two recorded buyer flows, and [feedback and workarounds](../evidence/pilot/report.md#findings-and-fixes) | Discovery and approval captures, incentive record and Chapter Lead acceptance |
 | Distribution | Six npm packages at 0.1.1 (released 2026-11-06, with the reconciliation fix) | A later release for `--local-wallet` |
 | Mainnet | Three paid providers at level 3 with real USDC, receipts, on-chain transfers, and agent 73's Validation Registry record | Nothing for the SOW |
 | Discovery | Newer implementation notes report testnet registry scanning and manifest service matching | Confirm the released discovery path in the pilot and show the complete find-to-result flow |
