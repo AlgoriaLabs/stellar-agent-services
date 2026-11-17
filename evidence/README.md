@@ -13,8 +13,11 @@ Chapter Lead acceptance remain outstanding.
 **Mainnet (2026-11-14):** the verifier paid three live AlgoriaLabs providers with real USDC. Agents 73, 72 and 70
 reached level 3 with score 100, each paid job was recovered without a second charge, and every transfer is
 confirmed on chain. Agent 73's receipt is anchored in the mainnet Validation Registry and earns all five badges.
-These are project-operated services, not pilot providers. See [mainnet/](mainnet/README.md). [Readiness](readiness.md) records the checks and release limits;
+These are project-operated services. See [mainnet/](mainnet/README.md). [Readiness](readiness.md) records the checks and release limits;
 [the closeout guide](../docs/sow-closeout.md) gives the pilot handoff.
+
+**Mainnet (2026-11-16):** [X Strategy Agent](mainnet/x-strategy.md) adds one provider deployment (agent 76)
+and one operator-run buyer flow. The buyer paid 0.10 USDC and reported receiving a 22-page PDF.
 
 | Deliverable | Evidence | Location |
 | --- | --- | --- |
@@ -25,8 +28,8 @@ These are project-operated services, not pilot providers. See [mainnet/](mainnet
 | D2 | Validation Registry records | [Confirmed registration, request and response](validation/README.md) |
 | D2 | Job Recovery demo | [Captured recovery and single-transfer proof](d2/README.md) — published |
 | D1, D2 | Mainnet payments, recovery, receipts and a Validation Registry record | [Mainnet run](mainnet/README.md): three paid providers at level 3, real USDC; agent 73 anchored on chain |
-| D3 | Provider integrations, paid-call references, screenshots | [Pilot checklist](pilot/README.md) — not run |
-| D3 | Pilot report | [Report template](pilot/report.md) — not filled |
+| D3 supporting evidence | One mainnet provider deployment and one operator-run buyer flow | [Agent 76 registration, payment and delivery record](mainnet/x-strategy.md) |
+| D3 | Independent provider integrations, user flows and pilot report | [Pilot checklist](pilot/README.md) and [pilot report](pilot/report.md) — independent participation pending |
 
 For each transaction include: network, transaction hash, ledger, explorer link, provider id, service and purpose.
 Publish participant aliases, not private contact details. Exclude keys, signed payment payloads, job tokens and

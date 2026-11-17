@@ -1,6 +1,7 @@
 # Independent provider pilot report
 
-Status: template, not a completed pilot report. Do not count placeholder rows as participants or integrations.
+Status: one operator-run provider and buyer case recorded. Independent participants and Chapter Lead
+acceptance are pending.
 
 ## Accepted scope
 
@@ -10,6 +11,16 @@ Status: template, not a completed pilot report. Do not count placeholder rows as
 - Tested commit/package versions and dates: not recorded.
 - Public sample demo and evidence page: [published](https://algorialabs.github.io/stellar-agent-services/).
   This is sample engineering evidence; no independent participant flow is claimed.
+
+## Recorded mainnet provider and buyer flow
+
+[X Strategy Agent](../mainnet/x-strategy.md), built in the
+[marketing-agent-service repository](https://github.com/MuratCaganGogebakan/marketing-agent-service), registered
+as Stellar mainnet agent **76** on 2026-11-16 at ledger **65509002**. The operator signed as the buyer
+using a separate payer wallet. The job charged
+**0.10 USDC** at [ledger 65509203](https://stellar.expert/explorer/public/tx/430fa75be0debb374cbbf787553bfc3e320c6d9a59b8d1ad4b0eb02b117b3042),
+and the operator reported receiving a 22-page PDF. The written record includes approval terms, job ID,
+result digest and registry links. Independent provider and user rows remain open.
 
 ## Providers
 

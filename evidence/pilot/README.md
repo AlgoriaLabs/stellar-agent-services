@@ -1,7 +1,10 @@
 # Independent pilot checklist
 
-Status: not run. The working target is two independent providers plus the sample, and five distinct users.
+Independent participation is pending. The working target is two independent providers plus the sample, and five distinct users.
 Confirm the conflicting SOW counts with the Chapter Lead before calling this target accepted.
+
+The [X Strategy Agent mainnet record](../mainnet/x-strategy.md) documents one provider deployment and one
+operator-run buyer flow. See the [pilot report](report.md) for how it relates to the SOW.
 
 For each independent provider:
 
