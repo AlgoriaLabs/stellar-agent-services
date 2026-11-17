@@ -42,8 +42,8 @@ on-chain confirmation. The request went to `POST /services/meeting-actions/jobs`
   [Payment transaction](https://stellar.expert/explorer/public/tx/a3bddc48cf8ef9b18dae8a77b1f84559488ed12d47454dd2c52290609f3e58f9) ·
   [Horizon effects](https://horizon.stellar.org/transactions/a3bddc48cf8ef9b18dae8a77b1f84559488ed12d47454dd2c52290609f3e58f9/effects).
 
-The supplied user evidence is a written run record and transaction references. Discovery and approval
-captures and raw output are pending. [Provider and buyer feedback](../pilot/feedback.md#meeting-action-extractor).
+The supplied user evidence includes a written run record, transaction references and participant feedback.
+[Provider and buyer feedback](../pilot/feedback.md#meeting-action-extractor).
 
 ## Transaction timeline
 

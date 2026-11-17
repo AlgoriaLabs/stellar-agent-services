@@ -19,13 +19,13 @@ For each independent provider:
 For each distinct user:
 
 - [ ] Record an alias and date; do not publish private contact information.
-- [ ] Capture find → review terms/limits → approve → pay → receive.
 - [ ] Link the provider, service, confirmed payment and observed result.
 - [ ] Record assistance, confusing steps, errors and whether the user completed the flow.
 - [ ] Have at least one user recover an interrupted job with one transfer.
 
-Fill [report.md](report.md) from observations, link screenshots and payment evidence, and record pilot incentives
-as distributed only when actually distributed. Resolve blocking issues and link the fixes and retest outcomes.
+Fill [report.md](report.md) from observations and link the payment evidence. SOW §6.1 lists pilot screenshots
+and leaves the choice of screens open. Discovery, approval, payment and result screens are examples.
+Resolve blocking issues and link the fixes and retest outcomes.
 
 [Invitation drafts](invitation-drafts.md) are prepared for the owner. The registered sample and its
 [verification evidence](../validation/README.md) are ready for demonstration, but do not count as an

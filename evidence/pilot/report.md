@@ -2,8 +2,8 @@
 
 Status: **two independent providers** with confirmed mainnet payments and **two completed paid buyer flows**.
 X Strategy Agent’s developer ran U1. The project owner identified U2 as an independent pilot user.
-Feedback is recorded from both providers and both buyer flows. Discovery and approval captures and
-the incentive record are pending. [Participant feedback](feedback.md).
+Feedback is recorded from both providers and both buyer flows. D3 pilot screenshots are pending.
+SOW §6.1 lists screenshots and leaves the choice of screens open. [Participant feedback](feedback.md).
 
 ## Accepted scope
 
@@ -41,8 +41,8 @@ Add provider rows if the agreed scope requires them. Record clean-setup duration
 
 | User alias | Date | Provider / service | Discovery evidence | Approval / payment / result | Assistance and outcome |
 | --- | --- | --- | --- | --- | --- |
-| U1 · Service operator | 2026-11-16 UTC | P1 / `x-strategy` | Client fetched the manifest. Search capture unavailable. | [Written approval and job result](../mainnet/x-strategy.md#buyer-flow), [payer setup and funding](../mainnet/x-strategy.md#setup-and-payment-transactions), [confirmed 0.10 USDC payment](https://stellar.expert/explorer/public/tx/430fa75be0debb374cbbf787553bfc3e320c6d9a59b8d1ad4b0eb02b117b3042) | 22-page PDF delivery reported. [Buyer feedback](feedback.md#buyer-experience-u1). |
-| U2 · Independent buyer | 2026-11-17 UTC | P2 / `meeting-actions` | Live provider manifest linked. Search capture unavailable. | [Written quote, approval and job result](../mainnet/meeting-actions.md#independent-pilot-user-u2), [payer trustline and USDC purchase](https://stellar.expert/explorer/public/tx/c08f9621532f9e10fe59ad5a8b74608280cf99ae3a87dacfa51a4cb5dcf429b4), [confirmed 0.01 USDC payment](https://stellar.expert/explorer/public/tx/a3bddc48cf8ef9b18dae8a77b1f84559488ed12d47454dd2c52290609f3e58f9) | Reported successful delivery of three action items, three decisions and a summary. [Buyer feedback](feedback.md#buyer-experience-u2). |
+| U1 · Service operator | 2026-11-16 UTC | P1 / `x-strategy` | Client fetched the manifest. | [Written approval and job result](../mainnet/x-strategy.md#buyer-flow), [payer setup and funding](../mainnet/x-strategy.md#setup-and-payment-transactions), [confirmed 0.10 USDC payment](https://stellar.expert/explorer/public/tx/430fa75be0debb374cbbf787553bfc3e320c6d9a59b8d1ad4b0eb02b117b3042) | 22-page PDF delivery reported. [Buyer feedback](feedback.md#buyer-experience-u1). |
+| U2 · Independent buyer | 2026-11-17 UTC | P2 / `meeting-actions` | Live provider manifest linked. | [Written quote, approval and job result](../mainnet/meeting-actions.md#independent-pilot-user-u2), [payer trustline and USDC purchase](https://stellar.expert/explorer/public/tx/c08f9621532f9e10fe59ad5a8b74608280cf99ae3a87dacfa51a4cb5dcf429b4), [confirmed 0.01 USDC payment](https://stellar.expert/explorer/public/tx/a3bddc48cf8ef9b18dae8a77b1f84559488ed12d47454dd2c52290609f3e58f9) | Reported successful delivery of three action items, three decisions and a summary. [Buyer feedback](feedback.md#buyer-experience-u2). |
 | U3 | Not run | — | — | — | — |
 | U4 | Not run | — | — | — | — |
 | U5 | Not run | — | — | — | — |
@@ -74,7 +74,7 @@ The workarounds above were used in the pilot. Product changes and retests agains
 
 ## Incentives and acceptance
 
-Provider/user incentives agreed and distributed: not recorded. Report totals without private payment details.
+The SOW includes provider and user incentives. Their distribution status is unrecorded here.
 
 SOW §6.1 evidence is linked on the public evidence page for
 [X Strategy Agent](https://algorialabs.github.io/stellar-agent-services/#x-strategy) and

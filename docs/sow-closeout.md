@@ -10,7 +10,7 @@ remaining acceptance work. Prepared templates are not evidence of completed pilo
 | --- | --- | --- |
 | D1 | Standard, client, spending controls, publicly hosted approval/limit-block video, screenshots and payment proof | Chapter Lead review |
 | D2 · Complete | Kit, guide, stable Oracle sample, all C1–C7 passed, anchored receipt, five badges, recovery and payment proofs | — |
-| D3 | Scaffolder, onboarding guide, [two independent providers with confirmed mainnet payments](../evidence/pilot/report.md#providers), two recorded buyer flows, and [feedback and workarounds](../evidence/pilot/report.md#findings-and-fixes) | Discovery and approval captures, incentive record and Chapter Lead acceptance |
+| D3 | Scaffolder, onboarding guide, [two independent providers with confirmed mainnet payments](../evidence/pilot/report.md#providers), two recorded buyer flows, and [feedback and workarounds](../evidence/pilot/report.md#findings-and-fixes) | Pilot screenshots under SOW §6.1 and Chapter Lead acceptance |
 | Distribution | Six npm packages at 0.1.1 (released 2026-11-06, with the reconciliation fix) | A later release for `--local-wallet` |
 | Mainnet | Three paid providers at level 3 with real USDC, receipts, on-chain transfers, and agent 73's Validation Registry record | Nothing for the SOW |
 | Discovery | Newer implementation notes report testnet registry scanning and manifest service matching | Confirm the released discovery path in the pilot and show the complete find-to-result flow |
@@ -79,7 +79,7 @@ three decisions and a summary. [Mainnet evidence](../evidence/mainnet/meeting-ac
 Use [the pilot checklist](../evidence/pilot/README.md) and [pilot report](../evidence/pilot/report.md). Recruit
 providers who control their own code, payout wallet and deployment. Have them follow the guide from a clean
 environment and record assistance and blockers. Each provider needs a paid service call with linked evidence and
-its network identified. Capture discovery, approval, payment and result for each user. At least one demonstrates recovery.
+its network identified. Link screenshots that illustrate the pilot. At least one flow demonstrates recovery.
 
 Resolve blocking issues, retain before/after observations and rerun only affected flows. Submit the evidence index
 with completed videos, receipts, transaction references, registry records and report, then request Chapter Lead
