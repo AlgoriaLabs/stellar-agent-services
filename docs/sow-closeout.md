@@ -10,7 +10,7 @@ remaining acceptance work. Prepared templates are not evidence of completed pilo
 | --- | --- | --- |
 | D1 | Standard, client, spending controls, publicly hosted approval/limit-block video, screenshots and payment proof | Chapter Lead review |
 | D2 | Kit, guide, stable Oracle sample, all C1–C7 passed, anchored receipt/five badges, recovery and payment proofs | Chapter Lead review |
-| D3 | Scaffolder, onboarding guide and one [mainnet operator-run provider and buyer flow](../evidence/mainnet/x-strategy.md) | Independent integrations, user flows, findings/fixes and completed pilot report |
+| D3 | Scaffolder, onboarding guide and the first [independent provider with a mainnet payment](../evidence/mainnet/x-strategy.md) | Remaining integrations, separate user flows, findings/fixes and completed pilot report |
 | Distribution | Six npm packages at 0.1.1 (released 2026-11-06, with the reconciliation fix) | A later release for `--local-wallet` |
 | Mainnet | Three paid providers at level 3 with real USDC, receipts, on-chain transfers, and agent 73's Validation Registry record | Nothing for the SOW |
 | Discovery | Newer implementation notes report testnet registry scanning and manifest service matching | Confirm the released discovery path in the pilot and show the complete find-to-result flow |
@@ -65,17 +65,17 @@ three transfers (0.10, 0.10 and 0.005 USDC) are confirmed on chain. Agent 74's p
 charged. Agent 73's receipt is anchored in the mainnet Validation Registry (request and response confirmed) and
 earns all five badges. These services are project-operated, so they do not count as independent pilot providers.
 
-[X Strategy Agent](../evidence/mainnet/x-strategy.md) registered as mainnet agent 76 on 2026-11-16. Its operator
-paid 0.10 USDC on mainnet using a separate buyer wallet and reported receiving a 22-page PDF. The
-[pilot report](../evidence/pilot/report.md) links the case as supporting evidence for one provider and one
-buyer flow. Independent pilot participation remains pending.
+Murat’s X Strategy Agent is the first independent provider. It registered as mainnet agent 76 on
+2026-11-16. The operator-run pilot user flow includes a confirmed 0.10 USDC payment from a separate payer
+wallet and reported delivery of a 22-page PDF. [Mainnet evidence](../evidence/mainnet/x-strategy.md) ·
+[Pilot report](../evidence/pilot/report.md).
 
 ## Run the independent pilot
 
 Use [the pilot checklist](../evidence/pilot/README.md) and [pilot report](../evidence/pilot/report.md). Recruit
 providers who control their own code, payout wallet and deployment. Have them follow the guide from a clean
-environment; record assistance and blockers. Each provider needs a real paid testnet service call and its own
-linked evidence. Capture discovery, approval, payment and result for each user; at least one demonstrates recovery.
+environment and record assistance and blockers. Each provider needs a paid service call with linked evidence and
+its network identified. Capture discovery, approval, payment and result for each user. At least one demonstrates recovery.
 
 Resolve blocking issues, retain before/after observations and rerun only affected flows. Submit the evidence index
 with completed videos, receipts, transaction references, registry records and report, then request Chapter Lead

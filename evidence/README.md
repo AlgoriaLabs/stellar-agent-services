@@ -16,8 +16,9 @@ confirmed on chain. Agent 73's receipt is anchored in the mainnet Validation Reg
 These are project-operated services. See [mainnet/](mainnet/README.md). [Readiness](readiness.md) records the checks and release limits;
 [the closeout guide](../docs/sow-closeout.md) gives the pilot handoff.
 
-**Mainnet (2026-11-16):** [X Strategy Agent](mainnet/x-strategy.md) adds one provider deployment (agent 76)
-and one operator-run buyer flow. The buyer paid 0.10 USDC and reported receiving a 22-page PDF.
+**Mainnet (2026-11-16):** [X Strategy Agent](mainnet/x-strategy.md) is the first independent D3 provider
+(agent 76). Its operator-run pilot user flow includes a confirmed 0.10 USDC payment and reported delivery
+of a 22-page PDF.
 
 | Deliverable | Evidence | Location |
 | --- | --- | --- |
@@ -28,8 +29,8 @@ and one operator-run buyer flow. The buyer paid 0.10 USDC and reported receiving
 | D2 | Validation Registry records | [Confirmed registration, request and response](validation/README.md) |
 | D2 | Job Recovery demo | [Captured recovery and single-transfer proof](d2/README.md) — published |
 | D1, D2 | Mainnet payments, recovery, receipts and a Validation Registry record | [Mainnet run](mainnet/README.md): three paid providers at level 3, real USDC; agent 73 anchored on chain |
-| D3 supporting evidence | One mainnet provider deployment and one operator-run buyer flow | [Agent 76 registration, payment and delivery record](mainnet/x-strategy.md) |
-| D3 | Independent provider integrations, user flows and pilot report | [Pilot checklist](pilot/README.md) and [pilot report](pilot/report.md) — independent participation pending |
+| D3 | First independent provider and operator-run pilot user flow | [Agent 76 registration, payment and delivery record](mainnet/x-strategy.md) |
+| D3 | Additional integrations and user flows, findings and Chapter Lead acceptance | [Pilot checklist](pilot/README.md) and [pilot report](pilot/report.md) |
 
 For each transaction include: network, transaction hash, ledger, explorer link, provider id, service and purpose.
 Publish participant aliases, not private contact details. Exclude keys, signed payment payloads, job tokens and

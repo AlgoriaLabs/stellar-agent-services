@@ -7,8 +7,8 @@ second charge, and wrote a verification receipt for every run. Every payment is 
 The providers are AlgoriaLabs services built with the Provider Kit. They are not independent pilot providers, so
 this page is not D3 pilot evidence. It shows that the standard, the kit and the verifier work with real money.
 
-The separate [X Strategy Agent run](x-strategy.md) on 2026-11-16 documents agent 76's registration and its
-first buyer payment of 0.10 USDC, made by the service operator.
+The [X Strategy Agent run](x-strategy.md) on 2026-11-16 documents the first independent D3 provider,
+mainnet agent 76, and its operator-run user flow with a confirmed 0.10 USDC payment.
 
 ## Result
 

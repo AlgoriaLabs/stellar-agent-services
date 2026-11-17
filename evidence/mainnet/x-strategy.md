@@ -57,10 +57,15 @@ written record with ledger links and a digest. The PDF and approval recording we
 | 12:26:32 | Add payer's USDC trustline and exchange 0.7299656 XLM for 0.10 USDC | [65509190](https://stellar.expert/explorer/public/tx/ee763a32dba5be44b23cddc50f1c7e76cc7a0563f40b0d9430a0c90faba9ad9e) |
 | 12:27:37 | Settle the paid job | [65509203](https://stellar.expert/explorer/public/tx/430fa75be0debb374cbbf787553bfc3e320c6d9a59b8d1ad4b0eb02b117b3042) |
 
+Horizon lists `GDZTNESUUP2YODFWW5TIOVV2PN43JTJFIEZ7ML4JC2VCHOXWNSTV44SC` as the funder for both
+create-account operations at ledgers 65508999 and 65509185. The payer account then added the trustline,
+exchanged XLM for USDC and spent that USDC on the job.
+
 ## SOW coverage
 
-This documents one provider project and deployment and one operator-run buyer flow on mainnet. The run record
-attributes funding for both wallets and the paid call to the service operator. The provider repository establishes
-the implementation's source. Independent control of the deployment and payout wallet, and an independent buyer,
-remain to be documented for D3. This run covered identity registration and normal delivery. Paid verifier checks
-C4/C5, a Validation Registry response, verification badges and a recovery run are absent for agent 76.
+The project owner confirmed Murat’s independent control of the deployment and payout wallet. The
+[D3 pilot report](../pilot/report.md) records X Strategy Agent as provider P1 and the buyer run as U1.
+The written run identifies the service operator as the buyer. The ledger establishes the wallet used for
+payment. A separate buyer’s identity remains unverified.
+This run covered identity registration and normal delivery. Paid verifier checks C4/C5, a Validation
+Registry response, verification badges and a recovery run are absent for agent 76.

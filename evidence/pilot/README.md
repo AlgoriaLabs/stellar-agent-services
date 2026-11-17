@@ -1,10 +1,11 @@
 # Independent pilot checklist
 
-Independent participation is pending. The working target is two independent providers plus the sample, and five distinct users.
+One independent provider is recorded. The working target is two independent providers plus the sample,
+and five distinct users.
 Confirm the conflicting SOW counts with the Chapter Lead before calling this target accepted.
 
-The [X Strategy Agent mainnet record](../mainnet/x-strategy.md) documents one provider deployment and one
-operator-run buyer flow. See the [pilot report](report.md) for how it relates to the SOW.
+The [pilot report](report.md) records Murat’s X Strategy Agent as the first independent provider and links
+its operator-run pilot user flow, including payer setup, funding and the confirmed USDC payment.
 
 For each independent provider:
 
@@ -12,7 +13,7 @@ For each independent provider:
 - [ ] Confirm that the provider controls its service, deployment and payout wallet independently of the sample.
 - [ ] Follow the published guide from a clean environment; note assistance, setup duration and blockers.
 - [ ] Record its agent id, verifier receipt/badges and confirmed Validation Registry response.
-- [ ] Complete at least one paid testnet call and record its transaction hash, ledger and explorer URL.
+- [ ] Complete at least one paid call and record its network, transaction hash, ledger and explorer URL.
 
 For each distinct user:
 
